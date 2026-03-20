@@ -1,0 +1,84 @@
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/db";
+import { activities } from "@/db/schema";
+import { and, eq, inArray, gte, lte } from "drizzle-orm";
+import type { ProposedActivity } from "@/lib/scheduler";
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const {
+      activities: proposed,
+      regenerate = false,
+      focusGoalIds = [],
+      dateRange,
+    } = body as {
+      activities: ProposedActivity[];
+      regenerate?: boolean;
+      focusGoalIds?: number[];
+      dateRange?: { start: string; end: string };
+    };
+
+    if (!Array.isArray(proposed) || proposed.length === 0) {
+      return NextResponse.json(
+        { error: "No activities to apply" },
+        { status: 400 }
+      );
+    }
+
+    let deleted = 0;
+
+    if (regenerate && focusGoalIds.length > 0 && dateRange) {
+      const toDelete = await db
+        .select({ id: activities.id })
+        .from(activities)
+        .where(
+          and(
+            inArray(activities.goalId, focusGoalIds),
+            eq(activities.isLogEntry, false),
+            eq(activities.isCompleted, false),
+            gte(activities.activityDate, dateRange.start),
+            lte(activities.activityDate, dateRange.end)
+          )
+        );
+
+      if (toDelete.length > 0) {
+        await db
+          .delete(activities)
+          .where(inArray(activities.id, toDelete.map((r) => r.id)));
+        deleted = toDelete.length;
+      }
+    }
+
+    const created = [];
+
+    for (const act of proposed) {
+      const [row] = await db
+        .insert(activities)
+        .values({
+          title: act.title,
+          quadrant: act.quadrant,
+          activityDate: act.activityDate,
+          startTime: act.startTime,
+          endTime: act.endTime,
+          roleId: act.roleId ?? null,
+          goalId: act.goalId ?? null,
+          activityTypeId: act.activityTypeId ?? null,
+          notes: act.notes ? `${act.reason}\n\n${act.notes}` : act.reason,
+        })
+        .returning();
+      created.push(row);
+    }
+
+    return NextResponse.json(
+      { created: created.length, deleted, activities: created },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error("Schedule apply error:", error);
+    return NextResponse.json(
+      { error: "Failed to apply schedule", details: String(error) },
+      { status: 500 }
+    );
+  }
+}

@@ -1,0 +1,115 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  Sun,
+  CalendarDays,
+  Activity,
+  Wallet,
+  Mountain,
+  Settings,
+  type LucideIcon,
+} from "lucide-react";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarFooter,
+} from "@/components/ui/sidebar";
+import { ThemeToggle } from "./theme-toggle";
+
+interface NavItem {
+  title: string;
+  href: string;
+  icon: LucideIcon;
+}
+
+const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
+  {
+    label: "Daily Focus",
+    items: [
+      { title: "Today", href: "/today", icon: Sun },
+      { title: "Monthly Plan", href: "/monthly-plan", icon: CalendarDays },
+    ],
+  },
+  {
+    label: "Life Areas",
+    items: [
+      { title: "Activities", href: "/activities", icon: Activity },
+      { title: "Budget", href: "/budget", icon: Wallet },
+      { title: "Goals", href: "/goals", icon: Mountain },
+    ],
+  },
+];
+
+export function AppSidebar() {
+  const pathname = usePathname();
+
+  return (
+    <Sidebar>
+      <SidebarHeader className="border-b px-6 py-5">
+        <h1 className="font-[family-name:var(--font-display)] text-xl font-semibold tracking-tight">
+          Life App
+        </h1>
+        <p className="text-[11px] text-muted-foreground tracking-wide uppercase mt-0.5">
+          Put First Things First
+        </p>
+      </SidebarHeader>
+
+      <SidebarContent className="pt-2">
+        {NAV_GROUPS.map((group) => (
+          <SidebarGroup key={group.label}>
+            <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground/70 px-3 mb-1">
+              {group.label}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  const active = pathname === item.href;
+                  return (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton asChild isActive={active}>
+                        <Link href={item.href} className="gap-3">
+                          <Icon className="h-4 w-4 shrink-0" strokeWidth={active ? 2.5 : 1.8} />
+                          <span className="text-sm">{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
+      </SidebarContent>
+
+      <SidebarFooter className="border-t p-2">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <div className="flex items-center justify-between">
+              <SidebarMenuButton
+                asChild
+                isActive={pathname.startsWith("/settings")}
+                className="flex-1"
+              >
+                <Link href="/settings">
+                  <Settings className="h-4 w-4" />
+                  <span>Settings</span>
+                </Link>
+              </SidebarMenuButton>
+              <ThemeToggle />
+            </div>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+    </Sidebar>
+  );
+}

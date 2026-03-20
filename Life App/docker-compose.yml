@@ -1,0 +1,14 @@
+services:
+  life-app:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - life-app-data:/data
+    environment:
+      - DB_PATH=/data/life-app.db
+      - BACKUP_DIR=/data/backups
+    restart: unless-stopped
+
+volumes:
+  life-app-data:

@@ -1,0 +1,13 @@
+node_modules
+.next
+*.db
+*.db-wal
+*.db-shm
+backups/
+.git
+.gitignore
+.env*
+*.md
+.specify/
+.cursor/
+specs/

@@ -1,0 +1,465 @@
+# Life App -- Feature Roadmap
+
+> Last updated: 2026-03-21.
+
+## Product Vision
+
+A personal life management app that helps the user live intentionally across all dimensions: time, health, finances, and personal growth. Grounded in the principles of *The 7 Habits of Highly Effective People*, it uses visual feedback and AI assistance to turn goals into daily action.
+
+## Feature Roadmap
+
+Each feature below becomes a separate spec-kit specification. Features are ordered by dependency and daily-use value.
+
+---
+
+### Feature 1: Calendar Management (7 Habits)
+
+**Spec ID**: `001-calendar-management`
+**Status**: Built (complete with polish)
+
+**What it does**: A weekly and monthly planning system based on Covey's fourth-generation time management. The user defines life roles (Athlete, Professional, Partner, etc.), sets long-term goals with target dates, selects goals to focus on each week, and uses an auto-scheduler to plan activities across their calendar. Includes a personal mission statement, recurring events, and weekly analytics.
+
+**What has been built**:
+- Roles with scheduling constraints (work role flag, max weekly occurrences, min rest days)
+- Default Covey-inspired role seeding (Professional, Athlete, Partner, Learner, Friend, Individual)
+- Standalone goals with multi-role support, target dates, and per-goal sessions-per-week
+- Dynamic urgency derivation from target date (no manual quadrant selection)
+- Weekly focus goal picker (select existing goals for this week)
+- Week and month calendar views with day columns
+- Recurring activity management (create, pause, delete)
+- Auto-scheduler with work/personal time windows, rest-day constraints, weekly occurrence caps, and month-scope generation
+- Schedule preview and apply workflow
+- Mission statement with version history and compass overlay
+- Weekly analytics (time by role, by quadrant, goal completion)
+- Sidebar navigation with all sections
+- SQLite database with Drizzle ORM, daily auto-backup
+- Today page with carry-forward and daily summary
+- Multi-week trend analytics (4/8/12 week trends)
+- Scheduler settings UI
+- Loading skeletons
+- Keyboard shortcuts
+- Responsive layout
+- Vitest test suite
+
+**Architectural iterations**:
+1. Initial build with weekly-scoped goals and single role per goal
+2. Goals Architecture Refactor: standalone goals, weekly focus junction table, dedicated Goals page
+3. Multi-role goals, dynamic quadrant derivation, quadrant dropdown removal
+4. Smarter Scheduler Algorithm: work/personal windows, rest days, weekend first-class, month scope, per-goal session counts
+5. Max weekly occurrences (replaced max consecutive days), default role seeding
+
+**Dependencies**: None.
+
+---
+
+### Feature 2: Fitness Tracking & Training Goals
+
+**Spec ID**: `002-fitness-tracking`
+**Status**: Built (fully integrated)
+
+**What it does**: Define activity types with custom metrics (Running, Tennis, Climbing with French grades, Hiking). Log activity entries with activity-specific fields (distance, pace, heart rate, elevation, grades), automatic goal linking, and calendar entry creation. Track body metrics manually (weight, VO2max, resting HR). Goals support measurable targets (activityTypeId, targetMetric, targetValue, targetPeriod) with progress tracking. Default activity types include non-physical activities (Reading, Meditation, Journaling, Social Event). View an activities dashboard with training volume charts, consistency streaks, and trend data.
+
+**What has been built**:
+- Activity types (renamed from sports) with custom metrics configuration
+- Activity logs (renamed from workouts) with automatic goal linking and calendar entry creation
+- Goals support measurable targets (activityTypeId, targetMetric, targetValue, targetPeriod) with progress tracking
+- Default activity types include non-physical activities (Reading, Meditation, Journaling, Social Event)
+- Schema refactor (sports→activityTypes, workouts→activityLogs), auto-calendar linking, goal progress API, expanded defaults
+- Activity type definitions with type (cardio/strength/mixed), icon, tracked toggle, default calories/steps, custom metrics config, variants (e.g., singles/doubles for tennis), French grade system for climbing
+- Body metrics tracking (weight in kg, VO2max in ml/kg/min, resting HR in bpm) with trend line charts
+- Fitness dashboard with stacked bar chart (weekly training volume by activity type), consistency streaks, latest body metrics with trend arrows, recent activity logs
+
+**Tables changed**: old `sports` → `activity_types`, old `workouts` → `activity_logs`, `sharpen_the_saw_entries` removed
+
+**Routes changed**: `/api/sports` → `/api/activity-types`, `/api/workouts` → `/api/activity-logs`, new `/api/goals/[id]/progress`
+
+**Architectural iterations**:
+1. Initial build as standalone fitness module (sports, workouts, body metrics)
+2. Unified Activity Integration: renamed tables, added goal targets, auto-calendar linking
+
+**Dependencies**: Feature 1 (calendar) for scheduling training goals.
+
+---
+
+### Feature 3: Budget Management
+
+**Spec ID**: `003-budget-management`
+**Status**: Built (complete)
+
+**What it does**: A month-based financial tracker with income, fixed costs, daily spending, and savings goals. All metrics adjust in real time: remaining spending budget, daily allowance, savings progress, and yearly overview. Visual indicators warn when the budget is tight.
+
+**What has been built**:
+- Budget settings with currency (EUR), monthly savings target, long-term savings goal with target date
+- Income entries with recurring flag (auto-included in future months)
+- Fixed costs with category, date range (start/end month), and active/inactive toggle
+- Spending log with quick-add form, category select, "category total" mode for lump sums, grouped-by-date list
+- Spending categories with icon (emoji), color, display order, archive support, and default seeding (Food, Rent, Utilities, Groceries, Amusement, Clothes, Transport, Other)
+- Budget dashboard with 4 summary cards (Income, Fixed Costs, Savings Target, Spending Budget)
+- Remaining budget card with color-coded status (green >50%, amber 20–50%, red <20%), days left, daily allowance
+- Savings goal progress bar with target amount and date
+- Charts (Recharts): spending-by-category donut, category breakdown horizontal bar, 12-month stacked bar (Income, Fixed, Spending, Savings)
+- Yearly summary table with monthly breakdown and totals row
+- Budget settings dialog (sheet) for savings targets
+- Tabbed layout: Dashboard, Log Spending, Income, Fixed Costs, Categories
+- Month navigation with "This month" shortcut
+- Full CRUD for spending, income, fixed costs, and categories
+- Budget summary API aggregating income, fixed costs, spending, savings, daily allowance, and category breakdowns
+
+**Tables added**: `budget_settings`, `income_entries`, `fixed_costs`, `spending_entries`, `spending_categories`
+
+**Routes added**: `/api/budget-settings`, `/api/budget/summary`, `/api/spending`, `/api/spending/[id]`, `/api/spending-categories`, `/api/spending-categories/[id]`, `/api/fixed-costs`, `/api/fixed-costs/[id]`, `/api/income`, `/api/income/[id]`
+
+**Dependencies**: None.
+
+---
+
+### Feature 4: Overview Dashboard (Body Visualization)
+
+**Spec ID**: `004-overview-dashboard`
+**Status**: Built (complete)
+
+**What it does**: A visual overview of the user's life across all dimensions. Centered on an interactive human body SVG with 7 zones that update with status colors based on real data from calendar, fitness, budget, and personal growth tracking. Shows goal and role streaks to encourage consistency.
+
+**What has been built**:
+- Interactive body SVG (200×400 viewBox) with 7 clickable/hoverable zones
+- Zone status colors: green (on track), yellow (needs attention), red (falling behind), gray (no data)
+- Health score: "X/Y zones on track" summary
+- Zone details panel with summary text and bullet-point details on hover/click
+- Interactive zone legend with status dots
+- Zone-to-data mapping:
+  - **Brain** (Learning & Growth): mental activity duration (green ≥2h)
+  - **Heart** (Cardio Health): cardio activity session count (green ≥2)
+  - **Muscles** (Strength & Training): strength/mixed session count (green ≥2)
+  - **Core** (Overall Wellness): weight trend from body metrics (green = stable/decreasing)
+  - **Legs** (Athletic Foundation): total athletic session count (green ≥3)
+  - **Pocket** (Financial Health): budget remaining percentage (green >50%)
+  - **Shoulders** (Social & Emotional): social/emotional activity duration (green ≥1h)
+- Goal streaks: consecutive weeks meeting sessionsPerWeek target (12-week lookback)
+- Role streaks: consecutive weeks with at least one completed activity (12-week lookback)
+- Streak cards with flame icons color-coded by streak length (amber <4, orange 4–7, red ≥8)
+- Two-column layout: body + legend on left, zone details + streaks on right
+- Overview API aggregating activity logs, body metrics, budget, goals, and roles
+
+**Routes added**: `/api/overview`
+
+**Dependencies**: Features 1, 2, and 3 for data.
+
+---
+
+### Goals V2: Hierarchy, Dashboard & Flexible Tracking
+
+**Spec ID**: `goals-v2`
+**Status**: Built (complete)
+
+**What it does**: A full redesign of the Goals section based on real usage feedback. Introduces a two-level goal hierarchy (Yearly → Monthly benchmarks), a visual dashboard with progress rings and pace indicators, simple tally logging for non-athletic goals (books, journal entries, podcasts), and integration with the monthly scheduling wizard so that monthly benchmarks drive weekly session planning.
+
+**What has been built**:
+- Two-level goal hierarchy: yearly goals with optional monthly sub-goals (parentGoalId with CASCADE DELETE)
+- Goals Dashboard as the default view: yearly goal cards with SVG progress rings, "This Month" section, pace status (Ahead / On Track / Behind / No Data)
+- "Incomplete" section for past monthly goals that did not meet their target
+- Dashboard/List view toggle for switching between dashboard and flat list views
+- Simple tally logging: a "Log Progress" button on any goal, tally count in the same unit as targetUnit
+- Auto-generate monthly benchmarks: "Plan for whole year" (12 months) or "Plan from now" (remaining months) toggle
+- Target unit support: free-text label (books, km, entries) for display ("4 / 12 books")
+- Cumulative pace tracking: progress vs. fraction of year elapsed (±5% threshold), not strict per-month quotas
+- Scheduler integration: monthly benchmark `sessionsPerWeek` overrides yearly goal default for that month
+- Goal form updated with horizon selector (Yearly / Monthly / Standalone, defaults to Yearly), month picker, yearly parent linking
+- Full backward compatibility: existing standalone goals unchanged
+
+**Schema changes**: Add `horizon`, `parent_goal_id`, `month`, `target_unit` to `goals` table (additive). New `goal_tallies` table.
+
+**Routes modified**: `GET/POST/PATCH /api/goals`, `GET /api/goals/:id/progress`, `POST /api/schedule/generate`
+
+**Routes added**: `GET /api/goals/:id/children`, `GET/POST /api/goal-tallies`, `DELETE /api/goal-tallies/:id`
+
+**Dependencies**: Feature 1 (uses existing goals, roles, scheduler).
+
+---
+
+### Scheduler Rules System
+
+**Spec ID**: `scheduler-rules`
+**Status**: Built (complete)
+
+**What it does**: A comprehensive rules system for the auto-scheduler that fixes session distribution and adds configurable constraints. Based on real usage where the scheduler was front-loading all sessions into the first week instead of spreading them evenly.
+
+**What has been built**:
+- **Weekly spread enforcement**: when enabled (default), caps each goal at its `sessionsPerWeek` per actual ISO week, preventing front-loading
+- **Max activities per day**: global cap on how many activities can be scheduled on any single day (default 4)
+- **Blackout dates**: days where nothing should be scheduled (holidays, birthdays), with optional yearly recurrence
+- **Preferred days per goal**: multi-select day preference (e.g., Running on Tue/Thu/Sat), used as scoring bias with fallback to any day
+- **Preferred time slot per goal**: morning (6-12), afternoon (12-17), or evening (17-22) preference
+- **Session patterns**: repeating intensity cycle with per-step rest days (e.g., 4km short run → 1 rest day, 4km → 1 rest day, 12km long run → 2 rest days, repeat)
+- **Activity type propagation**: scheduled activities inherit `activityTypeId` from their linked goal, enabling correct matching with activity logs and display in the Edit Activity form
+- **Randomized tiebreaking**: equal-score days are shuffled to prevent deterministic front-loading
+- **Settings UI**: new "Scheduler" tab in Settings with work hours, distribution rules, and blackout date management
+- **Schedule regeneration**: "Generate Schedule" always produces a fresh schedule by ignoring existing scheduler-generated activities for focus goals. Old scheduled activities (non-logged, non-completed) are replaced when the new schedule is applied.
+- **Schedule reset**: dedicated "Reset" button clears all scheduled (non-logged, non-completed) activities for the month, allowing a clean slate before regenerating.
+- **Correct month scoping**: generate endpoint accepts an explicit `month` parameter so the scheduler targets the correct calendar month regardless of which day-of-week the month starts on.
+
+**Schema changes**: Add `enforceWeeklySpread`, `maxActivitiesPerDay` to `scheduler_settings`. Add `preferredDays`, `preferredTimeSlot` to `goals`. New tables: `scheduler_blackout_dates`, `goal_session_patterns`.
+
+**Routes added**: `GET/POST/DELETE /api/scheduler-blackout-dates`, `GET/POST /api/goals/:id/session-patterns`, `DELETE /api/goal-session-patterns/:id`, `POST /api/schedule/reset`
+
+**Routes modified**: `GET/PATCH /api/scheduler-settings`, `POST/PATCH /api/goals`, `POST /api/schedule/generate` (fetches and passes `activityTypeId` from goals), `POST /api/schedule/apply` (persists `activityTypeId` on created activities)
+
+**Dependencies**: Feature 1 (scheduler), Goals V2 (goal form).
+
+---
+
+### Climbing Training Periodization V1
+
+**Spec ID**: `climbing-periodization-v1`
+**Status**: Built (complete)
+
+**What it does**: Adds periodization plans to climbing goals. The user enters their climbing profile (max grades, experience), and the app derives their level (beginner/intermediate/advanced) and generates a phase schedule using established periodization models (4-1, 4-3-2-1, or 3-2-1 cycles). The scheduler then produces phase-aware activity titles (e.g., "Climbing — Max Strength & Power (Week 2/3)") instead of generic "Climbing" entries. Manual phase transitions, cycle restart.
+
+**What has been built**:
+- Level assessment from grade + experience (conservative of the two)
+- 3 periodization models with bouldering/sport modifiers
+- Auto-generated phases with date ranges and training focus descriptions
+- Phase-aware scheduler titles (title + week number, no algorithm changes)
+- Rest phase skips scheduling for the goal
+- Phase timeline visualization on goal detail
+- Manual phase transition and cycle restart
+- Single-form plan creation (no wizard)
+
+**Schema changes**: 2 new tables: `training_plans` (1-to-1 with goals, stores sport profile), `training_phases` (ordered phases with type, dates, status, description). Schema is consolidated for multi-sport support (shared with Tennis V1 via `sport` discriminator and `sport_profile` JSON column).
+
+**Routes added**: `POST /api/training-plans/assess-level`, `GET/POST/DELETE /api/training-plans`, `POST /api/training-phases/:id/transition`, `POST /api/training-plans/:id/restart`
+
+**Follow-up**: Phase descriptions were originally short generic paragraphs. The `climbing-phase-content-upgrade` spec (now built) replaced them with three-layered content (climbing focus, supplemental training, mental training) differentiated by discipline and level, plus a 5-category physical limitation system.
+
+**Dependencies**: Feature 1 (scheduler), Feature 2 (activity types), Goals V2 (goal detail).
+
+---
+
+### Tennis Training Periodization V1
+
+**Spec ID**: `tennis-periodization-v1`
+**Status**: Built (complete)
+
+**What it does**: Adds periodization plans to tennis conditioning goals (supplemental training -- not match play). The user enters their self-rated ability, years of play, playing style (baseliner/all-court/serve & volley), and any physical limitations. The app derives their level and generates a phase schedule with tennis-specific periodization models (3-1, 3-3-2-1, or 3-2-1 cycles). Playing style modifiers adjust phase durations. Physical limitation modifiers enrich phase descriptions with sport-specific precautions.
+
+**What has been built**:
+- Level assessment from self-rating + years of play (conservative of the two)
+- 3 periodization models with playing style duration modifiers
+- 6 physical limitation modifiers (shoulder, back, knee, elbow, ankle, adductor) that enrich phase descriptions
+- Tennis-specific phase types: Foundation & Prehab, Strength & Power, Tennis-Specific Endurance, Performance, Recovery
+- Phase-aware scheduler titles (e.g., "Tennis — Strength & Power (Week 2/3)")
+- Recovery phases skip scheduling for the goal
+- Tennis-specific plan creation dialog (self-rating, playing style, limitation checkboxes)
+- Limitation notes displayed on phase detail
+- Consolidated multi-sport schema (shared `training_plans` and `training_phases` tables with `sport` discriminator and `sport_profile` JSON)
+- 29+ unit tests covering level assessment, phase generation, limitation notes, style modifiers
+
+**Schema changes**: Reuses consolidated `training_plans` and `training_phases` tables (0 new tables). Added `sport`, `sport_profile` columns to `training_plans`, `limitation_notes` to `training_phases`, renamed `climber_level` → `player_level`, moved climbing-specific columns to `sport_profile` JSON.
+
+**Routes modified**: Existing training plan routes extended with `sport` discriminator. Assess-level endpoint accepts `sport` parameter.
+
+**Follow-up**: Phase descriptions were originally conditioning-only. The `tennis-schedule-refactoring` spec (now built) replaced them with three-layered content (on-court, supplemental, mental game) differentiated by playing style and level.
+
+**Dependencies**: Climbing Periodization V1 (shared schema), Feature 1 (scheduler), Feature 2 (activity types), Goals V2 (goal detail).
+
+---
+
+### Tennis Training Schedule Refactoring
+
+**Spec ID**: `tennis-schedule-refactoring`
+**Status**: Built (complete)
+
+**What it does**: Replaces the flat gym-only phase descriptions with three-layered content: on-court focus (differentiated by playing style), supplemental training, and mental game (Inner Game concentration techniques + Winning Ugly tactical concepts in every phase). Makes the training plan actually useful for improving at tennis, not just at planks.
+
+**What has been built**:
+- Replaced flat `PHASE_DESCRIPTIONS` with structured `PHASE_CONTENT` object containing three layers per phase
+- `buildPhaseDescription()` function assembles descriptions from content, playing style, and level
+- Playing-style-specific on-court focus (baseliner vs serve-volley vs all-court) for all 5 phases
+- Beginner-specific simplified descriptions for foundation-prehab (on-court + supplemental)
+- Inner Game techniques in every phase (nonjudgmental awareness → seam-watching → bounce-hit → breathing between points → effortless effort)
+- Winning Ugly tactical concepts in every phase (Know Thyself → Combination to the Lock → Who's Doing What → Pre-Match Checklist → Tournament Tough)
+- 37 unit tests covering description structure, style differentiation, beginner overrides, and mental game content
+
+**Schema changes**: None. Descriptions are stored as text in existing `training_phases.description` column.
+
+**Routes modified**: None. Descriptions are generated server-side during plan creation.
+
+**Dependencies**: Tennis Periodization V1 (built).
+
+---
+
+### Climbing Phase Content Upgrade
+
+**Spec ID**: `climbing-phase-content-upgrade`
+**Status**: Built (complete)
+
+**What it does**: Mirrors the tennis schedule refactoring for climbing. Replaces flat one-paragraph phase descriptions with structured three-layer content: climbing focus (discipline-specific), supplemental training, and mental training (Hörst's Mental Wings framework). Adds a physical limitation system for climbing-specific injury prevention.
+
+**What has been built**:
+- Replaced flat `PHASE_DESCRIPTIONS` with structured `PHASE_CONTENT` object containing three layers per phase
+- `buildClimbingPhaseDescription()` function assembles descriptions from content, discipline, and level
+- Discipline-specific climbing focus (bouldering vs sport) for all 4 phases
+- Beginner-specific overrides for skill-stamina and max-strength-power phases (on-wall + supplemental)
+- Mental training grounded in Hörst's Mental Wings framework (ANSWER sequence, pre-climb ritual, tension control, positive self-talk, confidence building, process review)
+- 5 climbing-specific physical limitations (fingers/pulleys, shoulder, elbow, back, wrist) with per-phase injury prevention notes
+- `buildClimbingLimitationNotes()` function for assembling limitation notes
+- Physical limitation toggles added to climbing training plan dialog
+- `physicalLimitations` stored in existing `sportProfile` JSON (no schema migration)
+- 36 unit tests covering description structure, discipline differentiation, beginner overrides, limitation notes, and all 5 limitation types
+
+**Schema changes**: None. `physicalLimitations` stored in existing `sport_profile` JSON column. `ClimbingLimitation` type and `physicalLimitations` field added to `ClimbingSportProfile` interface.
+
+**Routes modified**: `POST /api/training-plans` and `POST /api/training-plans/:id/restart` updated to pass limitations to phase generation.
+
+**Dependencies**: Climbing Periodization V1 (built), Tennis Periodization V1 (used as reference implementation).
+
+---
+
+### UI Refinements March
+
+**Spec ID**: `ui-refinements-march`
+**Status**: Built (complete)
+
+**What it does**: A multi-phase UI cleanup addressing clutter, unused features, and visual polish. Trims dead features, redesigns the goals form, replaces charts with simpler visualizations, adds drag-and-drop scheduling, and applies a visual polish pass.
+
+**What has been built**:
+- **Phase 1 -- Trimming**: Removed `/mission` and `/analytics` routes, pages, API endpoints, sidebar links, and schema tables
+- **Phase 2 -- Goals Form Redesign**: Expanded goal form to `max-w-4xl`, reorganized into responsive two-column grid (core details left, scheduling right)
+- **Phase 3 -- Activities by Role**: Replaced stacked bar chart with horizontal bar chart showing total scheduled activities per role, with role-colored bars
+- **Phase 4 -- Drag-and-Drop**: Added `@dnd-kit/core` drag-and-drop to monthly plan. Activities are draggable between days with optimistic updates and API PATCH
+- **Phase 5 -- UI Polish**: Off-white background (`oklch(0.985 0.002 247)`), softer borders, increased radius (`0.75rem`), stat cards with colored icon circles, body metric trend pills (green/red/gray), colored streak badges (amber/orange/red by length), softer role badges (20% opacity tint), `shadow-sm` on all cards
+- **Phase 6 -- Training Phase Display**: Scheduler attaches phase descriptions and limitation notes to generated activity notes. Existing training plan phases refreshed with new rich content via `/api/training-plans/refresh-descriptions`. Goal description used as fallback notes for non-training-plan activities.
+
+**Schema changes**: Removed `missionStatements` and `missionStatementVersions` tables.
+
+**Routes removed**: `/api/mission`, `/api/analytics`
+
+**Dependencies**: Feature 1 (calendar), Feature 2 (activities), Goals V2.
+
+---
+
+### First-Time Onboarding Wizard
+
+**Spec ID**: `onboarding-wizard`
+**Status**: Removed (built and then removed after review)
+
+**What happened**: A guided 4-step wizard was built and then removed after user review. The feature was deemed unnecessary — users can configure roles, activity types, and scheduler settings directly from the Settings page without needing a wizard walkthrough.
+
+**What was removed**: `OnboardingGate` wrapper, `OnboardingWizard` shell, 4 step components, `hasCompletedOnboarding` column from `scheduler_settings`, "Run Setup Wizard" button from Settings page, migration file.
+
+**What was kept**: `src/lib/defaults.ts` (shared default roles, activity types, and spending categories). Default values are now auto-seeded when the respective database tables are empty (triggered on first API GET call), replacing the manual "Start with Defaults" approach.
+
+---
+
+### UI Design Overhaul
+
+**Spec ID**: `ui-design-overhaul`
+**Status**: Built (complete)
+
+**What it does**: A comprehensive visual refactoring of the entire application, shifting the design from a generic dashboard aesthetic to a calm, warm, premium personal life-management tool. Applies the "Impeccable" design skill guidelines and a defined brand personality: calm, warm, grounded, quietly confident.
+
+**What has been built**:
+- **Typography overhaul**: Replaced Geist fonts with Plus Jakarta Sans (body), Fraunces (display headings), JetBrains Mono (code). Applied display font to all page titles, card headers, and sidebar branding.
+- **Color palette shift**: Changed all neutral `oklch` hues from cool blue (~247) to warm amber (~50) for both light and dark modes. Reduced border radius from `1rem` to `0.625rem`.
+- **App shell**: Removed desktop header bar (mobile-only `SidebarTrigger` retained). Replaced emoji sidebar icons with Lucide icons (Sun, CalendarDays, Activity, Wallet, Mountain). Applied Fraunces to "Life App" branding.
+- **Motion system**: Added CSS animation keyframes (`fade-up`, `fade-in`), stagger utilities, easing variables (`--ease-out-quart`, `--ease-out-expo`), and `prefers-reduced-motion` fallbacks.
+- **Page consistency**: Applied `px-6 py-8 animate-fade-up` padding/animation to all main page wrappers. Applied display font headings across Today, Goals, Activities, Budget, Settings, and all settings sub-pages.
+- **Goal card redesign**: Replaced `ProgressRing` with `ProgressBar`. Moved activity type icon inline with title. Hover-only kebab menu. Visual separation with `border-t` for training plan section.
+- **Activity graph**: Replaced activity history heatmap with a Recharts `BarChart` showing activities per activity type for the current month. Added `activityByType` data to `/api/activities/summary` response.
+- **Scheduler settings polish**: Widened `SheetContent` to `sm:max-w-md`. Replaced checkbox day selectors with styled button toggles in a `grid grid-cols-4`. Added section headings.
+- **Drag-and-drop fix**: Changed `DndContext` collision detection from `rectIntersection` to `pointerWithin`. Fixed border layout shift by using consistent `border-2` with transparent/visible color states.
+- **Training plan integration**: Added "Create Training Plan" checkbox to goal creation form for new yearly or standalone goals with an activity type. Opens `TrainingPlanDialog` after goal is successfully created.
+- **Cascade delete**: `DELETE /api/goals/:id` now cascades to delete linked monthly sub-goals and their role associations.
+- **Today tab cleanup**: Removed Quick Add and Daily Summary sections.
+- **Ad-hoc activities**: Restored compact "+" button on day columns for creating activities on specific days.
+
+**Schema changes**: None (all changes are UI-only or leverage existing schema).
+
+**Routes modified**: `DELETE /api/goals/:id` (cascading child deletion), `GET /api/activities/summary` (added `activityByType` field).
+
+**Dependencies**: All prior features (UI-only overhaul).
+
+---
+
+### v2 Overhaul: Simplification & Enhanced Integration
+
+**Spec ID**: `v2-overhaul`
+**Status**: Complete
+
+**What it does**: Eight changes based on real usage feedback:
+
+1. **Remove Sharpen the Saw** -- feature was too complex and confusing. All UI, API, and `sawDimension` references removed.
+2. **Remove Overview Dashboard** -- body visualization added little value. Home page changed to Today tab.
+3. **Rename Fitness → Activities** -- broader label that encompasses non-physical activities (Reading, Meditation, etc.).
+4. **Body Metrics on Activities Dashboard** -- prominent display with sparklines instead of buried in a sub-tab.
+5. **Weekly Activity Volume rename** -- "Training" → "Activity" to match broader scope.
+6. **Monthly Plan (replace Weekly Plan)** -- month-only grid view, month navigator showing month names.
+7. **Budget Goals & Planned Expenses** -- new `plannedExpenses` table for one-off future costs, savings goal management, yearly overview integration.
+8. **Bidirectional Activity Logging** -- log from Activities tab → appears in Today view (auto-completes matching scheduled activity). Log from Today tab → appears in Activities tracker. New `activityTypeId` on `activities` table for matching.
+
+**Tables changed**: `activity_types` (drop `saw_dimension`), `activities` (add `activity_type_id`)
+**Tables added**: `planned_expenses`
+**Routes removed**: `/api/sharpen-the-saw`, `/api/overview`
+**Routes renamed**: `/api/fitness/summary` → `/api/activities/summary`, `/fitness` → `/activities`, `/weekly-plan` → `/monthly-plan`
+**Routes added**: `/api/planned-expenses`, `/api/planned-expenses/[id]`
+
+**Data safety**: No database reset required. All existing data preserved. Only destructive change is dropping `saw_dimension` column (feature being removed).
+
+**Dependencies**: Features 1, 2, 3, 4.
+
+---
+
+### Running Training Periodization V1
+
+**Spec ID**: `running-periodization-v1`
+**Status**: Built (complete)
+
+**What it does**: Adds periodization plans to running goals. The user enters their running profile (frequency, experience, continuous run capability, race history, goal distance, physical limitations), and the app derives their level (beginner/intermediate/advanced) and generates a phase schedule using established running periodization frameworks. Beginners get a 3-phase model (Base Building → Development → Race Prep + Rest), while intermediate and advanced runners get a 4-phase model (Base & Injury Prevention → Strength & Endurance → Speed & Specificity → Taper & Race + Rest) with goal distance modifiers. The scheduler produces phase-aware activity titles (e.g., "Running — Speed & Specificity (Week 2/4)").
+
+**What has been built**:
+- Level assessment from running frequency + years + continuous run capability + race history
+- 2 periodization models: 3-phase (beginner), 4-phase (intermediate/advanced)
+- 5 goal distance modifiers (5K, 10K, Half Marathon, Marathon, General Fitness) adjusting phase durations
+- 6 running-specific physical limitation modifiers (Achilles, Knee, Shin Splints, Plantar Fascia, Back/Scheuermann's, Hip/Adductor) with per-phase precaution notes
+- Three-layered phase descriptions (Running Focus, Supplemental Training, Mental Training) differentiated by level and goal distance
+- Full phase content for all levels: beginner (3 phases), intermediate (4 phases), advanced (4 phases), plus shared rest phase
+- Phase-aware scheduler titles (e.g., "Running — Base Building (Week 3/8)")
+- Rest phase skips scheduling for the goal
+- Running-specific plan creation dialog (runs/week, years experience, 30-min continuous check, race history, goal distance, longest recent run, limitation checkboxes, start date, live assessment preview)
+- Goal distance badge and limitation badges on training plan section
+- Running-specific phase color scheme (green/amber/orange/violet/gray)
+- `detectSport()` updated to return `null` for unrecognized activity types (prevents fallback to climbing)
+
+**Schema changes**: None (0 new tables, 0 new columns). Reuses consolidated `training_plans` and `training_phases` tables with `sport: "running"` discriminator and `sport_profile` JSON.
+
+**Routes modified**: Existing training plan routes extended with `"running"` branch. Assess-level endpoint accepts `sport: "running"` with running-specific parameters.
+
+**Source material**: Synthesized running science knowledge base (`Running/Running Training - Complete Guide.md`) grounded in Daniels, Lydiard, Maffetone, Seiler (80/20), and Pfitzinger.
+
+**Dependencies**: Climbing Periodization V1 + Tennis Periodization V1 (shared schema), Feature 1 (scheduler), Feature 2 (activity types), Goals V2 (goal detail).
+
+---
+
+---
+
+## Roadmap Principles
+
+1. **One feature at a time**: We spec, plan, build, and validate one feature before starting the next. No parallel feature development.
+2. **Each feature is usable alone**: Even with only Feature 1 built, the app delivers real daily value. Each subsequent feature adds a new dimension.
+3. **Scope is additive, not revisionary**: We don't rewrite earlier features when adding new ones. We extend through well-defined interfaces.
+4. **Priorities can shift**: If a later feature becomes urgent, the order can change -- but the spec-driven process remains the same regardless of order.
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Framework | Next.js 16.x (App Router, Turbopack) |
+| Language | TypeScript 5.x |
+| Styling | Tailwind CSS v4 (oklch theme variables) |
+| Components | shadcn/ui |
+| Typography | Plus Jakarta Sans (body), Fraunces (display), JetBrains Mono (code) |
+| Database | SQLite via Drizzle ORM + better-sqlite3 |
+| Charts | Recharts |
+| Drag & Drop | @dnd-kit/core |
+| Date utils | date-fns |
+| Theming | next-themes (light/dark) |
+| Testing | Vitest + React Testing Library |

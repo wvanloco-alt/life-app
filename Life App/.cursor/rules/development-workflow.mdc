@@ -1,0 +1,27 @@
+---
+description: Development workflow and project constraints for the Life App
+alwaysApply: true
+---
+
+# Development Workflow
+
+- **Spec-driven.** Every feature follows: Specify → Clarify → Plan → Tasks → Implement.
+- **One feature at a time.** No parallel feature development.
+- **Scope is additive.** Don't rewrite earlier features when adding new ones.
+- **Constitution wins.** If a request conflicts with `.specify/memory/constitution.md`, the constitution wins unless formally amended.
+
+# Project Constraints
+
+- **Single user, no auth.** Deployed via Docker with SQLite persistence. No cloud services.
+- **Desktop only.** No mobile app.
+- **Stay in your lane.** Do not touch ports 8000 or 5173, or modify anything outside the `Life App/` folder.
+
+# Key Documentation
+
+Before starting work on a new feature, read these docs:
+
+- `ROADMAP.md` -- feature status and what's built
+- `.specify/memory/constitution.md` -- governing principles
+- `specs/master/data-model.md` -- database schema
+- `specs/master/contracts/api-routes.md` -- API surface
+- `specs/master/tasks.md` -- completed work log

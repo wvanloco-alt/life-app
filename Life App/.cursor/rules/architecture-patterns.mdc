@@ -1,0 +1,29 @@
+---
+description: Architecture patterns and coding conventions for Life App source code
+globs: src/**
+alwaysApply: false
+---
+
+# Architecture Patterns
+
+- **Thin pages.** `src/app/*/page.tsx` files only import and render a component from `src/components/`. No logic in page files.
+- **Local state only.** Use `useState`, `useEffect`, `useCallback`. No global store (no Redux, Zustand, or Context for data).
+- **REST APIs.** All endpoints live under `src/app/api/`. Components fetch data with `fetch()` and use `Promise.all` for parallel loading.
+- **Optimistic UI.** Toggles and quick actions update local state immediately, then sync with the API.
+- **Loading skeletons.** Every page has a loading state using `<Skeleton />` components that mirror the final layout.
+- **Empty states.** Use the `<EmptyState />` component (icon, title, description, optional CTA) when a section has no data.
+- **Controlled forms.** Inputs are controlled via `useState`. Validation happens in the submit handler. No form libraries needed.
+
+# Styling & Theming
+
+- **Tailwind CSS + shadcn/ui** for all styling and components.
+- **Dark mode** via `next-themes`. Theme toggle in the sidebar footer. CSS variables in `globals.css` for both `:root` and `.dark`.
+- **Chart colors** via `usePalette()` hook and `palette.color()` -- never hardcode hex values for chart fills/strokes.
+- **Emoji icons** via `<EmojiIcon emoji="🏃" size="sm" />` -- never render raw emojis in UI elements.
+
+# Database
+
+- **Drizzle ORM** with `better-sqlite3`. Schema in `src/db/schema.ts`.
+- **Programmatic migrations** at startup via `drizzle-orm/better-sqlite3/migrator`.
+- **WAL mode** and `busy_timeout = 5000` enabled for concurrent read safety.
+- **Foreign keys ON.** All FKs use `references()` with `onDelete: "cascade"` where parent-child relationships exist.

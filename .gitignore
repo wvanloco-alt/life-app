@@ -1,0 +1,48 @@
+# ===================
+# Personal / Private
+# ===================
+/Writings/
+
+# Loose files at root (personal docs, not source material)
+/Everything I Know - The Course.md
+/Everything I Know - The Course.txt
+/Nepal Prep - Daily Schedule.md
+/Nepal Trek - Complete Guide.md
+/pa1_part1.txt
+/Pan Guide - Stop Ruining Your Pans.md
+/Personal Buddy Onboarding.md
+/Vibe-Coding-Guide-Build-Apps-From-Scratch.md
+
+# ===================
+# Life App
+# ===================
+Life App/node_modules/
+Life App/.next/
+Life App/out/
+Life App/build/
+Life App/coverage/
+Life App/life-app.db
+Life App/life-app.db-wal
+Life App/life-app.db-shm
+Life App/backups/
+Life App/.env
+Life App/.env.*
+!Life App/.env.example
+Life App/*.tsbuildinfo
+Life App/next-env.d.ts
+Life App/.vercel/
+
+# ===================
+# OS / Editor
+# ===================
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.pem
+*.key
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*

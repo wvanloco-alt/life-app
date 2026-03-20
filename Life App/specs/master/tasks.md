@@ -1,0 +1,464 @@
+# Tasks: Life App
+
+> Last updated: 2026-03-21. Tracks completed work across all features.
+
+---
+
+## Completed Work
+
+### Phase 1: Setup
+
+- [x] Initialize Next.js project with TypeScript, Tailwind CSS, App Router, src/ directory
+- [x] Install runtime dependencies: drizzle-orm, better-sqlite3, recharts, date-fns
+- [x] Install dev dependencies: drizzle-kit, @types/better-sqlite3
+- [x] Initialize shadcn/ui with New York style, Slate base color, CSS variables
+- [x] Add shadcn/ui components: button, card, dialog, form, input, label, textarea, select, dropdown-menu, tooltip, separator, badge, tabs, sheet, checkbox
+- [x] Create Drizzle ORM configuration in `drizzle.config.ts`
+- [x] Create shared TypeScript types in `src/types/index.ts`
+- [x] Create date utility helpers in `src/lib/dates.ts`
+- [x] Create quadrant helpers in `src/lib/quadrants.ts` (including `deriveQuadrant()`)
+- [x] Create role color utility in `src/lib/colors.ts`
+
+### Phase 2: Foundation
+
+- [x] Define database schema in `src/db/schema.ts` (roles, goals, goalRoles, weeklyFocusGoals, weeklyPlans, activities, recurringActivities, schedulerSettings, missionStatements, missionStatementVersions, plus feature tables)
+- [x] Create database connection singleton in `src/db/index.ts`
+- [x] Run schema push via `npx drizzle-kit push`
+- [x] Create daily auto-backup logic in `src/db/backup.ts`
+- [x] Create root layout with sidebar navigation
+- [x] Create sidebar navigation component (`src/components/layout/app-sidebar.tsx`)
+- [x] Create home page redirect to `/today`
+
+### Phase 3: Roles
+
+- [x] Roles API: GET/POST (`src/app/api/roles/route.ts`)
+- [x] Roles API: PATCH (`src/app/api/roles/[id]/route.ts`)
+- [x] Roles reorder API: PUT (`src/app/api/roles/reorder/route.ts`)
+- [x] Role list component (`src/components/roles/role-list.tsx`) with drag-to-reorder
+- [x] Role form component (`src/components/roles/role-form.tsx`) with scheduling constraints (work role toggle, max weekly occurrences, min rest days)
+- [x] Role badge component (`src/components/roles/role-badge.tsx`)
+- [x] Roles page (`src/app/roles/page.tsx`)
+- [x] Default Covey role seeding (Professional, Athlete, Partner, Learner, Friend, Individual)
+
+### Phase 4: Mission Statement
+
+- [x] Mission API: GET/POST (`src/app/api/mission/route.ts`)
+- [x] Mission statement editor component
+- [x] Mission statement history component
+- [x] Mission statement page (`src/app/mission/page.tsx`)
+- [x] Compass overlay accessible from sidebar
+
+### Phase 5: Goals (refactored architecture)
+
+- [x] Standalone goals API: GET/POST (`src/app/api/goals/route.ts`)
+- [x] Goals API: PATCH/DELETE (`src/app/api/goals/[id]/route.ts`)
+- [x] Multi-role support via `goalRoles` junction table
+- [x] Dynamic quadrant derivation from `targetDate`
+- [x] Sessions-per-week field (1-7, default 3)
+- [x] Goal form standalone (`src/components/goals/goal-form-standalone.tsx`) with multi-role checkboxes, target date, sessions per week
+- [x] Goals page (`src/app/goals/page.tsx`) with filter by status, grouped by role
+- [x] Goals sidebar navigation link
+
+### Phase 6: Weekly Planning & Calendar
+
+- [x] Weekly plans API: GET/PATCH (`src/app/api/weekly-plans/route.ts`)
+- [x] Weekly focus goals API: GET/POST/DELETE (`src/app/api/weekly-plans/[weekStartDate]/goals/route.ts`)
+- [x] Activities API: GET/POST (`src/app/api/activities/route.ts`)
+- [x] Activities API: PATCH/DELETE (`src/app/api/activities/[id]/route.ts`)
+- [x] Recurring activities API: CRUD (`src/app/api/recurring-activities/`)
+- [x] Monthly plan view (`src/components/monthly-plan/weekly-plan-view.tsx`) -- month-only view (week toggle removed in v2)
+- [x] Day column component (`src/components/monthly-plan/day-column.tsx`)
+- [x] Activity form (`src/components/monthly-plan/activity-form.tsx`)
+- [x] Month navigator (inline prev/next buttons)
+- [x] Focus picker dialog (`src/components/monthly-plan/focus-picker.tsx`)
+- [x] Recurring activity manager (`src/components/monthly-plan/recurring-manager.tsx`)
+
+### Phase 7: Auto-Scheduler
+
+- [x] Scheduler algorithm (`src/lib/scheduler.ts`) with 5-phase approach:
+  1. Classify days (work/weekend with time windows)
+  2. Calculate sessions needed per goal
+  3. Sort by urgency/deadline
+  4. Round-robin placement with constraints (work/personal windows, rest days, max weekly occurrences, no same-day repeats)
+  5. Generate summary and warnings
+- [x] Schedule generate API: POST (`src/app/api/schedule/generate/route.ts`) with week/month scope
+- [x] Schedule apply API: POST (`src/app/api/schedule/apply/route.ts`)
+- [x] Schedule preview component (`src/components/weekly-plan/schedule-preview.tsx`)
+- [x] Scheduler settings API: GET/PATCH (`src/app/api/scheduler-settings/route.ts`)
+- [x] Scheduler settings table in database
+
+### Phase 8: Sharpen the Saw (removed in v2 overhaul)
+
+- [x] ~~Sharpen the Saw~~ -- removed: too complex to track, added little value. All files deleted.
+
+### Phase 9: Analytics
+
+- [x] Analytics API: GET (`src/app/api/analytics/route.ts`) with time by role, quadrant, completion rate
+- [x] Analytics page (`src/app/analytics/page.tsx`) with charts
+
+### Phase 10: Feature 1 Polish
+
+- [x] Today page: carry-forward for incomplete activities, daily summary card
+- [x] Trend analytics API (`/api/analytics/trends`) and multi-week trend charts
+- [x] ~~Sharpen the Saw radar chart~~ -- removed in v2 overhaul
+- [x] Scheduler settings UI (dialog accessible from weekly plan toolbar)
+- [x] Loading skeletons across all pages (shadcn Skeleton component)
+- [x] Keyboard shortcuts (N for new activity, G for generate schedule on weekly plan)
+- [x] Responsive layout optimization for 1024px screens
+- [x] Vitest setup with React Testing Library, tests for quadrants, scheduler, dates, role form
+
+---
+
+## Feature 2: Fitness Tracking (Activity Types & Activity Logs)
+
+*Originally built as "sports" and "workouts"; renamed to activity types and activity logs in Unified Activity Integration.*
+
+### Completed Work
+
+#### Phase 1: Schema & Types (originally: sports, workouts)
+
+- [x] Add `sports` table to schema with: name, type, icon, isTracked, defaultCalories, defaultSteps, metricsConfig (JSON), variants (JSON), gradeSystem
+- [x] Add `workouts` table to schema with: sportId FK, activityId FK (nullable), date, durationMinutes, calories, steps, variant, metrics (JSON), notes
+- [x] Add `bodyMetrics` table to schema with: date, metricType, value, unit
+- [x] Add TypeScript types: `Sport`, `MetricField`, `SportVariant`, `Workout`, `BodyMetric`, `SportType`, `BodyMetricType`
+- [x] French climbing grades utility (`src/lib/grades.ts`)
+- [x] Delete and recreate database with new schema
+
+#### Phase 2: API Routes (originally: /api/sports, /api/workouts)
+
+- [x] Sports CRUD: GET/POST `/api/sports`, PATCH/DELETE `/api/sports/[id]`
+- [x] Workouts CRUD: GET/POST `/api/workouts` (filterable by sportId, date range), PATCH/DELETE `/api/workouts/[id]`
+- [x] Body metrics: GET/POST `/api/body-metrics` (filterable by type, date range)
+- [x] Fitness summary: GET `/api/fitness/summary` (weekly volume, streaks, latest body metrics, recent workouts)
+
+#### Phase 3: UI Components (originally: Sports page, workout log)
+
+- [x] Sidebar updated with "Activities" and "Activity Types" nav items (renamed from Fitness/Sports in v2)
+- [x] Activity Types page (`/activity-types`): card grid, edit/delete dropdown, form dialog (name, icon picker, type, tracked toggle, default calories/steps, metrics config builder, variants builder, French grade system selector), "Start with Defaults" button
+- [x] Activities page (`/activities`) with tabs: Dashboard, Log Activity, Body Metrics
+- [x] Activity log: type selector, variant picker, duration (hours+minutes), calories/steps auto-fill, dynamic metric fields from type config, French grade dropdown for climbing, notes
+- [x] Body metrics: weight/VO2max/resting HR stat cards with trend arrows and sparkline charts, line chart per metric type, log measurement form
+- [x] Activities dashboard: total activities/hours/calories stat cards, stacked bar chart of weekly activity volume by type, consistency streaks, prominent body metrics section, recent activities
+
+---
+
+## Unified Activity Integration (completed)
+
+- [x] Renamed `sports` table to `activity_types`
+- [x] Renamed `workouts` table to `activity_logs`, added `goalId` field
+- [x] Added target fields to `goals` table: `activityTypeId`, `targetMetric`, `targetValue`, `targetPeriod`
+- [x] Added `isLogEntry` flag to `activities` table (calendar entries)
+- [x] Removed `sharpen_the_saw_entries` table
+- [x] Updated all TypeScript types (Sport->ActivityType, Workout->ActivityLog, etc.)
+- [x] Created `/api/activity-types` routes (replacing `/api/sports`)
+- [x] Created `/api/activity-logs` routes with auto-calendar-link, goal-linking, and date filter on POST/GET
+- [x] Created `/api/goals/[id]/progress` endpoint for metric-based goal progress
+- [x] Updated goals API to handle target fields and activity type references
+- [x] Updated analytics and activities summary APIs for new table names
+- [x] Activity Types page: expanded defaults (Running, Hiking, Tennis, Climbing, Reading, Meditation, Journaling, Social Event)
+- [x] Activity log form: renamed labels, added Goal selector with auto-select
+- [x] Goal form: added Activity Type picker, Target Metric, Target Value, Target Period
+- [x] Goals page: progress bars for metric-based goals
+- [x] Calendar day column: log entries styled with "logged" badge
+- [x] Sidebar: renamed Sports -> Activity Types, route /sports -> /activity-types
+- [x] Deleted old /api/sports, /api/workouts routes and /sports page
+
+---
+
+## Feature 3: Budget Management (completed)
+
+- [x] Budget settings API: GET/PATCH (`src/app/api/budget-settings/route.ts`)
+- [x] Income CRUD: GET/POST `/api/income`, PATCH/DELETE `/api/income/[id]`
+- [x] Fixed costs CRUD: GET/POST `/api/fixed-costs`, PATCH/DELETE `/api/fixed-costs/[id]`
+- [x] Spending categories CRUD: GET/POST `/api/spending-categories`, PATCH/DELETE `/api/spending-categories/[id]`
+- [x] Spending entries CRUD: GET/POST `/api/spending`, PATCH/DELETE `/api/spending/[id]`
+- [x] Budget summary API: GET `/api/budget/summary` with month filter, savings goal calculation, planned expenses
+- [x] Planned expenses CRUD: GET/POST `/api/planned-expenses`, PATCH/DELETE `/api/planned-expenses/[id]`
+- [x] Budget page (`/budget`) with tabs: Dashboard, Income, Fixed Costs, Spending, Categories, Budget Goals
+- [x] Budget dashboard: summary cards, pie chart, category breakdown, monthly overview bar chart (Jan-Dec), yearly summary table
+- [x] Budget goals: savings goal with progress bar, planned expenses list with add/edit/delete
+
+## Feature 4: Dockerization (completed)
+
+- [x] Multi-stage Dockerfile (deps, builder, runner)
+- [x] docker-compose.yml with named volume for data persistence
+- [x] Programmatic Drizzle ORM migrations at startup (`src/db/index.ts`)
+- [x] Environment variables for DB_PATH and BACKUP_DIR
+- [x] .dockerignore for build optimization
+
+## v2 Overhaul (completed)
+
+- [x] Removed Sharpen the Saw (route, component, API, sidebar, all sawDimension references)
+- [x] Removed Overview section (route, components, API, sidebar)
+- [x] Renamed Fitness -> Activities (routes, components, API, sidebar)
+- [x] Renamed Weekly Plan -> Monthly Plan (routes, components, sidebar, month-only view)
+- [x] Enhanced Activities Dashboard (body metrics sparklines, weekly activity volume)
+- [x] Added `plannedExpenses` table, CRUD API, Budget Goals tab
+- [x] Bidirectional activity logging (activityTypeId on activities, auto-complete, log-and-complete)
+- [x] Home page redirects to `/today`
+- [x] Old routes (`/fitness`, `/weekly-plan`) redirect to new routes
+
+---
+
+## Goals V2: Hierarchy, Dashboard & Flexible Tracking
+
+**Spec**: `.specify/specs/goals-v2/spec.md`
+**Status**: Built (all phases complete)
+
+---
+
+### Phase 1: Schema & Types
+
+> Objective: Add new columns to `goals`, create `goal_tallies` table, push schema, update TypeScript types. No UI changes. All existing data preserved.
+
+- [ ] Add four nullable columns to `goals` table in `src/db/schema.ts`:
+  - `horizon`: `text("horizon")` -- values: `'yearly'` | `'monthly'` | null
+  - `parentGoalId`: `integer("parent_goal_id").references(() => goals.id, { onDelete: "cascade" })`
+  - `month`: `text("month")` -- YYYY-MM format, for monthly goals
+  - `targetUnit`: `text("target_unit")` -- free-text display label (e.g., "books", "km", "entries")
+- [ ] Create `goalTallies` table in `src/db/schema.ts` with: `id`, `goalId` (FK → goals, CASCADE DELETE), `date`, `count` (default 1), `notes`, `createdAt`
+- [ ] Run `npx drizzle-kit push` to apply schema changes
+- [ ] Update `Goal` interface in `src/types/index.ts`: add `horizon`, `parentGoalId`, `month`, `targetUnit` fields
+- [ ] Add `GoalTally` interface to `src/types/index.ts`
+- [ ] Verify existing goals display correctly after schema push (no data lost)
+
+---
+
+### Phase 2: API Layer
+
+> Objective: Update existing goals endpoints to support new fields, add children and tally endpoints, update the progress endpoint to aggregate child goals and tallies.
+
+#### Goals endpoint updates
+
+- [ ] `GET /api/goals` -- add support for `?horizon=`, `?parentId=`, `?month=` query params in `src/app/api/goals/route.ts`
+- [ ] `POST /api/goals` -- accept `horizon`, `parentGoalId`, `month`, `targetUnit` in request body
+- [ ] `PATCH /api/goals/:id` -- accept `horizon`, `parentGoalId`, `month`, `targetUnit` in `src/app/api/goals/[id]/route.ts`
+
+#### Progress endpoint update
+
+- [ ] `GET /api/goals/:id/progress` -- update `src/app/api/goals/[id]/progress/route.ts` to:
+  - For yearly goals: sum activity logs and tallies from ALL child monthly sub-goals + direct logs + direct tallies
+  - For tally-based goals (no `activityTypeId`): sum `goal_tallies.count` for the period
+  - For yearly horizon: use year-to-date range (Jan 1 → today), return `paceStatus` ('ahead' | 'on_track' | 'behind' | 'no_data') based on elapsed% vs achieved%
+
+#### New: Children endpoint
+
+- [ ] Create `src/app/api/goals/[id]/children/route.ts`:
+  - `GET`: return all monthly sub-goals for a yearly goal (goals where `parentGoalId = :id`), each with inline progress
+
+#### New: Tally endpoints
+
+- [ ] Create `src/app/api/goal-tallies/route.ts`:
+  - `GET`: list tally entries, support `?goalId=`, `?from=`, `?to=` filters
+  - `POST`: create a tally entry (`goalId`, `date`, `count`, `notes`)
+- [ ] Create `src/app/api/goal-tallies/[id]/route.ts`:
+  - `DELETE`: delete a tally entry by id
+
+---
+
+### Phase 3: Goal Form Updates
+
+> Objective: Update the goal creation/edit form to support horizon selection, monthly linking, auto-generate benchmarks, and tally mode.
+
+- [ ] Add **Horizon selector** at the top of `GoalFormStandalone` in `src/components/goals/goal-form-standalone.tsx`:
+  - Three options: "Yearly Goal" | "Monthly Goal" | "Standalone" (default: Standalone to preserve existing behavior)
+  - Only show yearly/monthly-specific fields when the relevant horizon is selected
+- [ ] For **Yearly horizon**:
+  - Show target value field with a unit/label field (e.g., "12 books", "500 km")
+  - Show "Auto-generate monthly benchmarks" toggle (creates 12 monthly sub-goals on save)
+  - Keep `sessionsPerWeek` as the yearly default
+- [ ] For **Monthly horizon**:
+  - Show month picker (YYYY-MM) defaulting to current month
+  - Show optional "Link to yearly goal" dropdown (list of active yearly goals)
+  - Show `sessionsPerWeek` specific to this month
+  - Show target value field
+- [ ] Handle `POST /api/goals` auto-generate: after creating a yearly goal with the toggle on, POST 12 monthly sub-goals (Jan–Dec of the goal's target year) with `targetValue = yearlyTarget / 12`
+- [ ] Validate: monthly goals require a `month` value; yearly goals require a `targetValue` if tally-tracked
+
+---
+
+### Phase 4: Goals Dashboard UI
+
+> Objective: Replace the flat list with a visual dashboard. This is the most significant UI change.
+
+#### Dashboard layout
+
+- [ ] Redesign `src/components/goals/goals-page.tsx` with three sections:
+  1. **Yearly Goals grid** -- cards for all active yearly goals
+  2. **This Month section** -- monthly goals for the current calendar month
+  3. **Standalone Goals** -- compact list of goals with no horizon (unchanged behavior)
+- [ ] Add a summary bar at the top: "X of Y yearly goals on track" (count goals with pace status = 'ahead' or 'on_track')
+- [ ] The existing flat-list filter bar (Active / Completed / Archived / All) moves to a secondary "View All Goals" toggle that expands the full list below the dashboard sections
+
+#### Yearly Goal Card component
+
+- [ ] Create `src/components/goals/yearly-goal-card.tsx`:
+  - Title, role badge(s), target display ("12 books / year")
+  - Circular progress ring: current/target percentage using a simple SVG ring (no extra library needed)
+  - Pace status badge: color-coded pill (green = Ahead/On Track, amber = Behind, gray = No Data)
+  - Current month sub-goal inline: "March: 2 / 1" if a benchmark exists
+  - "Log Progress" button (tally) always visible when no activity type is linked
+  - Expand/collapse to show full monthly breakdown
+
+#### Monthly Goal Card component
+
+- [ ] Create `src/components/goals/monthly-goal-card.tsx`:
+  - Compact card with horizontal progress bar, month label, target value, current count
+  - Status badge: "On Track" / "Not Met" / "Achieved"
+  - "Log Progress" button
+
+#### Tally Logger component
+
+- [ ] Create `src/components/goals/tally-logger.tsx`:
+  - Mini-dialog: date picker (default today), count input (default 1, min 1), notes textarea
+  - Confirms on save, shows a brief "Logged!" toast
+  - List of past tallies (date, count, note) with delete button per entry
+
+#### Monthly Breakdown component
+
+- [ ] Create `src/components/goals/monthly-breakdown.tsx`:
+  - Shown when a yearly goal is expanded
+  - 12-month grid or list: each month shows benchmark target, actual progress, status dot
+  - "Add Benchmark" button per empty month, "Edit" on existing ones
+
+#### Loading & empty states
+
+- [ ] Add loading skeletons for the dashboard (3 card placeholders per section)
+- [ ] Empty state for the yearly goals section: prompt to create first yearly goal
+- [ ] Empty state for the "This Month" section if no monthly goals exist for this month
+
+---
+
+### Phase 5: Scheduler Integration
+
+> Objective: Make the monthly auto-scheduler aware of monthly benchmarks so it plans sessions based on what is needed this month, not the yearly default.
+
+- [ ] In `src/app/api/schedule/generate/route.ts`:
+  - After loading focus goals, for each goal query `GET /api/goals/:id/children?month=YYYY-MM` (current month)
+  - If a matching monthly sub-goal exists, use its `sessionsPerWeek` value for scheduling that goal
+  - Calculate remaining sessions: `monthlySessions = monthlySubGoal.sessionsPerWeek * weeksInMonth`, subtract already-completed sessions this month, spread remainder across remaining weeks
+- [ ] Update `src/lib/scheduler.ts`:
+  - Accept an optional `monthlyOverrides` map: `{ [goalId]: { sessionsPerWeek, remainingSessions } }`
+  - When this map is provided, use it instead of the goal's base `sessionsPerWeek`
+- [ ] Add a note to the schedule preview that indicates which goals are using a monthly benchmark override (e.g., "Using March benchmark: 5 sessions/week")
+
+---
+
+### Phase 6: Documentation Update
+
+- [ ] Update `specs/master/data-model.md` with new `goals` columns and `goal_tallies` table
+- [ ] Update `specs/master/contracts/api-routes.md` with new and modified endpoints
+- [ ] Update `AGENT-ONBOARDING.md` to reflect Goals V2 in the "What's Built" table
+- [ ] Update `specs/master/tasks.md` -- mark completed tasks as the build progresses
+
+---
+
+## Scheduler Rules System (completed)
+
+- [x] Phase 1: Added `enforceWeeklySpread` and `maxActivitiesPerDay` to `scheduler_settings` schema
+- [x] Phase 1: Created `scheduler_blackout_dates` table with date, label, and recurring flag
+- [x] Phase 1: Rewrote scheduler to use week-by-week placement loop, respecting `maxActivitiesPerDay`, skipping blackout dates, and using randomized tiebreaking
+- [x] Phase 1: Created API endpoints for scheduler blackout dates (`GET/POST/DELETE /api/scheduler-blackout-dates`)
+- [x] Phase 1: Updated scheduler settings API to handle new fields
+- [x] Phase 1: Added "Scheduler" tab to Settings with global rules UI and blackout date management
+- [x] Phase 2: Added `preferredDays` and `preferredTimeSlot` columns to `goals` table
+- [x] Phase 2: Updated scheduler to apply preferred days scoring bias and preferred time slot narrowing
+- [x] Phase 2: Updated goals API and goal form with preferred days multi-select and time slot dropdown
+- [x] Phase 3: Created `goal_session_patterns` table with position, label, and restDaysAfter
+- [x] Phase 3: Updated scheduler to cycle through session patterns with per-session rest days
+- [x] Phase 3: Created session patterns API (`GET/POST /api/goals/:id/session-patterns`, `DELETE /api/goal-session-patterns/:id`)
+- [x] Phase 3: Added collapsible session pattern editor to goal form
+- [x] Updated ROADMAP.md, data model, and API contracts with Scheduler Rules System documentation
+
+## Schedule Regeneration & Reset (completed)
+
+- [x] Added `regenerate` flag to `POST /api/schedule/generate` -- ignores existing scheduler-generated activities for focus goals
+- [x] Added `month` parameter to `POST /api/schedule/generate` -- fixes month scoping bug where scheduler targeted wrong month when 1st falls on a Sunday
+- [x] Updated `POST /api/schedule/apply` to delete old scheduler-generated activities (non-logged, non-completed) for focus goals before inserting new ones
+- [x] Created `POST /api/schedule/reset` endpoint -- deletes all non-logged, non-completed activities in a date range
+- [x] Added "Reset" button to Monthly Plan toolbar with confirmation dialog
+- [x] Generate Schedule button now always produces a fresh schedule (regenerate mode)
+- [x] Apply button text changes to "Replace with X Activities" when regenerating
+
+---
+
+## First-Time Onboarding Wizard (removed)
+
+**Spec**: `.specify/specs/onboarding-wizard/spec.md`
+**Status**: Built and then removed after user review
+
+- [x] Was fully built (all 7 phases) and then removed
+- [x] Removed: `OnboardingGate`, `OnboardingWizard`, 4 step components, `hasCompletedOnboarding` column, migration file, "Run Setup Wizard" button
+- [x] Kept: `src/lib/defaults.ts` (shared default definitions, still used by Settings pages)
+
+---
+
+## UI Design Overhaul (completed)
+
+- [x] Typography: Replaced Geist fonts with Plus Jakarta Sans (body), Fraunces (display headings), JetBrains Mono (code)
+- [x] Color palette: Shifted all neutral oklch hues from cool blue (~247) to warm amber (~50) for light and dark modes
+- [x] Border radius: Reduced from `1rem` to `0.625rem`
+- [x] App shell: Removed desktop header bar, replaced emoji sidebar icons with Lucide icons, applied Fraunces branding
+- [x] Motion system: Added `fade-up` and `fade-in` keyframes, stagger utilities, easing variables, reduced-motion fallbacks
+- [x] Page consistency: Applied `px-6 py-8 animate-fade-up` and display font headings across all pages (Today, Goals, Activities, Budget, Settings, sub-pages)
+- [x] Goal card redesign: Replaced `ProgressRing` with `ProgressBar`, hover-only kebab menu, inline activity type icon, `border-t` separator for training plan section
+- [x] Activity graph: Replaced heatmap with Recharts `BarChart` showing activities per type for current month, added `activityByType` to `/api/activities/summary`
+- [x] Scheduler settings polish: Widened sheet, styled button toggles for day selection, section headings
+- [x] Drag-and-drop fix: Changed `DndContext` collision detection to `pointerWithin`, fixed border layout shift with consistent `border-2`
+- [x] Training plan in goal creation: Added "Create Training Plan" checkbox to goal form, opens `TrainingPlanDialog` post-creation
+- [x] Cascade delete: `DELETE /api/goals/:id` now deletes linked monthly sub-goals and their role associations
+- [x] Today tab cleanup: Removed Quick Add and Daily Summary sections
+- [x] Ad-hoc activities: Restored compact "+" button on day columns in monthly plan calendar
+
+---
+
+## Running Training Periodization V1 (completed)
+
+- [x] Task 1: Types & Running Periodization Engine — Added `RunnerLevel`, `RunningGoalDistance`, `RunningPhaseType`, `RunningLimitation`, `RunningSportProfile`, `RunningPeriodizationModel` types. Updated `TrainingSport`, `PeriodizationModel`, `PhaseType`, `SportProfile` unions. Implemented `assessRunningLevel()`, `generateRunningPhases()`, `buildRunningPhaseDescription()`, `buildRunningLimitationNotes()`, `getRunningPhaseDisplayName()`. Full three-layered phase content for all levels and goal distances.
+- [x] Task 2: API Route Updates — Added `"running"` branch to POST `/api/training-plans`, GET/POST `/api/training-plans/assess-level`, POST `/api/training-plans/:id/restart`.
+- [x] Task 3: Scheduler Integration — Running phase display names added to `getPhaseDisplayName()`. Rest phase detection already handles `"rest"`. No algorithm changes needed.
+- [x] Task 4: UI — Running Training Plan Dialog — New `RunningTrainingPlanDialog` with runs/week, years, continuous run check, race history, goal distance, longest recent run, limitation checkboxes, start date, live assessment preview. Updated `detectSport()` to return `null` for unrecognized sports.
+- [x] Task 5: Training Plan Section Updates — Running phase colors (green/amber/orange/violet/gray), goal distance badge, running limitation badges, limitation notes rendering.
+- [x] Task 6: Documentation — Updated ROADMAP.md, data-model.md, tasks.md.
+
+---
+
+## Scheduler & Goal Form Fixes (completed)
+
+- [x] Training plan availability extended to standalone goals (was yearly-only). Updated condition in `goal-form-standalone.tsx` and save payload.
+- [x] Bug fix: Scheduled activities now inherit `activityTypeId` from their linked goal. Added `activityTypeId` field to `ProposedActivity` interface in `scheduler.ts`, populated it in `commitSession()` from `goal.activityTypeId`.
+- [x] Bug fix: `POST /api/schedule/generate` was not fetching `activityTypeId` from the goals table. Added it to the SQL select and mapped goal objects.
+- [x] Bug fix: `POST /api/schedule/apply` was not persisting `activityTypeId` when inserting activities. Added it to the insert values.
+- [x] Auto-seeding of defaults: Roles, activity types, and spending categories are now auto-seeded when their respective tables are empty (on first API GET call). Added `seedDefaultRoles()`, `seedDefaultActivityTypes()`, `seedDefaultCategories()` to API route handlers.
+- [x] Spending category defaults extracted to `src/lib/defaults.ts` (`DEFAULT_SPENDING_CATEGORIES`).
+- [x] Default goal horizon changed from "Standalone" to "Yearly" in `goal-form-standalone.tsx`, with auto-filled target date (Dec 31 of current year).
+
+---
+
+## Architecture Change Log
+
+| Date | Change | Reason |
+|------|--------|--------|
+| 2026-03-03 | Initial build | MVP of all Feature 1 user stories |
+| 2026-03-03 | Goals Architecture Refactor | Goals changed from weekly-scoped to standalone with `targetDate`, `status`, and `weeklyFocusGoals` junction table |
+| 2026-03-03 | Multi-role goals | Added `goalRoles` junction table for many-to-many goals ↔ roles. Removed explicit quadrant input (now derived from target date) |
+| 2026-03-03 | Sharpen the Saw improvements | Added hours input, goal linking via `goalId` |
+| 2026-03-03 | Calendar view improvements | Removed confusing Focus tab, added month view toggle, added recurring activity manager |
+| 2026-03-03 | Smarter Scheduler Algorithm | Work/personal time windows, rest-day constraints, per-goal session counts, weekend first-class, month-scope generation |
+| 2026-03-04 | Max weekly occurrences | Replaced `maxConsecutiveDays` with simpler `maxWeeklyOccurrences` on roles |
+| 2026-03-04 | Default role seeding | Added Covey-inspired default roles with one-click seeding |
+| 2026-03-04 | Feature 2: Fitness Tracking | Sports definitions, workout logging with sport-specific metrics, body metrics tracking, fitness dashboard |
+| 2026-03-04 | Feature 1 Polish | Carry-forward, trends, radar chart, skeletons, keyboard shortcuts, responsive layout, Vitest tests, scheduler settings UI |
+| 2026-03-05 | Unified Activity Integration | Sports->ActivityTypes, Workouts->ActivityLogs, SharpenTheSawEntries removed, Goals get target metrics, auto-calendar from logs |
+| 2026-03-10 | Feature 3: Budget Management | Income, fixed costs, spending categories, spending entries, budget settings, budget dashboard with charts and yearly overview |
+| 2026-03-10 | Feature 4: Dockerization | Multi-stage Dockerfile, docker-compose with named volume, programmatic migrations at startup, DB backups |
+| 2026-03-11 | v2 Overhaul | Removed Sharpen the Saw and Overview. Renamed Fitness->Activities, Weekly Plan->Monthly Plan. Added planned expenses, budget goals with savings tracking, bidirectional activity logging, body metrics sparklines. Home redirects to /today |
+| 2026-03-11 | Budget fixes | Fixed costs apply to all months (ongoing), savings goal uses actual income-expense data, yearly overview starts in January |
+| 2026-03-12 | Goals V2 | Two-level goal hierarchy (yearly → monthly), dashboard with progress rings, tally logging, auto-generate monthly benchmarks, scheduler integration |
+| 2026-03-12 | UI Refactoring V1 | Sidebar cleanup, empty states, breathing room, dark mode foundation, visual consistency (EmojiIcon, palette utility) |
+| 2026-03-14 | Scheduler Rules System | Weekly spread enforcement, max activities per day, blackout dates, preferred days/time per goal, session patterns with per-step rest days |
+| 2026-03-14 | Schedule regeneration & reset | Generate always produces fresh schedule, apply replaces old activities, new reset endpoint and button, month scoping fix |
+| 2026-03-19 | First-Time Onboarding Wizard | Built and then removed after review. Defaults extraction to shared module kept. |
+| 2026-03-20 | UI Design Overhaul | Typography (Plus Jakarta Sans + Fraunces + JetBrains Mono), warm amber color palette, Lucide sidebar icons, motion system, goal card redesign, activity bar chart, DnD fix, training plan in goal creation, cascade delete, Today tab cleanup |
+| 2026-03-20 | Running Training Periodization V1 | Running periodization engine (3-phase beginner, 4-phase intermediate/advanced), 5 goal distance modifiers, 6 physical limitation modifiers, three-layered phase descriptions, RunningTrainingPlanDialog, detectSport() updated, phase colors, 0 schema changes |
+| 2026-03-21 | Scheduler & Goal Form Fixes | Training plans extended to standalone goals, activityTypeId propagation fix (scheduler → apply route), auto-seeding defaults (roles, activity types, spending categories), default goal horizon changed to "Yearly" |

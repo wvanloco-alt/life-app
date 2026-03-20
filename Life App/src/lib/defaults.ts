@@ -1,0 +1,147 @@
+export const DEFAULT_ROLES = [
+  { name: "Professional", description: "Career growth and work responsibilities", color: "#3B82F6", isWorkRole: true, maxWeeklyOccurrences: 5, minRestDays: 0 },
+  { name: "Athlete", description: "Physical fitness and athletic pursuits", color: "#EF4444", isWorkRole: false, maxWeeklyOccurrences: 4, minRestDays: 1 },
+  { name: "Partner", description: "Relationship with your significant other", color: "#EC4899", isWorkRole: false, maxWeeklyOccurrences: 7, minRestDays: 0 },
+  { name: "Learner", description: "Personal development and education", color: "#8B5CF6", isWorkRole: false, maxWeeklyOccurrences: 5, minRestDays: 0 },
+  { name: "Friend", description: "Social connections and community", color: "#F59E0B", isWorkRole: false, maxWeeklyOccurrences: 7, minRestDays: 0 },
+  { name: "Individual", description: "Self-care and hobbies", color: "#10B981", isWorkRole: false, maxWeeklyOccurrences: 7, minRestDays: 0 },
+] as const;
+
+export type DefaultRole = (typeof DEFAULT_ROLES)[number];
+
+export const DEFAULT_ACTIVITY_TYPES = [
+  {
+    name: "Running",
+    type: "cardio" as const,
+    icon: "🏃",
+    isTracked: true,
+    defaultCalories: null,
+    defaultSteps: null,
+    metricsConfig: [
+      { key: "distance_km", label: "Distance (km)", type: "number" as const },
+      { key: "pace", label: "Pace (min/km)", type: "text" as const },
+      { key: "heart_rate", label: "Avg Heart Rate", type: "number" as const },
+    ],
+    variants: null,
+    gradeSystem: null,
+  },
+  {
+    name: "Hiking",
+    type: "cardio" as const,
+    icon: "🥾",
+    isTracked: false,
+    defaultCalories: 400,
+    defaultSteps: 12000,
+    metricsConfig: [
+      { key: "distance_km", label: "Distance (km)", type: "number" as const },
+      { key: "elevation_gain_m", label: "Elevation Gain (m)", type: "number" as const },
+    ],
+    variants: null,
+    gradeSystem: null,
+  },
+  {
+    name: "Tennis",
+    type: "mixed" as const,
+    icon: "🎾",
+    isTracked: false,
+    defaultCalories: 500,
+    defaultSteps: 8000,
+    metricsConfig: [],
+    variants: [
+      { key: "singles", label: "Singles", defaultCalories: 500, defaultSteps: 8000 },
+      { key: "doubles", label: "Doubles", defaultCalories: 350, defaultSteps: 5000 },
+    ],
+    gradeSystem: null,
+  },
+  {
+    name: "Climbing (Gym)",
+    type: "strength" as const,
+    icon: "🧗",
+    isTracked: false,
+    defaultCalories: 400,
+    defaultSteps: 0,
+    metricsConfig: [
+      { key: "problems_sent", label: "Problems Sent", type: "number" as const },
+      { key: "max_grade", label: "Max Grade", type: "text" as const },
+    ],
+    variants: null,
+    gradeSystem: "french",
+  },
+  {
+    name: "Climbing (Outdoor)",
+    type: "strength" as const,
+    icon: "⛰️",
+    isTracked: false,
+    defaultCalories: 500,
+    defaultSteps: 3000,
+    metricsConfig: [
+      { key: "routes_sent", label: "Routes Sent", type: "number" as const },
+      { key: "max_grade", label: "Max Grade", type: "text" as const },
+      { key: "elevation_gain_m", label: "Elevation Gain (m)", type: "number" as const },
+    ],
+    variants: null,
+    gradeSystem: "french",
+  },
+  {
+    name: "Reading",
+    type: "cardio" as const,
+    icon: "📖",
+    isTracked: false,
+    defaultCalories: null,
+    defaultSteps: null,
+    metricsConfig: [
+      { key: "pages", label: "Pages", type: "number" as const },
+      { key: "book_title", label: "Book Title", type: "text" as const },
+    ],
+    variants: null,
+    gradeSystem: null,
+  },
+  {
+    name: "Meditation",
+    type: "cardio" as const,
+    icon: "🧘",
+    isTracked: false,
+    defaultCalories: null,
+    defaultSteps: null,
+    metricsConfig: [],
+    variants: null,
+    gradeSystem: null,
+  },
+  {
+    name: "Journaling",
+    type: "cardio" as const,
+    icon: "📝",
+    isTracked: false,
+    defaultCalories: null,
+    defaultSteps: null,
+    metricsConfig: [],
+    variants: null,
+    gradeSystem: null,
+  },
+  {
+    name: "Social Event",
+    type: "cardio" as const,
+    icon: "🤝",
+    isTracked: false,
+    defaultCalories: null,
+    defaultSteps: null,
+    metricsConfig: [],
+    variants: null,
+    gradeSystem: null,
+  },
+] as const;
+
+export type DefaultActivityType = (typeof DEFAULT_ACTIVITY_TYPES)[number];
+
+export const DEFAULT_SPENDING_CATEGORIES = [
+  { name: "Food", icon: "🍕", color: "#EF4444" },
+  { name: "Rent", icon: "🏠", color: "#6366F1" },
+  { name: "Utilities", icon: "⚡", color: "#3B82F6" },
+  { name: "Groceries", icon: "🛒", color: "#10B981" },
+  { name: "Amusement", icon: "🎭", color: "#8B5CF6" },
+  { name: "Clothes", icon: "👕", color: "#F59E0B" },
+  { name: "Transport", icon: "🚗", color: "#0EA5E9" },
+  { name: "Other", icon: "📦", color: "#6B7280" },
+] as const;
+
+export type DefaultSpendingCategory = (typeof DEFAULT_SPENDING_CATEGORIES)[number];

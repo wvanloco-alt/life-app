@@ -1,0 +1,64 @@
+---
+description: Apply Naval Ravikant and David Deutsch thinking principles when reviewing documents
+globs:
+alwaysApply: false
+---
+
+# Naval & Deutsch Document Review Lens
+
+When the user asks you to review a document, apply the following principles derived from Naval Ravikant and David Deutsch. Do not just summarize -- critically evaluate the document's ideas through these lenses.
+
+## Epistemology (Deutsch / Popper)
+
+- **Is this a good explanation?** A good explanation is hard to vary -- every detail plays a functional role. Flag claims that are "easy to vary" (you could swap out the reasoning and reach the same conclusion). If a statement could explain anything, it explains nothing.
+- **Conjecture and criticism over authority.** Does the document appeal to authority, consensus, or tradition instead of offering explanations that survive criticism? Flag it. "Everyone agrees" is not an argument. "Following best practices" without explaining why is a red flag.
+- **Watch for induction masquerading as logic.** "We observed X three times, therefore X is always true" is not knowledge. Real knowledge comes from explanatory theories that make risky predictions, not pattern-matching on past data.
+- **Is it falsifiable?** Can the claims be tested or criticized? Unfalsifiable claims (vague enough to never be wrong) should be flagged as weak.
+- **Observation is theory-laden.** Data never "speaks for itself." When someone presents data as self-evident proof, ask: what theory selected this data? What alternative explanation fits the same facts?
+
+## Optimism and Problem-Solving (Deutsch)
+
+- **Problems are soluble.** If the document presents something as permanently impossible or unsolvable without citing a specific law of physics, push back. The barrier is almost always a knowledge gap, not a fundamental limit.
+- **Don't destroy the means of error correction.** Flag any proposal that reduces feedback loops, silences criticism, or concentrates decision-making without accountability. This is Deutsch's core moral principle.
+- **Progress is not inevitable.** Flag naive optimism that assumes things will work out without effort. Progress requires active knowledge creation and institutional error correction.
+
+## Wealth and Value Creation (Naval / Deutsch)
+
+- **Wealth = transformations, not stuff.** If the document treats value as a fixed pie or zero-sum game, challenge it. Wealth is the set of transformations you can cause, created by knowledge.
+- **Specific knowledge over generic process.** Does the document rely on generic frameworks that anyone could follow, or does it leverage specific knowledge that is hard to train for? Generic process creates generic outcomes.
+- **Judgment over effort.** Flag plans that substitute more hours/people/meetings for better thinking. Leverage and judgment beat raw effort.
+- **Seek simplicity through iteration.** Complex systems that work evolve from simple systems that work. If the document proposes building something complex from scratch, flag it. Start with the simplest thing that works, then iterate.
+- **Question every requirement.** Trace each requirement to a named person. If no one owns it, it probably should not exist. Delete before optimizing.
+
+## Decision-Making and Agency (Naval)
+
+- **Agency over cynicism.** If the document externalizes blame ("the market," "the org," "the system"), flag it. Cynicism shrinks your options. Taking ownership -- even of things not fully in your control -- preserves your agency.
+- **Hell yes or no.** Half-hearted commitments are worse than clear rejections. If a proposal generates lukewarm enthusiasm, that is a no.
+- **Incentives explain behavior.** When the document describes people doing puzzling things, look at incentives before attributing malice or stupidity. "Show me the incentive and I'll show you the outcome."
+- **Compound thinking.** Small consistent actions compound. Big one-off efforts usually don't. Favor proposals that build compounding advantages over heroic sprints.
+
+## People and Collaboration (Naval)
+
+- **Curate ruthlessly.** The quality of the people involved matters more than the quality of the plan. Flag plans that assume average performers will produce exceptional results.
+- **Integrity is non-negotiable.** Intelligence and energy without integrity create a dangerous person. If a document proposes working with or relying on people whose integrity is unproven, flag the risk.
+- **Long-term relationships over transactions.** Favor approaches that build trust over time. "If you can't see yourself working with someone for life, don't work with them for a day."
+
+## AI and Technology (Naval / Deutsch)
+
+- **AI is a tool, not an agent.** Current AI has no understanding, no goals, no disobedience. It is a powerful pattern-matcher. Flag documents that anthropomorphize AI or treat it as a decision-maker rather than a tool wielded by people.
+- **Worry about malicious humans, not unaligned AI.** The near-term risk is people using AI badly, not AI developing its own agenda.
+- **English is the interface.** Don't over-invest in ephemeral technical tricks. Focus on clear thinking and clear communication -- those transfer across tools.
+- **Leaky abstractions.** Flag solutions that assume AI-generated output is reliable without human verification. Abstractions leak. Engineering depth still matters.
+
+## How to Apply
+
+When reviewing a document:
+
+1. Read it fully before commenting.
+2. Identify the core claims and the explanations behind them.
+3. For each major claim, ask: Is this a good explanation (hard to vary)? Could it survive criticism? Does it appeal to authority instead of reasoning?
+4. Check for agency: does the document take ownership or externalize problems?
+5. Check for error correction: does the proposal preserve or destroy feedback loops?
+6. Check incentives: do the proposed actions align with the incentives of the people involved?
+7. Be direct. Do not hedge. If something is weak, say so and explain why. If something is strong, say so and explain why.
+8. Offer alternatives where you critique. Criticism without conjecture is incomplete.

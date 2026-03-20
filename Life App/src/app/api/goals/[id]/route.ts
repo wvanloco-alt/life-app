@@ -1,0 +1,100 @@
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/db";
+import { goals, goalRoles, roles } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { deriveQuadrant } from "@/lib/quadrants";
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const goalId = parseInt(id);
+  if (isNaN(goalId)) {
+    return NextResponse.json({ error: "Invalid goal ID" }, { status: 400 });
+  }
+
+  const existing = await db.select().from(goals).where(eq(goals.id, goalId));
+  if (existing.length === 0) {
+    return NextResponse.json({ error: "Goal not found" }, { status: 404 });
+  }
+
+  const body = await request.json();
+  const updates: Record<string, unknown> = {
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (body.title !== undefined) updates.title = body.title.trim();
+  if (body.description !== undefined)
+    updates.description = body.description?.trim() || null;
+  if (body.targetDate !== undefined) updates.targetDate = body.targetDate || null;
+  if (body.sessionsPerWeek !== undefined) updates.sessionsPerWeek = Number(body.sessionsPerWeek);
+  if (body.status !== undefined) updates.status = body.status;
+  if (body.activityTypeId !== undefined) updates.activityTypeId = body.activityTypeId;
+  if (body.targetMetric !== undefined) updates.targetMetric = body.targetMetric;
+  if (body.targetValue !== undefined) updates.targetValue = body.targetValue;
+  if (body.targetPeriod !== undefined) updates.targetPeriod = body.targetPeriod;
+  if (body.targetUnit !== undefined) updates.targetUnit = body.targetUnit?.trim() || null;
+  if (body.horizon !== undefined) updates.horizon = body.horizon || null;
+  if (body.parentGoalId !== undefined) updates.parentGoalId = body.parentGoalId;
+  if (body.month !== undefined) updates.month = body.month || null;
+  if (body.preferredDays !== undefined) updates.preferredDays = body.preferredDays || null;
+  if (body.preferredTimeSlot !== undefined) updates.preferredTimeSlot = body.preferredTimeSlot || null;
+
+  if (body.isCompleted !== undefined) {
+    updates.isCompleted = Boolean(body.isCompleted);
+    if (body.isCompleted) {
+      updates.status = "completed";
+    }
+  }
+
+  const [updated] = await db
+    .update(goals)
+    .set(updates)
+    .where(eq(goals.id, goalId))
+    .returning();
+
+  if (Array.isArray(body.roleIds)) {
+    await db.delete(goalRoles).where(eq(goalRoles.goalId, goalId));
+    for (const rid of body.roleIds) {
+      await db.insert(goalRoles).values({ goalId, roleId: rid });
+    }
+  }
+
+  const goalRoleRows = await db
+    .select({ roleId: roles.id, roleName: roles.name, roleColor: roles.color })
+    .from(goalRoles)
+    .innerJoin(roles, eq(goalRoles.roleId, roles.id))
+    .where(eq(goalRoles.goalId, goalId));
+
+  return NextResponse.json({
+    ...updated,
+    quadrant: deriveQuadrant(updated.targetDate),
+    roles: goalRoleRows.map((r) => ({ id: r.roleId, name: r.roleName, color: r.roleColor })),
+  });
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const goalId = parseInt(id);
+  if (isNaN(goalId)) {
+    return NextResponse.json({ error: "Invalid goal ID" }, { status: 400 });
+  }
+
+  const childGoals = await db
+    .select({ id: goals.id })
+    .from(goals)
+    .where(eq(goals.parentGoalId, goalId));
+
+  for (const child of childGoals) {
+    await db.delete(goalRoles).where(eq(goalRoles.goalId, child.id));
+    await db.delete(goals).where(eq(goals.id, child.id));
+  }
+
+  await db.delete(goalRoles).where(eq(goalRoles.goalId, goalId));
+  await db.delete(goals).where(eq(goals.id, goalId));
+  return NextResponse.json({ success: true });
+}

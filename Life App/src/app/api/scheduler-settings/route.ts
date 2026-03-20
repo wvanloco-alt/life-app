@@ -1,0 +1,59 @@
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/db";
+import { schedulerSettings } from "@/db/schema";
+import { eq } from "drizzle-orm";
+
+async function getOrCreateSettings() {
+  const rows = await db.select().from(schedulerSettings);
+  if (rows.length > 0) return rows[0];
+
+  const [created] = await db
+    .insert(schedulerSettings)
+    .values({
+      workStartTime: "09:00",
+      workEndTime: "17:00",
+      workDays: "1,2,3,4,5",
+      enforceWeeklySpread: true,
+      maxActivitiesPerDay: 4,
+    })
+    .returning();
+  return created;
+}
+
+function formatResponse(row: typeof schedulerSettings.$inferSelect) {
+  return {
+    id: row.id,
+    workStartTime: row.workStartTime,
+    workEndTime: row.workEndTime,
+    workDays: row.workDays.split(",").map(Number),
+    enforceWeeklySpread: row.enforceWeeklySpread ?? true,
+    maxActivitiesPerDay: row.maxActivitiesPerDay ?? 4,
+  };
+}
+
+export async function GET() {
+  const settings = await getOrCreateSettings();
+  return NextResponse.json(formatResponse(settings));
+}
+
+export async function PATCH(request: NextRequest) {
+  const settings = await getOrCreateSettings();
+  const body = await request.json();
+  const updates: Record<string, unknown> = {
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (body.workStartTime !== undefined) updates.workStartTime = body.workStartTime;
+  if (body.workEndTime !== undefined) updates.workEndTime = body.workEndTime;
+  if (Array.isArray(body.workDays)) updates.workDays = body.workDays.join(",");
+  if (body.enforceWeeklySpread !== undefined) updates.enforceWeeklySpread = body.enforceWeeklySpread;
+  if (body.maxActivitiesPerDay !== undefined) updates.maxActivitiesPerDay = body.maxActivitiesPerDay;
+
+  const [updated] = await db
+    .update(schedulerSettings)
+    .set(updates)
+    .where(eq(schedulerSettings.id, settings.id))
+    .returning();
+
+  return NextResponse.json(formatResponse(updated));
+}
