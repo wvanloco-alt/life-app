@@ -6,13 +6,25 @@
 
 The app exists to help the user become more *effective*, not more *busy*. It follows Stephen Covey's "fourth generation" time management philosophy: managing yourself, not your time. Features should encourage Quadrant II activity (important but not urgent) and discourage reactive living. The app never rewards volume of activity -- it rewards alignment between actions and deeply held values.
 
-### II. Single-User, Local-First
+### II. Private-First, Invite-Only Multi-User
 
-This app is built for one person, running on their own machine. There is no authentication, no cloud services, no multi-user features. All data is stored locally. This means:
-- No user accounts or login screens
-- No remote databases or API calls for core functionality
-- Data portability: the user owns their data in accessible formats
-- Privacy by architecture, not by policy
+~~Originally: Single-User, Local-First.~~
+
+**Amended 2026-03-21** (user approved): The app now supports a small, closed group of invited users (friends of the developer). There is no public registration. The developer acts as admin and creates all accounts manually.
+
+This means:
+- Each user has a private login (username + password)
+- All data is fully isolated per user — no user can see another's data
+- No public sign-up — accounts are created by the admin only
+- The app is hosted on a private server accessible via URL
+- Data portability is preserved: each user owns their own data
+- Privacy by architecture: isolation is enforced at the database query level, not just by policy
+
+**What does not change**:
+- No third-party OAuth or social login (keep it simple)
+- No public-facing marketing or open access
+- SQLite remains the database (suitable for a small friend group)
+- The spirit of the app — personal, intentional, private — is unchanged
 
 ### III. AI as Advisor, Never as Authority
 
@@ -56,9 +68,10 @@ Each feature area (Calendar, Budget, Fitness, Dashboard, AI Agent) is a distinct
 - Dependencies should be actively maintained and well-documented
 
 ### Scope Constraints
-- No multi-user support
-- No deployment to production servers
+- ~~No multi-user support~~ → **Amended 2026-03-21**: Invite-only multi-user is now supported (see Principle II)
+- ~~No deployment to production servers~~ → **Amended 2026-03-21**: App is deployed to a private hosted server
 - No mobile app (desktop/browser only)
+- No public registration or self-service account creation
 - External integrations (Strava, etc.) are always optional enhancements, never core requirements
 
 ## Development Workflow
@@ -85,4 +98,11 @@ Amendments require:
 2. User approval
 3. Documentation of the change with date
 
-**Version**: 1.0.0 | **Ratified**: 2026-02-27 | **Last Amended**: 2026-02-27
+**Version**: 1.1.0 | **Ratified**: 2026-02-27 | **Last Amended**: 2026-03-21
+
+### Amendment Log
+
+| Version | Date | Change | Approved By |
+|---------|------|--------|-------------|
+| 1.0.0 | 2026-02-27 | Initial constitution ratified | User |
+| 1.1.0 | 2026-03-21 | Principle II amended: single-user → invite-only multi-user. Scope constraints updated to allow hosting and multi-user. | User |

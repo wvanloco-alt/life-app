@@ -441,6 +441,46 @@ Each feature below becomes a separate spec-kit specification. Features are order
 
 ---
 
+### Friend Release (Multi-User & Hosted Deployment)
+
+**Spec ID**: `friend-release`
+**Status**: Planned
+
+**What it does**: Extends the app from single-user local tool to a private, invite-only multi-user application accessible to a small group of friends via a real URL. Each user has their own account, their own isolated data, and the same full app experience. The developer acts as admin and manages all accounts manually.
+
+**Constitutional note**: Requires and is covered by Constitution Amendment v1.1.0 (2026-03-21).
+
+**What will be built**:
+- Authentication via NextAuth.js v5 with username/password login (no OAuth)
+- `users` table with hashed passwords (bcryptjs), role (`admin` / `user`), and active flag
+- `user_id` column added to all 16 data tables (migration + backfill of existing data)
+- All ~45 API routes scoped to the authenticated user's ID
+- Per-user default seeding on first login (roles, activity types, spending categories, scheduler settings)
+- Admin-only `/admin/users` page for creating and deactivating accounts
+- "Log out" button in sidebar
+- Production deployment to Railway (Docker + SQLite volume for persistence)
+- HTTPS via Railway (automatic)
+- Password change UI for users
+- Rate limiting on the login endpoint
+
+**Tables added**: `users`
+**Columns added**: `user_id TEXT NOT NULL` on all data tables (see tasks.md for full list)
+**Routes added**: `GET/POST /api/admin/users`, `PATCH /api/admin/users/[id]`, `PATCH /api/user/password`
+**Routes modified**: All existing API routes — auth check + user scoping added
+
+**Phases**:
+1. Auth Foundation (NextAuth, users table, login page, middleware)
+2. Schema migration (user_id on all tables + backfill)
+3. API route scoping (~45 routes)
+4. Per-user default seeding
+5. Admin user management UI
+6. Production deployment (Railway)
+7. Polish & security hardening
+
+**Dependencies**: All prior features (this is a cross-cutting change).
+
+---
+
 ## Roadmap Principles
 
 1. **One feature at a time**: We spec, plan, build, and validate one feature before starting the next. No parallel feature development.
