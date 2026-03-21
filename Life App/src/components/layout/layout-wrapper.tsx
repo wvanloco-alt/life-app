@@ -1,8 +1,17 @@
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/layout/app-sidebar";
-import { BackupTrigger } from "@/components/layout/backup-trigger";
+"use client";
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+import { usePathname } from "next/navigation";
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "./app-sidebar";
+import { BackupTrigger } from "./backup-trigger";
+
+export function LayoutWrapper({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+
+  if (pathname === "/login") {
+    return <>{children}</>;
+  }
+
   return (
     <SidebarProvider>
       <AppSidebar />

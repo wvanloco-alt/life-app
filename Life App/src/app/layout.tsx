@@ -4,6 +4,7 @@ import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import { SessionProvider } from "next-auth/react";
+import { LayoutWrapper } from "@/components/layout/layout-wrapper";
 
 const plusJakarta = Plus_Jakarta_Sans({
   variable: "--font-sans",
@@ -43,7 +44,7 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             <TooltipProvider>
-              {children}
+              <LayoutWrapper>{children}</LayoutWrapper>
             </TooltipProvider>
           </ThemeProvider>
         </SessionProvider>
