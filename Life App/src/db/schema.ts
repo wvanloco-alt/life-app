@@ -11,6 +11,17 @@ const updatedAt = () =>
     .notNull()
     .default(sql`(datetime('now'))`);
 
+// ─── Users ──────────────────────────────────────────────
+
+export const users = sqliteTable("users", {
+  id: text("id").primaryKey(),
+  username: text("username").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  role: text("role").notNull().default("user"),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  createdAt: timestamp(),
+});
+
 // ─── Roles ──────────────────────────────────────────────
 
 export const roles = sqliteTable("roles", {

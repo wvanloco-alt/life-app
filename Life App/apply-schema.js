@@ -3,6 +3,16 @@ const db = new Database("/data/life-app.db");
 db.pragma("journal_mode = WAL");
 
 const statements = [
+  // ─── Users table (friend-release) ──────────────────────
+  `CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY NOT NULL,
+    username TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    role TEXT DEFAULT 'user' NOT NULL,
+    is_active INTEGER DEFAULT 1 NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')) NOT NULL
+  )`,
+
   // Goals V2 columns
   `ALTER TABLE goals ADD COLUMN target_unit TEXT`,
   `ALTER TABLE goals ADD COLUMN horizon TEXT`,
