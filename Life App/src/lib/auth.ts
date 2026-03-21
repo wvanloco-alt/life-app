@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { authConfig } from "@/auth.config";
+import { seedUserDefaults } from "@/lib/seed-user-defaults";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -31,6 +32,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         );
 
         if (!passwordMatch) return null;
+
+        // Seed defaults for new users (idempotent — no-op if already seeded)
+        await seedUserDefaults(user.id);
 
         return {
           id: user.id,

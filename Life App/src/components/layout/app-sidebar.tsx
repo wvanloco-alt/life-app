@@ -10,6 +10,7 @@ import {
   Mountain,
   Settings,
   LogOut,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -25,7 +26,7 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { ThemeToggle } from "./theme-toggle";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 
 interface NavItem {
   title: string;
@@ -53,6 +54,8 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "admin";
 
   return (
     <Sidebar>
@@ -95,6 +98,19 @@ export function AppSidebar() {
 
       <SidebarFooter className="border-t p-2">
         <SidebarMenu>
+          {isAdmin && (
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname.startsWith("/admin")}
+              >
+                <Link href="/admin/users">
+                  <Users className="h-4 w-4" />
+                  <span>Users</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
           <SidebarMenuItem>
             <div className="flex items-center justify-between">
               <SidebarMenuButton
