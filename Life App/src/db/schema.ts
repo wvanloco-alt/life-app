@@ -34,6 +34,7 @@ export const roles = sqliteTable("roles", {
   isWorkRole: integer("is_work_role", { mode: "boolean" }).notNull().default(false),
   maxWeeklyOccurrences: integer("max_weekly_occurrences").notNull().default(7),
   minRestDays: integer("min_rest_days").notNull().default(0),
+  userId: text("user_id").notNull().default(""),
   createdAt: timestamp(),
   updatedAt: updatedAt(),
 });
@@ -45,6 +46,7 @@ export const weeklyPlans = sqliteTable("weekly_plans", {
   weekStartDate: text("week_start_date").notNull().unique(),
   planningNotes: text("planning_notes"),
   isPlanned: integer("is_planned", { mode: "boolean" }).notNull().default(false),
+  userId: text("user_id").notNull().default(""),
   createdAt: timestamp(),
   updatedAt: updatedAt(),
 });
@@ -69,6 +71,7 @@ export const goals = sqliteTable("goals", {
   month: text("month"),
   preferredDays: text("preferred_days"),
   preferredTimeSlot: text("preferred_time_slot"),
+  userId: text("user_id").notNull().default(""),
   createdAt: timestamp(),
   updatedAt: updatedAt(),
 });
@@ -144,6 +147,7 @@ export const activities = sqliteTable("activities", {
   isLogEntry: integer("is_log_entry", { mode: "boolean" }).notNull().default(false),
   notes: text("notes"),
   carryForwardFrom: text("carry_forward_from"),
+  userId: text("user_id").notNull().default(""),
   createdAt: timestamp(),
   updatedAt: updatedAt(),
 });
@@ -159,6 +163,7 @@ export const recurringActivities = sqliteTable("recurring_activities", {
   startTime: text("start_time").notNull(),
   endTime: text("end_time").notNull(),
   isPaused: integer("is_paused", { mode: "boolean" }).notNull().default(false),
+  userId: text("user_id").notNull().default(""),
   createdAt: timestamp(),
   updatedAt: updatedAt(),
 });
@@ -172,6 +177,7 @@ export const schedulerSettings = sqliteTable("scheduler_settings", {
   workDays: text("work_days").notNull().default("1,2,3,4,5"),
   enforceWeeklySpread: integer("enforce_weekly_spread", { mode: "boolean" }).notNull().default(true),
   maxActivitiesPerDay: integer("max_activities_per_day").notNull().default(4),
+  userId: text("user_id").notNull().default(""),
   updatedAt: updatedAt(),
 });
 
@@ -182,6 +188,7 @@ export const schedulerBlackoutDates = sqliteTable("scheduler_blackout_dates", {
   date: text("date").notNull(),
   label: text("label"),
   isRecurring: integer("is_recurring", { mode: "boolean" }).notNull().default(false),
+  userId: text("user_id").notNull().default(""),
   createdAt: timestamp(),
 });
 
@@ -198,6 +205,7 @@ export const activityTypes = sqliteTable("activity_types", {
   metricsConfig: text("metrics_config").notNull().default("[]"),
   variants: text("variants"),
   gradeSystem: text("grade_system"),
+  userId: text("user_id").notNull().default(""),
   createdAt: timestamp(),
   updatedAt: updatedAt(),
 });
@@ -218,6 +226,7 @@ export const activityLogs = sqliteTable("activity_logs", {
   variant: text("variant"),
   metrics: text("metrics").notNull().default("{}"),
   notes: text("notes"),
+  userId: text("user_id").notNull().default(""),
   createdAt: timestamp(),
 });
 
@@ -229,6 +238,7 @@ export const bodyMetrics = sqliteTable("body_metrics", {
   metricType: text("metric_type").notNull(),
   value: real("value").notNull(),
   unit: text("unit").notNull(),
+  userId: text("user_id").notNull().default(""),
   createdAt: timestamp(),
 });
 
@@ -240,6 +250,7 @@ export const budgetSettings = sqliteTable("budget_settings", {
   monthlySavingsTarget: real("monthly_savings_target").notNull().default(0),
   savingsGoalTotal: real("savings_goal_total"),
   savingsGoalTargetDate: text("savings_goal_target_date"),
+  userId: text("user_id").notNull().default(""),
   createdAt: timestamp(),
   updatedAt: updatedAt(),
 });
@@ -253,6 +264,7 @@ export const incomeEntries = sqliteTable("income_entries", {
   month: text("month").notNull(),
   isRecurring: integer("is_recurring", { mode: "boolean" }).notNull().default(false),
   notes: text("notes"),
+  userId: text("user_id").notNull().default(""),
   createdAt: timestamp(),
 });
 
@@ -267,6 +279,7 @@ export const fixedCosts = sqliteTable("fixed_costs", {
   startMonth: text("start_month").notNull(),
   endMonth: text("end_month"),
   notes: text("notes"),
+  userId: text("user_id").notNull().default(""),
   createdAt: timestamp(),
   updatedAt: updatedAt(),
 });
@@ -281,6 +294,7 @@ export const spendingEntries = sqliteTable("spending_entries", {
   date: text("date").notNull(),
   isItemized: integer("is_itemized", { mode: "boolean" }).notNull().default(true),
   notes: text("notes"),
+  userId: text("user_id").notNull().default(""),
   createdAt: timestamp(),
 });
 
@@ -293,6 +307,7 @@ export const spendingCategories = sqliteTable("spending_categories", {
   color: text("color").notNull().default("#6B7280"),
   displayOrder: integer("display_order").notNull().default(0),
   isArchived: integer("is_archived", { mode: "boolean" }).notNull().default(false),
+  userId: text("user_id").notNull().default(""),
   createdAt: timestamp(),
 });
 
@@ -305,6 +320,7 @@ export const plannedExpenses = sqliteTable("planned_expenses", {
   month: text("month").notNull(),
   categoryId: integer("category_id").references(() => spendingCategories.id),
   notes: text("notes"),
+  userId: text("user_id").notNull().default(""),
   createdAt: timestamp(),
   updatedAt: updatedAt(),
 });
@@ -324,6 +340,7 @@ export const trainingPlans = sqliteTable("training_plans", {
   sportProfile: text("sport_profile").notNull().default("{}"),
   startDate: text("start_date").notNull(),
   status: text("status").notNull().default("active"),
+  userId: text("user_id").notNull().default(""),
   createdAt: timestamp(),
   updatedAt: updatedAt(),
 });

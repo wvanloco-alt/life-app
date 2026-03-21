@@ -13,6 +13,25 @@ const statements = [
     created_at TEXT DEFAULT (datetime('now')) NOT NULL
   )`,
 
+  // ─── user_id columns (friend-release) ─────────────────
+  `ALTER TABLE roles ADD COLUMN user_id TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE weekly_plans ADD COLUMN user_id TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE goals ADD COLUMN user_id TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE activities ADD COLUMN user_id TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE recurring_activities ADD COLUMN user_id TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE scheduler_settings ADD COLUMN user_id TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE scheduler_blackout_dates ADD COLUMN user_id TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE activity_types ADD COLUMN user_id TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE activity_logs ADD COLUMN user_id TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE body_metrics ADD COLUMN user_id TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE budget_settings ADD COLUMN user_id TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE income_entries ADD COLUMN user_id TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE fixed_costs ADD COLUMN user_id TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE spending_entries ADD COLUMN user_id TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE spending_categories ADD COLUMN user_id TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE planned_expenses ADD COLUMN user_id TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE training_plans ADD COLUMN user_id TEXT NOT NULL DEFAULT ''`,
+
   // Goals V2 columns
   `ALTER TABLE goals ADD COLUMN target_unit TEXT`,
   `ALTER TABLE goals ADD COLUMN horizon TEXT`,
