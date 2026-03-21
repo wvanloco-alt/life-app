@@ -21,6 +21,7 @@ This is the largest architectural change the app has ever gone through. It touch
 **⚠️ Do not start Phase 2 until Phase 1 checkpoint is verified.**
 
 - [ ] T001 Install dependencies: `npm install next-auth@beta bcryptjs` and `npm install -D @types/bcryptjs` in `Life App/`
+  > **Note**: `next-auth@beta` (Auth.js v5) is still in beta. It is the correct package for the Next.js App Router, but if you hit unexpected errors during this phase, check the [Auth.js changelog](https://github.com/nextauthjs/next-auth/releases) first.
 - [ ] T002 Add `users` table to `src/db/schema.ts`:
   - columns: `id` (text, primary key, UUID), `username` (text, unique, not null), `passwordHash` (text, not null), `role` (text, default `"user"`), `isActive` (boolean, default `true`), `createdAt`
 - [ ] T003 Create Drizzle migration for the `users` table: `npm run db:generate` then `npm run db:migrate` in `Life App/`
@@ -44,7 +45,7 @@ This is the largest architectural change the app has ever gone through. It touch
 
 - [ ] T011 Add `userId` column (`text("user_id").notNull().default("")`) to these tables in `src/db/schema.ts`:
   - `roles`
-  - `weeklyPlans`
+  - `weeklyPlans` (confirmed still exists in schema — v2 renamed the route `/weekly-plan → /monthly-plan` but kept the table)
   - `goals`
   - `activities`
   - `recurringActivities`
@@ -126,8 +127,8 @@ const userId = session.user.id;
 - [ ] T053 [P] Update `src/app/api/training-plans/assess-level/route.ts` — add auth check (no data query, but must be authenticated)
 - [ ] T054 [P] Update `src/app/api/training-plans/refresh-descriptions/route.ts` — scope by `userId`
 - [ ] T055 [P] Update `src/app/api/training-phases/[id]/transition/route.ts` — scope by `userId` (via training plan)
-- [ ] T056 [P] Update `src/app/api/weekly-plans/route.ts` — scope by `userId` (if still exists)
-- [ ] T057 [P] Update `src/app/api/health/route.ts` — add auth check or make it public (no user data exposed)
+- [ ] T056 [P] Update `src/app/api/weekly-plans/route.ts` — scope by `userId` (table confirmed present; route may still exist for internal scheduler use)
+- [ ] T057 [P] Keep `src/app/api/health/route.ts` **public** (no auth check). It triggers the daily auto-backup and may be pinged by Railway for uptime monitoring. It exposes no user data, so requiring auth would break external monitoring without any security benefit. Decision: explicitly public.
 - [ ] T058 [P] Update `src/app/api/goals/[id]/children/route.ts` — scope by `userId`
 - [ ] T059 [P] Update `src/app/api/goal-session-patterns/[id]/route.ts` — scope by `userId`
 
@@ -171,7 +172,7 @@ const userId = session.user.id;
   - `AUTH_SECRET` (random 32+ char string — `openssl rand -base64 32`)
   - `DATABASE_URL` (path to SQLite file, e.g. `/data/app.db`)
   - `NEXTAUTH_URL` (the public URL of the deployed app)
-- [ ] T068 Update `Dockerfile` (or create one if missing): ensure SQLite DB is stored at `/data/app.db` and the `/data` directory is mounted as a volume.
+- [ ] T068 Update `Dockerfile` (or create one if missing): ensure SQLite DB is stored at `/data/app.db`, the `/data` directory is mounted as a volume, and **migrations run at container startup before the app starts**. The entrypoint must run `node apply-schema.js` (or `npx drizzle-kit migrate`) before `next start`. Without this, the first production deploy will be missing the `users` table and all `user_id` columns. Example startup sequence in Dockerfile: `CMD ["sh", "-c", "node apply-schema.js && next start"]`
 - [ ] T069 Sign up for Railway (railway.app). Create a new project. Connect the GitHub repo.
 - [ ] T070 Set environment variables in the Railway dashboard: `AUTH_SECRET`, `DATABASE_URL`, `NEXTAUTH_URL`.
 - [ ] T071 Add a Railway volume mount at `/data` for SQLite persistence.
@@ -186,7 +187,8 @@ const userId = session.user.id;
 
 **Purpose**: Small but important finishing touches before broadly sharing with friends.
 
-- [ ] T074 Add rate limiting to the login endpoint (`/api/auth/callback/credentials`) — max 5 failed attempts per IP per minute. Use a simple in-memory counter or the `next-rate-limit` package.
+- [ ] T074 Add rate limiting to the login endpoint (`/api/auth/callback/credentials`) — max 5 failed attempts per IP per minute. Use a simple in-memory counter.
+  > **Known limitation**: in-memory counters reset on container restart (e.g. on every Railway deploy). For a small private friend group this is an acceptable trade-off — a restart is not a real attack surface. A persistent counter (Redis, etc.) is overkill here. This is a conscious decision, not an oversight.
 - [ ] T075 Audit all API routes: ensure every route in Phase 3 returns 401 (not 500) when the session is missing.
 - [ ] T076 Add a user-facing "Change Password" form in Settings (`src/app/settings/page.tsx` or a sub-page). Calls a new `PATCH /api/user/password` route.
 - [ ] T077 Update `AGENT-ONBOARDING.md` to reflect the new multi-user architecture, auth flow, and deployment setup.
