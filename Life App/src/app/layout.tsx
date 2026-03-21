@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Fraunces, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/layout/app-sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { BackupTrigger } from "@/components/layout/backup-trigger";
 import { ThemeProvider } from "@/components/layout/theme-provider";
 import { SessionProvider } from "next-auth/react";
 
@@ -39,27 +36,16 @@ export default function RootLayout({
         className={`${plusJakarta.variable} ${fraunces.variable} ${jetbrainsMono.variable} antialiased`}
       >
         <SessionProvider>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-        <TooltipProvider>
-            <SidebarProvider>
-              <AppSidebar />
-              <SidebarInset>
-                <header className="flex h-10 items-center px-4 md:hidden">
-                  <SidebarTrigger />
-                </header>
-                <main className="flex-1 overflow-auto">
-                  {children}
-                </main>
-                <BackupTrigger />
-              </SidebarInset>
-            </SidebarProvider>
-        </TooltipProvider>
-        </ThemeProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <TooltipProvider>
+              {children}
+            </TooltipProvider>
+          </ThemeProvider>
         </SessionProvider>
       </body>
     </html>
