@@ -22,13 +22,17 @@ ENV PORT=3000
 # Default DB path — override via Railway volume env var if needed
 ENV DB_PATH=/data/life-app.db
 
+RUN apk add --no-cache su-exec && \
+    addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/migrations ./migrations
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/migrations ./migrations
 
 # Schema migration script (idempotent — safe to run on every boot)
-COPY apply-schema.js ./apply-schema.js
+COPY --chown=nextjs:nodejs apply-schema.js ./apply-schema.js
 
 # Copy the compiled better-sqlite3 native addon
 COPY --from=deps /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
@@ -38,9 +42,11 @@ COPY --from=deps /app/node_modules/file-uri-to-path ./node_modules/file-uri-to-p
 # bcryptjs is needed by apply-schema.js for admin password hashing at startup
 COPY --from=deps /app/node_modules/bcryptjs ./node_modules/bcryptjs
 
+# Create /data as root so it exists; startup script will chown it before dropping privileges
 RUN mkdir -p /data
 
 EXPOSE 3000
 
-# Run schema migrations on every boot (idempotent), then start the app
-CMD ["sh", "-c", "node apply-schema.js && node server.js"]
+# Startup: chown /data to nextjs (handles Railway volume mounts owned by root),
+# then drop to unprivileged user to run migrations and start the server.
+CMD ["sh", "-c", "chown -R nextjs:nodejs /data && su-exec nextjs sh -c 'node apply-schema.js && node server.js'"]

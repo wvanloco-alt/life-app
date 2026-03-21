@@ -46,3 +46,6 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+
+# Runtime error logs (Railway deploy logs — temporary debugging, not source material)
+Error logs/
