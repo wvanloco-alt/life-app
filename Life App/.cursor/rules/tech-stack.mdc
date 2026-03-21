@@ -1,0 +1,36 @@
+---
+description: Tech stack, library versions, and tooling choices for the Life App
+alwaysApply: true
+---
+
+# Tech Stack
+
+| Layer | Choice |
+|---|---|
+| Framework | Next.js 16.x — App Router, Turbopack |
+| Language | TypeScript 5.x |
+| Styling | Tailwind CSS v4 with OKLCH theme variables |
+| Components | shadcn/ui |
+| Typography | Fraunces (display), Plus Jakarta Sans (body), JetBrains Mono (code) |
+| Database | SQLite via Drizzle ORM + better-sqlite3 |
+| Auth | NextAuth.js v5 (Credentials provider, JWT sessions) — Friend Release |
+| Charts | Recharts |
+| Drag & Drop | @dnd-kit/core |
+| Date utils | date-fns |
+| Theming | next-themes (light/dark toggle) |
+| Testing | Vitest + React Testing Library |
+
+# Testing Conventions
+
+- Test files live in `src/lib/__tests__/` for pure logic, and alongside components as `*.test.tsx`.
+- Run tests with `npm run test:run` (single pass) or `npm run test` (watch mode).
+- Write tests for periodization logic, scheduler rules, and any pure functions. UI tests are optional.
+
+# Commands
+
+```bash
+npm run dev        # Start dev server at localhost:3000
+npm run build      # Production build
+npm run test:run   # Run Vitest tests once
+npx tsx src/scripts/<script>.ts  # Run one-off scripts (migrations, seeds)
+```

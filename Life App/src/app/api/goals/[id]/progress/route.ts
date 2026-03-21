@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { goals, activityLogs, goalTallies } from "@/db/schema";
 import { eq, and, gte, lte, inArray } from "drizzle-orm";
+import { auth } from "@/lib/auth";
 import {
   format,
   startOfWeek,
@@ -97,13 +98,17 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = session.user.id;
+
   const { id } = await params;
   const goalId = parseInt(id);
   if (isNaN(goalId)) {
     return NextResponse.json({ error: "Invalid goal ID" }, { status: 400 });
   }
 
-  const goalRows = await db.select().from(goals).where(eq(goals.id, goalId));
+  const goalRows = await db.select().from(goals).where(and(eq(goals.id, goalId), eq(goals.userId, userId)));
   if (goalRows.length === 0) {
     return NextResponse.json({ error: "Goal not found" }, { status: 404 });
   }

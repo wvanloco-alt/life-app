@@ -1,30 +1,48 @@
-﻿# Life App Development Guidelines
+---
+description: Spec-driven development process and file locations for the Life App
+alwaysApply: true
+---
 
-Auto-generated from all feature plans. Last updated: 2026-02-27
+# Spec-Kit Process
 
-## Active Technologies
+Every feature follows this order — do not skip steps:
 
-- TypeScript 5.x on Node.js 22.x + shadcn/ui (components), Tailwind CSS v4 (styling), Recharts (charts), date-fns (dates), Drizzle ORM (database), better-sqlite3 (SQLite driver) (master)
+1. **Specify** — define what and why (`spec.md` with user stories + acceptance criteria)
+2. **Clarify** — resolve ambiguities before planning
+3. **Plan** — choose technical approach and architecture
+4. **Tasks** — break into ordered, actionable steps (`tasks.md`)
+5. **Implement** — build according to the plan, validate against the spec
 
-## Project Structure
+# File Locations
 
-```text
-backend/
-frontend/
-tests/
+```
+Life App/
+├── ROADMAP.md                          # Feature status overview
+├── AGENT-ONBOARDING.md                 # Agent onboarding reference
+├── .specify/
+│   ├── memory/constitution.md          # Governing principles (highest authority)
+│   └── specs/<feature>/
+│       ├── spec.md                     # Feature specification
+│       └── tasks.md                    # Implementation task list
+└── specs/master/
+    ├── data-model.md                   # Database schema reference
+    ├── tasks.md                        # Completed work log
+    └── contracts/api-routes.md         # All REST endpoints
 ```
 
-## Commands
+# Project Structure
 
-npm test; npm run lint
-
-## Code Style
-
-TypeScript 5.x on Node.js 22.x: Follow standard conventions
-
-## Recent Changes
-
-- master: Added TypeScript 5.x on Node.js 22.x + shadcn/ui (components), Tailwind CSS v4 (styling), Recharts (charts), date-fns (dates), Drizzle ORM (database), better-sqlite3 (SQLite driver)
-
-<!-- MANUAL ADDITIONS START -->
-<!-- MANUAL ADDITIONS END -->
+```
+Life App/
+├── src/
+│   ├── app/                  # Next.js App Router pages + API routes
+│   │   ├── api/              # All REST endpoints
+│   │   └── (pages)/          # Page files — thin, delegate to components
+│   ├── components/           # Feature components + shadcn/ui primitives
+│   ├── db/                   # Drizzle schema, migrations, backup
+│   ├── lib/                  # Pure logic (scheduler, periodization, utils)
+│   │   └── __tests__/        # Vitest test files
+│   ├── hooks/                # Custom React hooks
+│   ├── scripts/              # One-off scripts (seed, migrate, backfill)
+│   └── types/index.ts        # Shared TypeScript interfaces
+```

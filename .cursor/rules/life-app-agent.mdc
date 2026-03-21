@@ -1,0 +1,80 @@
+---
+description: Agent behavior, development workflow, architecture patterns, and design system for the Life App project
+alwaysApply: true
+---
+
+# Agent Behavior
+
+- **Be a professor.** Teach the user how to build software. Patient, but to the point.
+- **Push back.** The user is not a developer. Challenge bad ideas with reasoning — be a friend who keeps it real, not a yes-man.
+- **Explain before acting.** Never make changes without explaining why and getting approval first.
+- **No hallucinations.** When documenting or summarizing, verify against source material. Never invent facts.
+- **Small steps.** Break work into small, verifiable chunks. No sweeping changes.
+- **Simplicity wins.** Don't overbuild. The app is for a small group of people. Simplicity over cleverness.
+
+# Development Workflow
+
+- **Spec-driven.** Every feature follows: Specify → Clarify → Plan → Tasks → Implement.
+- **One feature at a time.** No parallel feature development.
+- **Scope is additive.** Don't rewrite earlier features when adding new ones.
+- **Constitution wins.** If a request conflicts with `.specify/memory/constitution.md`, the constitution wins unless formally amended.
+
+# Project Constraints
+
+- **Multi-user, invite-only.** Friend Release adds NextAuth.js v5 auth + per-user data isolation. No public signup — admin creates all accounts. See `.specify/specs/friend-release/spec.md`.
+- **Desktop only.** No mobile app.
+- **SQLite + Docker.** Data persisted via volume mount at `/data/app.db`. No external cloud services.
+- **Stay in your lane.** Do not touch ports 8000 or 5173, or modify anything outside the `Life App/` folder.
+
+# Tech Stack
+
+| Layer | Choice |
+|---|---|
+| Framework | Next.js 16.x (App Router, Turbopack) |
+| Language | TypeScript 5.x |
+| Styling | Tailwind CSS v4, OKLCH theme variables |
+| Components | shadcn/ui + Lucide icons |
+| Typography | Fraunces (display), Plus Jakarta Sans (body), JetBrains Mono (code) |
+| Database | SQLite via Drizzle ORM + better-sqlite3 |
+| Auth | NextAuth.js v5 — Credentials provider, JWT sessions |
+| Charts | Recharts |
+| Drag & Drop | @dnd-kit/core |
+| Testing | Vitest + React Testing Library |
+
+# Architecture Patterns
+
+- **Thin pages.** `src/app/*/page.tsx` files only render a component from `src/components/`. No logic in page files.
+- **Local state only.** `useState` + `useEffect` + `useCallback`. No Redux, Zustand, or global Context for data.
+- **REST APIs.** All endpoints under `src/app/api/`. Use `Promise.all` for parallel fetching.
+- **Optimistic UI.** Toggles update local state immediately, then sync with the API.
+- **Loading skeletons.** Every page has a `<Skeleton />` loading state mirroring the final layout.
+- **Empty states.** Use `<EmptyState />` (icon, title, description, optional CTA) when a section has no data.
+- **Auth pattern (Friend Release).** Every API route must call `auth()` from `@/lib/auth` and scope all queries with `WHERE user_id = session.user.id`. Return 401 if no session.
+
+# Design System
+
+**Personality**: Calm. Grounded. Premium. ("Put First Things First")
+**References**: Notion (editorial, generous whitespace) + Things 3 (warm, personal).
+**Never feel like**: Strava, a SaaS dashboard, hustle-culture tools, or corporate enterprise software.
+
+- **Typography**: Fraunces for display headings, Plus Jakarta Sans for body, JetBrains Mono for data only. Never Inter or system defaults.
+- **Color**: Warm amber OKLCH neutrals (hue ~45–55) throughout. No cool grays or blue tints. Use `--palette-*` CSS variables for accent colors — never hardcode hex.
+- **Motion**: `animate-fade-up` / `animate-fade-in` / `stagger-item` classes (defined in `globals.css`). Ease-out-quart, 300ms. Never bouncy. Always respect `prefers-reduced-motion`.
+- **Radius**: `0.625rem`. Cards feel solid, not bubbly.
+
+**Design principles:**
+1. Calm over stimulation — when in doubt, choose quieter.
+2. Typography carries meaning — use Fraunces for anything that deserves weight.
+3. Data is personal, not performative — no achievement-style UI, charts help reflection.
+4. Whitespace is not wasted — generous spacing signals confidence.
+5. Warm neutrals only — no cool grays, blues, or purples as neutral tones.
+
+# Key Documentation
+
+Before starting any new feature, read:
+
+- `Life App/ROADMAP.md` — feature status and what's built
+- `Life App/.specify/memory/constitution.md` — governing principles
+- `Life App/specs/master/data-model.md` — database schema
+- `Life App/specs/master/contracts/api-routes.md` — all API routes
+- `Life App/.specify/specs/friend-release/spec.md` + `tasks.md` — active feature

@@ -3,17 +3,13 @@ import { db } from "@/db";
 import { goals, goalRoles, roles, activityTypes } from "@/db/schema";
 import { eq, and, isNull, type SQL } from "drizzle-orm";
 import { deriveQuadrant } from "@/lib/quadrants";
+import { auth } from "@/lib/auth";
 
 async function attachRoles(goalIds: number[]) {
   if (goalIds.length === 0) return new Map<number, { id: number; name: string; color: string }[]>();
 
   const allGR = await db
-    .select({
-      goalId: goalRoles.goalId,
-      roleId: roles.id,
-      roleName: roles.name,
-      roleColor: roles.color,
-    })
+    .select({ goalId: goalRoles.goalId, roleId: roles.id, roleName: roles.name, roleColor: roles.color })
     .from(goalRoles)
     .innerJoin(roles, eq(goalRoles.roleId, roles.id));
 
@@ -28,6 +24,10 @@ async function attachRoles(goalIds: number[]) {
 }
 
 export async function GET(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = session.user.id;
+
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status") ?? "active";
   const roleId = searchParams.get("roleId");
@@ -35,52 +35,32 @@ export async function GET(request: NextRequest) {
   const parentId = searchParams.get("parentId");
   const month = searchParams.get("month");
 
-  const conditions: SQL[] = [];
-  if (status !== "all") {
-    conditions.push(eq(goals.status, status));
-  }
+  const conditions: SQL[] = [eq(goals.userId, userId)];
+  if (status !== "all") conditions.push(eq(goals.status, status));
   if (horizon === "standalone") {
     conditions.push(isNull(goals.horizon));
   } else if (horizon) {
     conditions.push(eq(goals.horizon, horizon));
   }
-  if (parentId) {
-    conditions.push(eq(goals.parentGoalId, parseInt(parentId)));
-  }
-  if (month) {
-    conditions.push(eq(goals.month, month));
-  }
+  if (parentId) conditions.push(eq(goals.parentGoalId, parseInt(parentId)));
+  if (month) conditions.push(eq(goals.month, month));
 
-  const baseGoals = conditions.length > 0
-    ? await db.select().from(goals).where(and(...conditions))
-    : await db.select().from(goals);
+  const baseGoals = await db.select().from(goals).where(and(...conditions));
 
   const roleMap = await attachRoles(baseGoals.map((g) => g.id));
 
-  const activityTypeIds = baseGoals
-    .map((g) => g.activityTypeId)
-    .filter((id): id is number => id != null);
+  const activityTypeIds = baseGoals.map((g) => g.activityTypeId).filter((id): id is number => id != null);
   const activityTypeMap = new Map<number, { name: string; icon: string }>();
   if (activityTypeIds.length > 0) {
-    const atRows = await db
-      .select({ id: activityTypes.id, name: activityTypes.name, icon: activityTypes.icon })
-      .from(activityTypes);
+    const atRows = await db.select({ id: activityTypes.id, name: activityTypes.name, icon: activityTypes.icon }).from(activityTypes);
     for (const at of atRows) {
-      if (activityTypeIds.includes(at.id)) {
-        activityTypeMap.set(at.id, { name: at.name, icon: at.icon });
-      }
+      if (activityTypeIds.includes(at.id)) activityTypeMap.set(at.id, { name: at.name, icon: at.icon });
     }
   }
 
   let result = baseGoals.map((g) => {
     const at = g.activityTypeId ? activityTypeMap.get(g.activityTypeId) : undefined;
-    return {
-      ...g,
-      quadrant: deriveQuadrant(g.targetDate),
-      roles: roleMap.get(g.id) ?? [],
-      activityTypeName: at?.name,
-      activityTypeIcon: at?.icon,
-    };
+    return { ...g, quadrant: deriveQuadrant(g.targetDate), roles: roleMap.get(g.id) ?? [], activityTypeName: at?.name, activityTypeIcon: at?.icon };
   });
 
   if (roleId) {
@@ -92,56 +72,41 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = session.user.id;
+
   const body = await request.json();
-  const {
-    title,
-    description,
-    roleIds,
-    targetDate,
-    activityTypeId,
-    targetMetric,
-    targetValue,
-    targetPeriod,
-    targetUnit,
-    horizon,
-    parentGoalId,
-    month,
-    preferredDays,
-    preferredTimeSlot,
-  } = body;
+  const { title, description, roleIds, targetDate, activityTypeId, targetMetric, targetValue, targetPeriod, targetUnit, horizon, parentGoalId, month, preferredDays, preferredTimeSlot } = body;
 
   if (!title || typeof title !== "string" || title.trim().length === 0) {
     return NextResponse.json({ error: "Title is required" }, { status: 400 });
   }
-
   if (!Array.isArray(roleIds) || roleIds.length === 0) {
     return NextResponse.json({ error: "At least one role is required" }, { status: 400 });
   }
-
   if (horizon === "monthly" && !month) {
     return NextResponse.json({ error: "Month is required for monthly goals" }, { status: 400 });
   }
 
-  const [created] = await db
-    .insert(goals)
-    .values({
-      title: title.trim(),
-      description: description?.trim() || null,
-      targetDate: targetDate || null,
-      sessionsPerWeek: Number(body.sessionsPerWeek ?? 3),
-      status: "active",
-      activityTypeId: activityTypeId ?? null,
-      targetMetric: targetMetric ?? null,
-      targetValue: targetValue ?? null,
-      targetPeriod: targetPeriod ?? null,
-      targetUnit: targetUnit?.trim() || null,
-      horizon: horizon || null,
-      parentGoalId: parentGoalId ?? null,
-      month: month || null,
-      preferredDays: preferredDays || null,
-      preferredTimeSlot: preferredTimeSlot || null,
-    })
-    .returning();
+  const [created] = await db.insert(goals).values({
+    title: title.trim(),
+    description: description?.trim() || null,
+    targetDate: targetDate || null,
+    sessionsPerWeek: Number(body.sessionsPerWeek ?? 3),
+    status: "active",
+    activityTypeId: activityTypeId ?? null,
+    targetMetric: targetMetric ?? null,
+    targetValue: targetValue ?? null,
+    targetPeriod: targetPeriod ?? null,
+    targetUnit: targetUnit?.trim() || null,
+    horizon: horizon || null,
+    parentGoalId: parentGoalId ?? null,
+    month: month || null,
+    preferredDays: preferredDays || null,
+    preferredTimeSlot: preferredTimeSlot || null,
+    userId,
+  }).returning();
 
   for (const rid of roleIds) {
     await db.insert(goalRoles).values({ goalId: created.id, roleId: rid });
@@ -156,24 +121,12 @@ export async function POST(request: NextRequest) {
   let activityTypeName: string | undefined;
   let activityTypeIcon: string | undefined;
   if (created.activityTypeId) {
-    const atRows = await db
-      .select({ name: activityTypes.name, icon: activityTypes.icon })
-      .from(activityTypes)
-      .where(eq(activityTypes.id, created.activityTypeId));
-    if (atRows.length > 0) {
-      activityTypeName = atRows[0].name;
-      activityTypeIcon = atRows[0].icon;
-    }
+    const atRows = await db.select({ name: activityTypes.name, icon: activityTypes.icon }).from(activityTypes).where(eq(activityTypes.id, created.activityTypeId));
+    if (atRows.length > 0) { activityTypeName = atRows[0].name; activityTypeIcon = atRows[0].icon; }
   }
 
   return NextResponse.json(
-    {
-      ...created,
-      quadrant: deriveQuadrant(created.targetDate),
-      roles: goalRoleRows.map((r) => ({ id: r.roleId, name: r.roleName, color: r.roleColor })),
-      activityTypeName,
-      activityTypeIcon,
-    },
+    { ...created, quadrant: deriveQuadrant(created.targetDate), roles: goalRoleRows.map((r) => ({ id: r.roleId, name: r.roleName, color: r.roleColor })), activityTypeName, activityTypeIcon },
     { status: 201 }
   );
 }

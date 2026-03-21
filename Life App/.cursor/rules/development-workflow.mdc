@@ -12,16 +12,18 @@ alwaysApply: true
 
 # Project Constraints
 
-- **Single user, no auth.** Deployed via Docker with SQLite persistence. No cloud services.
-- **Desktop only.** No mobile app.
+- **Multi-user, invite-only.** Friend Release (in progress) adds NextAuth.js v5 auth + per-user data isolation. Constitution amended 2026-03-21. See `.specify/specs/friend-release/spec.md`.
+- **Desktop only.** No mobile app. No public registration — admin creates all accounts manually.
+- **SQLite + Docker.** Data persisted via volume mount. No external cloud services.
 - **Stay in your lane.** Do not touch ports 8000 or 5173, or modify anything outside the `Life App/` folder.
 
 # Key Documentation
 
 Before starting work on a new feature, read these docs:
 
-- `ROADMAP.md` -- feature status and what's built
-- `.specify/memory/constitution.md` -- governing principles
-- `specs/master/data-model.md` -- database schema
-- `specs/master/contracts/api-routes.md` -- API surface
-- `specs/master/tasks.md` -- completed work log
+- `ROADMAP.md` — feature status and what's built
+- `.specify/memory/constitution.md` — governing principles
+- `specs/master/data-model.md` — database schema
+- `specs/master/contracts/api-routes.md` — API surface
+- `specs/master/tasks.md` — completed work log
+- `.specify/specs/friend-release/spec.md` + `tasks.md` — active feature (multi-user auth)

@@ -43,7 +43,7 @@ export const roles = sqliteTable("roles", {
 
 export const weeklyPlans = sqliteTable("weekly_plans", {
   id: integer("id").primaryKey({ autoIncrement: true }),
-  weekStartDate: text("week_start_date").notNull().unique(),
+  weekStartDate: text("week_start_date").notNull(),
   planningNotes: text("planning_notes"),
   isPlanned: integer("is_planned", { mode: "boolean" }).notNull().default(false),
   userId: text("user_id").notNull().default(""),

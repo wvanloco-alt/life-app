@@ -1,32 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { goals, goalRoles, roles } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { deriveQuadrant } from "@/lib/quadrants";
+import { auth } from "@/lib/auth";
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = session.user.id;
+
   const { id } = await params;
   const goalId = parseInt(id);
-  if (isNaN(goalId)) {
-    return NextResponse.json({ error: "Invalid goal ID" }, { status: 400 });
-  }
+  if (isNaN(goalId)) return NextResponse.json({ error: "Invalid goal ID" }, { status: 400 });
 
-  const existing = await db.select().from(goals).where(eq(goals.id, goalId));
-  if (existing.length === 0) {
-    return NextResponse.json({ error: "Goal not found" }, { status: 404 });
-  }
+  const existing = await db.select().from(goals).where(and(eq(goals.id, goalId), eq(goals.userId, userId)));
+  if (existing.length === 0) return NextResponse.json({ error: "Goal not found" }, { status: 404 });
 
   const body = await request.json();
-  const updates: Record<string, unknown> = {
-    updatedAt: new Date().toISOString(),
-  };
+  const updates: Record<string, unknown> = { updatedAt: new Date().toISOString() };
 
   if (body.title !== undefined) updates.title = body.title.trim();
-  if (body.description !== undefined)
-    updates.description = body.description?.trim() || null;
+  if (body.description !== undefined) updates.description = body.description?.trim() || null;
   if (body.targetDate !== undefined) updates.targetDate = body.targetDate || null;
   if (body.sessionsPerWeek !== undefined) updates.sessionsPerWeek = Number(body.sessionsPerWeek);
   if (body.status !== undefined) updates.status = body.status;
@@ -40,19 +38,12 @@ export async function PATCH(
   if (body.month !== undefined) updates.month = body.month || null;
   if (body.preferredDays !== undefined) updates.preferredDays = body.preferredDays || null;
   if (body.preferredTimeSlot !== undefined) updates.preferredTimeSlot = body.preferredTimeSlot || null;
-
   if (body.isCompleted !== undefined) {
     updates.isCompleted = Boolean(body.isCompleted);
-    if (body.isCompleted) {
-      updates.status = "completed";
-    }
+    if (body.isCompleted) updates.status = "completed";
   }
 
-  const [updated] = await db
-    .update(goals)
-    .set(updates)
-    .where(eq(goals.id, goalId))
-    .returning();
+  const [updated] = await db.update(goals).set(updates).where(and(eq(goals.id, goalId), eq(goals.userId, userId))).returning();
 
   if (Array.isArray(body.roleIds)) {
     await db.delete(goalRoles).where(eq(goalRoles.goalId, goalId));
@@ -67,34 +58,31 @@ export async function PATCH(
     .innerJoin(roles, eq(goalRoles.roleId, roles.id))
     .where(eq(goalRoles.goalId, goalId));
 
-  return NextResponse.json({
-    ...updated,
-    quadrant: deriveQuadrant(updated.targetDate),
-    roles: goalRoleRows.map((r) => ({ id: r.roleId, name: r.roleName, color: r.roleColor })),
-  });
+  return NextResponse.json({ ...updated, quadrant: deriveQuadrant(updated.targetDate), roles: goalRoleRows.map((r) => ({ id: r.roleId, name: r.roleName, color: r.roleColor })) });
 }
 
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const userId = session.user.id;
+
   const { id } = await params;
   const goalId = parseInt(id);
-  if (isNaN(goalId)) {
-    return NextResponse.json({ error: "Invalid goal ID" }, { status: 400 });
-  }
+  if (isNaN(goalId)) return NextResponse.json({ error: "Invalid goal ID" }, { status: 400 });
 
-  const childGoals = await db
-    .select({ id: goals.id })
-    .from(goals)
-    .where(eq(goals.parentGoalId, goalId));
+  const existing = await db.select({ id: goals.id }).from(goals).where(and(eq(goals.id, goalId), eq(goals.userId, userId)));
+  if (existing.length === 0) return NextResponse.json({ error: "Goal not found" }, { status: 404 });
 
+  const childGoals = await db.select({ id: goals.id }).from(goals).where(and(eq(goals.parentGoalId, goalId), eq(goals.userId, userId)));
   for (const child of childGoals) {
     await db.delete(goalRoles).where(eq(goalRoles.goalId, child.id));
-    await db.delete(goals).where(eq(goals.id, child.id));
+    await db.delete(goals).where(and(eq(goals.id, child.id), eq(goals.userId, userId)));
   }
 
   await db.delete(goalRoles).where(eq(goalRoles.goalId, goalId));
-  await db.delete(goals).where(eq(goals.id, goalId));
+  await db.delete(goals).where(and(eq(goals.id, goalId), eq(goals.userId, userId)));
   return NextResponse.json({ success: true });
 }

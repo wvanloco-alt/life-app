@@ -1,0 +1,58 @@
+---
+description: Design system, visual language, and UI principles for the Life App. Always apply when building or modifying any UI component, page, or layout.
+globs: src/**/*.{tsx,css}
+alwaysApply: false
+---
+
+# Design System
+
+## Brand
+
+**Personality**: Calm. Grounded. Premium.
+**Tagline**: "Put First Things First" (Covey's 7 Habits — the north star).
+**Emotional goal**: The user feels clear-headed and capable after opening the app. Like a well-made notebook, not a dashboard.
+
+**References**: Notion (editorial hierarchy, generous whitespace) + Things 3 (warm, personal, intentional).
+**Anti-references**: Never feel like Strava (gamified), a SaaS dashboard (cold blue metric cards), hustle-culture productivity tools, or corporate enterprise software.
+
+## Typography
+
+- **Display/headings**: `font-[family-name:var(--font-display)]` (Fraunces) — page titles, card headers, sidebar brand. Never use for body text.
+- **Body**: `font-sans` (Plus Jakarta Sans) — all body copy, labels, navigation.
+- **Code/data**: `font-mono` (JetBrains Mono) — only for metrics and tabular numbers where precision matters.
+- **Never use**: Inter, system defaults, or monospace for anything other than data/code.
+
+## Color
+
+- All neutrals use warm amber OKLCH (hue ~45–55). **Never introduce cool grays or blue-tinted neutrals.**
+- Light mode background: `oklch(0.98 0.004 55)` — warm paper, not pure white.
+- Dark mode: deep warm charcoal (`oklch(0.15 0.02 45)`), not black.
+- Accent colors: use `--palette-*` CSS variables (`--palette-green`, `--palette-amber`, `--palette-red`, etc.) — never hardcode hex values for semantic UI color.
+- Chart fills/strokes: always use `usePalette()` hook, never hardcode.
+
+## Spacing & Shape
+
+- **Radius**: `0.625rem` (`--radius`) — subtle, not sharp, not pill-shaped.
+- **Whitespace**: generous. The app is used by someone who knows it. It doesn't need to explain itself on every screen.
+- **Cards**: `shadow-sm`, `border`, `rounded-lg`. Never nest cards inside cards.
+
+## Motion
+
+```css
+/* Use these — already defined in globals.css */
+.animate-fade-up   /* entrance — page load, new content */
+.animate-fade-in   /* fade only — overlays, tooltips */
+.stagger-item      /* list items with --i CSS variable for delay */
+```
+
+- Easing: `ease-out-quart` (300ms normal, 150ms fast). Never bounce or elastic.
+- Animate `transform` and `opacity` only — never `width`, `height`, or `padding`.
+- Always respect `prefers-reduced-motion` (handled globally in `globals.css`).
+
+## Design Principles
+
+1. **Calm over stimulation.** When in doubt, choose quieter.
+2. **Typography carries meaning.** Use Fraunces for anything that deserves weight. Don't add decorative elements to compensate for weak hierarchy.
+3. **Data is personal, not performative.** No achievement-style progress bars. Charts should help the user reflect, not impress.
+4. **Whitespace is not wasted.** Generous spacing signals confidence.
+5. **Warm neutrals only.** No cool grays, no blue tints, no purple accents as neutral tones.

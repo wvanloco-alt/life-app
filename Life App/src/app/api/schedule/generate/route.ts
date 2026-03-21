@@ -19,9 +19,10 @@ import { generateSchedule, type MonthlyOverride, type SessionPattern, type Train
 import { getPhaseDisplayName } from "@/lib/training/periodization";
 import { deriveQuadrant } from "@/lib/quadrants";
 import type { SchedulerSettings } from "@/types";
+import { auth } from "@/lib/auth";
 
-async function getSettings(): Promise<SchedulerSettings> {
-  const rows = await db.select().from(schedulerSettings);
+async function getSettings(userId: string): Promise<SchedulerSettings> {
+  const rows = await db.select().from(schedulerSettings).where(eq(schedulerSettings.userId, userId));
   if (rows.length > 0) {
     return {
       id: rows[0].id,
@@ -32,20 +33,12 @@ async function getSettings(): Promise<SchedulerSettings> {
       maxActivitiesPerDay: rows[0].maxActivitiesPerDay ?? 4,
     };
   }
-  return {
-    id: 0,
-    workStartTime: "09:00",
-    workEndTime: "17:00",
-    workDays: [1, 2, 3, 4, 5],
-    enforceWeeklySpread: true,
-    maxActivitiesPerDay: 4,
-  };
+  return { id: 0, workStartTime: "09:00", workEndTime: "17:00", workDays: [1, 2, 3, 4, 5], enforceWeeklySpread: true, maxActivitiesPerDay: 4 };
 }
 
-async function getBlackoutDates(year: number): Promise<Set<string>> {
-  const allBlackouts = await db.select().from(schedulerBlackoutDates);
+async function getBlackoutDates(userId: string, year: number): Promise<Set<string>> {
+  const allBlackouts = await db.select().from(schedulerBlackoutDates).where(eq(schedulerBlackoutDates.userId, userId));
   const dates = new Set<string>();
-
   for (const b of allBlackouts) {
     if (b.isRecurring) {
       const [, mm, dd] = b.date.split("-");
@@ -54,7 +47,6 @@ async function getBlackoutDates(year: number): Promise<Set<string>> {
       dates.add(b.date);
     }
   }
-
   return dates;
 }
 
@@ -63,9 +55,7 @@ function getDateRange(startDate: string, days: number): string[] {
   const dates: string[] = [];
   for (let i = 0; i < days; i++) {
     const date = new Date(y, m - 1, d + i);
-    dates.push(
-      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
-    );
+    dates.push(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`);
   }
   return dates;
 }
@@ -77,40 +67,26 @@ function getMonthDateRange(weekStartDate: string): string[] {
   const dates: string[] = [];
   for (let d = firstDay.getDate(); d <= lastDay.getDate(); d++) {
     const date = new Date(y, m - 1, d);
-    dates.push(
-      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
-    );
+    dates.push(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`);
   }
   return dates;
 }
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth();
+    if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const userId = session.user.id;
+
     const body = await request.json();
     const { weekStartDate, scope = "week", regenerate = false, month } = body;
 
-    if (!weekStartDate) {
-      return NextResponse.json(
-        { error: "weekStartDate is required" },
-        { status: 400 }
-      );
-    }
+    if (!weekStartDate) return NextResponse.json({ error: "weekStartDate is required" }, { status: 400 });
 
-    const monthFirstDay = scope === "month" && month
-      ? `${month}-01`
-      : weekStartDate;
+    const monthFirstDay = scope === "month" && month ? `${month}-01` : weekStartDate;
 
-    const plan = await db
-      .select()
-      .from(weeklyPlans)
-      .where(eq(weeklyPlans.weekStartDate, weekStartDate));
-
-    if (plan.length === 0) {
-      return NextResponse.json(
-        { error: "No weekly plan found. Select focus goals first." },
-        { status: 404 }
-      );
-    }
+    const plan = await db.select().from(weeklyPlans).where(and(eq(weeklyPlans.weekStartDate, weekStartDate), eq(weeklyPlans.userId, userId)));
+    if (plan.length === 0) return NextResponse.json({ error: "No weekly plan found. Select focus goals first." }, { status: 404 });
 
     const focusRows = await db
       .select({
@@ -131,25 +107,17 @@ export async function POST(request: NextRequest) {
         updatedAt: goals.updatedAt,
       })
       .from(weeklyFocusGoals)
-      .innerJoin(goals, eq(weeklyFocusGoals.goalId, goals.id))
+      .innerJoin(goals, and(eq(weeklyFocusGoals.goalId, goals.id), eq(goals.userId, userId)))
       .where(eq(weeklyFocusGoals.weeklyPlanId, plan[0].id));
 
     const goalIds = focusRows.map((r) => r.goalId);
 
     const allGR = await db
-      .select({
-        goalId: goalRoles.goalId,
-        roleId: roles.id,
-        roleName: roles.name,
-        roleColor: roles.color,
-      })
+      .select({ goalId: goalRoles.goalId, roleId: roles.id, roleName: roles.name, roleColor: roles.color })
       .from(goalRoles)
-      .innerJoin(roles, eq(goalRoles.roleId, roles.id));
+      .innerJoin(roles, and(eq(goalRoles.roleId, roles.id), eq(roles.userId, userId)));
 
-    const roleMap = new Map<
-      number,
-      { id: number; name: string; color: string }[]
-    >();
+    const roleMap = new Map<number, { id: number; name: string; color: string }[]>();
     for (const row of allGR) {
       if (!goalIds.includes(row.goalId)) continue;
       const arr = roleMap.get(row.goalId) ?? [];
@@ -178,29 +146,19 @@ export async function POST(request: NextRequest) {
     }));
 
     const [allRoles, allRecurring, settings] = await Promise.all([
-      db.select().from(roles).where(eq(roles.isArchived, false)),
-      db
-        .select()
-        .from(recurringActivities)
-        .where(eq(recurringActivities.isPaused, false)),
-      getSettings(),
+      db.select().from(roles).where(and(eq(roles.isArchived, false), eq(roles.userId, userId))),
+      db.select().from(recurringActivities).where(and(eq(recurringActivities.isPaused, false), eq(recurringActivities.userId, userId))),
+      getSettings(userId),
     ]);
 
-    const dates =
-      scope === "month"
-        ? getMonthDateRange(monthFirstDay)
-        : getDateRange(weekStartDate, 7);
+    const dates = scope === "month" ? getMonthDateRange(monthFirstDay) : getDateRange(weekStartDate, 7);
 
-    const allActivities = await db.select().from(activities);
-    let scopeActivities = allActivities.filter((a) =>
-      dates.includes(a.activityDate)
-    );
+    const allActivities = await db.select().from(activities).where(eq(activities.userId, userId));
+    let scopeActivities = allActivities.filter((a) => dates.includes(a.activityDate));
 
     if (regenerate) {
       const focusGoalIds = new Set(goalIds);
-      scopeActivities = scopeActivities.filter(
-        (a) => !(a.goalId && focusGoalIds.has(a.goalId) && !a.isLogEntry && !a.isCompleted)
-      );
+      scopeActivities = scopeActivities.filter((a) => !(a.goalId && focusGoalIds.has(a.goalId) && !a.isLogEntry && !a.isCompleted));
     }
 
     const [schedYear, schedMonth] = monthFirstDay.split("-").map(Number);
@@ -208,24 +166,13 @@ export async function POST(request: NextRequest) {
 
     const parentIdMap = new Map<number, number>();
     for (const fg of focusGoals) {
-      if (fg.horizon === "monthly" && fg.parentGoalId) {
-        parentIdMap.set(fg.id, fg.parentGoalId);
-      }
+      if (fg.horizon === "monthly" && fg.parentGoalId) parentIdMap.set(fg.id, fg.parentGoalId);
     }
 
     const monthlyOverrides = new Map<number, MonthlyOverride>();
     for (const fg of focusGoals) {
       if (parentIdMap.has(fg.id)) continue;
-      const children = await db
-        .select()
-        .from(goals)
-        .where(
-          and(
-            eq(goals.parentGoalId, fg.id),
-            eq(goals.month, currentMonthStr),
-            eq(goals.horizon, "monthly")
-          )
-        );
+      const children = await db.select().from(goals).where(and(eq(goals.parentGoalId, fg.id), eq(goals.month, currentMonthStr), eq(goals.horizon, "monthly"), eq(goals.userId, userId)));
       if (children.length > 0) {
         const child = children[0];
         monthlyOverrides.set(fg.id, {
@@ -235,46 +182,23 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const blackoutDates = await getBlackoutDates(schedYear);
+    const blackoutDates = await getBlackoutDates(userId, schedYear);
 
     const goalPatterns = new Map<number, SessionPattern[]>();
     for (const fg of focusGoals) {
       const lookupId = parentIdMap.get(fg.id) ?? fg.id;
-      const patterns = await db
-        .select()
-        .from(goalSessionPatterns)
-        .where(eq(goalSessionPatterns.goalId, lookupId));
+      const patterns = await db.select().from(goalSessionPatterns).where(eq(goalSessionPatterns.goalId, lookupId));
       if (patterns.length > 0) {
-        goalPatterns.set(
-          fg.id,
-          patterns
-            .sort((a, b) => a.position - b.position)
-            .map((p) => ({
-              position: p.position,
-              label: p.label,
-              restDaysAfter: p.restDaysAfter,
-            }))
-        );
+        goalPatterns.set(fg.id, patterns.sort((a, b) => a.position - b.position).map((p) => ({ position: p.position, label: p.label, restDaysAfter: p.restDaysAfter })));
       }
     }
 
     const trainingPhaseMap = new Map<number, TrainingPhaseInfo>();
     for (const fg of focusGoals) {
       const lookupId = parentIdMap.get(fg.id) ?? fg.id;
-      const plans = await db
-        .select()
-        .from(trainingPlans)
-        .where(eq(trainingPlans.goalId, lookupId));
+      const plans = await db.select().from(trainingPlans).where(and(eq(trainingPlans.goalId, lookupId), eq(trainingPlans.userId, userId)));
       if (plans.length > 0) {
-        const activePhases = await db
-          .select()
-          .from(trainingPhases)
-          .where(
-            and(
-              eq(trainingPhases.trainingPlanId, plans[0].id),
-              eq(trainingPhases.status, "active")
-            )
-          );
+        const activePhases = await db.select().from(trainingPhases).where(and(eq(trainingPhases.trainingPlanId, plans[0].id), eq(trainingPhases.status, "active")));
         if (activePhases.length > 0) {
           const ap = activePhases[0];
           trainingPhaseMap.set(fg.id, {
@@ -312,9 +236,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Schedule generation error:", error);
-    return NextResponse.json(
-      { error: "Failed to generate schedule", details: String(error) },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to generate schedule", details: String(error) }, { status: 500 });
   }
 }
