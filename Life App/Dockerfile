@@ -38,6 +38,9 @@ COPY --from=deps /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
 COPY --from=deps /app/node_modules/bindings ./node_modules/bindings
 COPY --from=deps /app/node_modules/file-uri-to-path ./node_modules/file-uri-to-path
 
+# bcryptjs is needed by apply-schema.js for admin password hashing at startup
+COPY --from=deps /app/node_modules/bcryptjs ./node_modules/bcryptjs
+
 RUN mkdir -p /data && chown nextjs:nodejs /data
 
 USER nextjs
