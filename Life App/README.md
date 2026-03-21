@@ -1,8 +1,10 @@
 # Life App
 
-A personal life management app built for one person. It turns long-term goals into daily action across time, health, finances, and personal growth — grounded in the principles of *The 7 Habits of Highly Effective People*.
+A personal life management app that turns long-term goals into daily action across time, health, finances, and personal growth — grounded in the principles of *The 7 Habits of Highly Effective People*.
 
-This is not a SaaS product. There is no auth, no multi-tenancy, no cloud dependency. It runs locally via Docker with a SQLite database, designed to be self-hosted and fully owned.
+Built as a private, invite-only tool for a small group of friends. Each user has their own account and fully isolated data. Hosted on Railway via Docker with a SQLite database.
+
+---
 
 ## What It Does
 
@@ -16,6 +18,8 @@ This is not a SaaS product. There is no auth, no multi-tenancy, no cloud depende
 
 **Goals Dashboard** — Two-level goal hierarchy (yearly → monthly benchmarks) with progress rings, pace tracking, tally logging, and streak visualization.
 
+---
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -26,12 +30,15 @@ This is not a SaaS product. There is no auth, no multi-tenancy, no cloud depende
 | Components | shadcn/ui |
 | Typography | Plus Jakarta Sans, Fraunces, JetBrains Mono |
 | Database | SQLite via Drizzle ORM + better-sqlite3 |
+| Auth | NextAuth.js v5 (credentials provider, JWT sessions) |
 | Charts | Recharts |
 | Drag & Drop | @dnd-kit/core |
 | Testing | Vitest + React Testing Library |
-| Deployment | Docker (self-hosted) |
+| Deployment | Docker + Railway |
 
-## Getting Started
+---
+
+## Getting Started (Local Development)
 
 ### Prerequisites
 
@@ -41,35 +48,53 @@ This is not a SaaS product. There is no auth, no multi-tenancy, no cloud depende
 ### Install and Run
 
 ```bash
-# Install dependencies
 npm install
-
-# Run the development server
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000). You will see the login page.
 
-### Docker
+### Environment Variables
+
+Copy `.env.example` to `.env.local` and fill in the values:
 
 ```bash
-# Build and run
-docker compose up --build
+cp .env.example .env.local
 ```
 
-The SQLite database is persisted via a Docker volume. Daily auto-backups are stored in `/backups`.
+| Variable | Local value | Description |
+|----------|-------------|-------------|
+| `AUTH_SECRET` | Any 32+ char string | Signs JWT session tokens |
+| `DB_PATH` | `./life-app.db` | Path to the SQLite database file |
+| `NEXTAUTH_URL` | `http://localhost:3000` | Public URL for NextAuth redirects |
 
-### Database
-
-The app uses SQLite with Drizzle ORM. On first run, default roles, activity types, and spending categories are auto-seeded.
+### Create the Admin Account
 
 ```bash
-# Generate a migration after schema changes
+npx tsx src/scripts/create-admin.ts
+```
+
+Then log in at `http://localhost:3000/login` with those credentials.
+
+---
+
+## Database
+
+The app uses SQLite with Drizzle ORM.
+
+```bash
+# Generate a migration after schema changes (local dev only)
 npx drizzle-kit generate
 
-# Apply migrations
+# Apply schema changes (local and production)
 node apply-schema.js
 ```
+
+`apply-schema.js` is idempotent — it uses `CREATE TABLE IF NOT EXISTS` so it is safe to run on every boot. In production, it runs automatically at container startup.
+
+On first login, each new user gets default roles, activity types, and spending categories automatically seeded.
+
+---
 
 ## Project Structure
 
@@ -77,42 +102,57 @@ node apply-schema.js
 src/
 ├── app/              # Next.js App Router pages and API routes
 │   ├── activities/   # Activity logging and dashboard
+│   ├── admin/        # Admin user management
 │   ├── budget/       # Budget management
-│   ├── daily/        # Day view
 │   ├── goals/        # Goals dashboard and management
+│   ├── login/        # Login page
 │   ├── monthly-plan/ # Monthly calendar with drag-and-drop
 │   ├── settings/     # Roles, activity types, scheduler config
 │   ├── today/        # Today view (home page)
 │   └── api/          # REST API endpoints
 ├── components/       # Reusable UI components
 ├── db/               # Drizzle schema and database connection
-├── hooks/            # Custom React hooks
-├── lib/              # Utilities, defaults, training engines
+├── lib/              # Utilities, auth, defaults, training engines
+├── scripts/          # One-time setup scripts
 ├── test/             # Vitest test suites
 └── types/            # TypeScript interfaces
-specs/                # Feature specifications
-migrations/           # Drizzle SQL migrations
+specs/                # Feature specifications and data model
+migrations/           # Drizzle SQL migration files
 ```
 
-## Development
+---
+
+## Development Commands
 
 ```bash
-# Run tests
-npm test
-
-# Run tests once (CI)
-npm run test:run
-
-# Lint
-npm run lint
-
-# Build for production
-npm run build
+npm run dev          # Start development server
+npm test             # Run tests in watch mode
+npm run test:run     # Run tests once (CI)
+npm run lint         # Lint
+npm run build        # Production build
 ```
+
+---
+
+## Deployment
+
+The app is deployed on Railway. See [`DEPLOYMENT.md`](./DEPLOYMENT.md) for the full guide covering:
+
+- Environment variables
+- First-deploy steps (Railway setup, volume, env vars)
+- How `apply-schema.js` works
+- Container security (`su-exec` privilege drop)
+- Troubleshooting common errors
+
+**Production URL**: `https://life-app-production-938a.up.railway.app`
+
+---
 
 ## Documentation
 
 - `ROADMAP.md` — Feature roadmap with status and architectural history
+- `DEPLOYMENT.md` — Deployment guide (Railway, Docker, env vars, troubleshooting)
 - `AGENT-ONBOARDING.md` — Onboarding document for AI agents working on this codebase
 - `.cursor/rules/` — Cursor IDE rules for agent behavior and development workflow
 - `specs/` — Feature specifications and data model documentation
+- `.specify/memory/constitution.md` — Governing principles of the project

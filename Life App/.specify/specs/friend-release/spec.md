@@ -2,7 +2,8 @@
 
 **Spec ID**: `friend-release`
 **Created**: 2026-03-21
-**Status**: Draft
+**Completed**: 2026-03-21
+**Status**: Complete
 **Constitutional basis**: Amendment v1.1.0 (2026-03-21) — Principle II updated to allow invite-only multi-user.
 
 ---

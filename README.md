@@ -75,7 +75,7 @@ Required variables:
 | Variable | Description |
 |----------|-------------|
 | `AUTH_SECRET` | Random secret for NextAuth (generate with `openssl rand -base64 32`) |
-| `DATABASE_URL` | Path to SQLite file (e.g. `./life-app.db`) |
+| `DB_PATH` | Path to SQLite file (e.g. `./life-app.db` locally, `/data/life-app.db` in production) |
 | `NEXTAUTH_URL` | Public URL of the app (e.g. `http://localhost:3000`) |
 
 ### Create the First Admin User
@@ -89,13 +89,17 @@ npx tsx src/scripts/create-admin.ts
 
 Then log in at `/login` with the credentials you set.
 
-### Docker
+### Docker / Railway
+
+The app is deployed on Railway using the `Dockerfile` in `Life App/`. See [`Life App/DEPLOYMENT.md`](./Life%20App/DEPLOYMENT.md) for the full guide.
+
+To build the Docker image locally:
 
 ```bash
-docker compose up --build
+docker build -t life-app ./Life\ App
 ```
 
-The SQLite database is persisted via a Docker volume. Daily auto-backups are stored in `/backups`.
+The SQLite database is persisted via a volume mounted at `/data`. Daily auto-backups are stored in `/data/backups`.
 
 ---
 
@@ -162,6 +166,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md).
 ## Documentation
 
 - [`Life App/ROADMAP.md`](./Life%20App/ROADMAP.md) — Feature roadmap with status and architectural history
+- [`Life App/DEPLOYMENT.md`](./Life%20App/DEPLOYMENT.md) — Deployment guide (Railway, Docker, env vars, troubleshooting)
 - [`Life App/AGENT-ONBOARDING.md`](./Life%20App/AGENT-ONBOARDING.md) — Onboarding document for AI agents working on this codebase
 - [`Life App/.specify/memory/constitution.md`](./Life%20App/.specify/memory/constitution.md) — Governing principles of the project
 - [`Life App/specs/`](./Life%20App/specs/) — Feature specifications and data model documentation

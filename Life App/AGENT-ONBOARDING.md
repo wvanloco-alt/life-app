@@ -15,6 +15,7 @@ Before doing anything, read these documents in order:
 4. **API Contracts** -- `Life App/specs/master/contracts/api-routes.md` (all REST endpoints)
 5. **Tasks Log** -- `Life App/specs/master/tasks.md` (completed work and architectural iterations)
 6. **Goals V2 Spec** -- `Life App/.specify/specs/goals-v2/spec.md` (goal hierarchy, tallies, pace tracking)
+7. **Deployment Guide** -- `Life App/DEPLOYMENT.md` (Railway setup, env vars, how apply-schema.js works, troubleshooting)
 
 Then familiarize yourself with the codebase structure:
 
@@ -50,6 +51,8 @@ These are the rules for working on this project. They come from the constitution
 - **Per-user data isolation.** Every table has a `user_id` column. All API routes scope queries with `WHERE user_id = session.user.id`. Unauthenticated requests return 401.
 - **Desktop only.** No mobile app.
 - **The user has other projects running.** Do not touch ports 8000 or 5173, or modify anything outside the `Life App/` folder.
+- **Production migrations via `apply-schema.js` only.** Never use `npx drizzle-kit migrate` in production. Every schema change must be reflected in `apply-schema.js` using `CREATE TABLE IF NOT EXISTS` / `ALTER TABLE ADD COLUMN IF NOT EXISTS`. Test changes against a fresh DB before deploying.
+- **Container runs as `nextjs` (UID 1001) at app runtime.** The Dockerfile starts as root to `chown` the Railway volume, then drops to the unprivileged `nextjs` user via `su-exec` before running any app code.
 
 ---
 
@@ -108,12 +111,39 @@ These are the rules for working on this project. They come from the constitution
 | UI Refinements March (trimming, DnD, training display) | Complete |
 | UI Design Overhaul (typography, colors, motion, card redesign) | Complete |
 | Friend Release (multi-user auth, per-user isolation, admin UI, Railway) | Complete |
+| Container security hardening (su-exec privilege drop, error log cleanup) | Complete |
 
 See `ROADMAP.md` for full details on what each feature includes.
 
 ---
 
-## Step 5: Starting the App
+## Step 5: Production Deployment
+
+The app is live at `https://life-app-production-938a.up.railway.app`.
+
+### How Deployment Works
+
+Pushing to `master` on GitHub triggers an automatic Railway redeploy. No manual steps needed.
+
+```bash
+git push origin master
+# Railway detects the push, rebuilds the Docker image, and redeploys
+```
+
+### Key Deployment Facts
+
+- **Platform**: Railway — connects directly to the GitHub repo and builds from `Life App/Dockerfile`.
+- **Database**: SQLite at `/data/life-app.db` on a persistent Railway volume. Data survives redeploys and restarts.
+- **Schema migrations**: `apply-schema.js` runs automatically at container startup (before the Next.js server starts). It is idempotent — safe to run repeatedly.
+- **Admin bootstrap**: On a fresh database, `apply-schema.js` creates the admin account from `ADMIN_USERNAME` + `ADMIN_PASSWORD` env vars. Only fires once (when the `users` table is empty).
+- **Container security**: Container starts as root to fix volume permissions (`chown /data`), then drops to `nextjs` (UID 1001) via `su-exec` before running any app code.
+- **Required env vars**: `AUTH_SECRET`, `DB_PATH=/data/life-app.db`, `NEXTAUTH_URL`, `AUTH_TRUST_HOST=true`, `PORT=3000`.
+
+For the full deployment reference (first-deploy steps, troubleshooting, local vs. production differences), see **`DEPLOYMENT.md`**.
+
+---
+
+## Step 6: Starting the App Locally
 
 ```bash
 cd "Life App"
@@ -233,6 +263,7 @@ these files to get up to speed:
 4. Life App/specs/master/data-model.md
 5. Life App/specs/master/contracts/api-routes.md
 6. Life App/specs/master/tasks.md
+7. Life App/DEPLOYMENT.md
 
 Then explore the codebase: schema, types, components, and API routes.
 Let me know when you're ready and if you have any questions.
