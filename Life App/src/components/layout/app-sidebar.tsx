@@ -9,6 +9,7 @@ import {
   Wallet,
   Mountain,
   Settings,
+  LogOut,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -24,6 +25,7 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { ThemeToggle } from "./theme-toggle";
+import { signOut } from "next-auth/react";
 
 interface NavItem {
   title: string;
@@ -107,6 +109,15 @@ export function AppSidebar() {
               </SidebarMenuButton>
               <ThemeToggle />
             </div>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={() => signOut({ callbackUrl: "/login" })}
+              className="w-full text-muted-foreground hover:text-foreground"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Sign out</span>
+            </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

@@ -3,10 +3,10 @@ import { Plus_Jakarta_Sans, Fraunces, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/app-sidebar";
-
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { BackupTrigger } from "@/components/layout/backup-trigger";
 import { ThemeProvider } from "@/components/layout/theme-provider";
+import { SessionProvider } from "next-auth/react";
 
 const plusJakarta = Plus_Jakarta_Sans({
   variable: "--font-sans",
@@ -38,6 +38,7 @@ export default function RootLayout({
       <body
         className={`${plusJakarta.variable} ${fraunces.variable} ${jetbrainsMono.variable} antialiased`}
       >
+        <SessionProvider>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -59,6 +60,7 @@ export default function RootLayout({
             </SidebarProvider>
         </TooltipProvider>
         </ThemeProvider>
+        </SessionProvider>
       </body>
     </html>
   );
