@@ -46,7 +46,8 @@ These are the rules for working on this project. They come from the constitution
 
 ### Technical Constraints
 
-- **Single user, no auth.** Deployed via Docker with SQLite persistence. No cloud services.
+- **Multi-user, invite-only.** The app is deployed on Railway with NextAuth.js v5 (JWT sessions, Credentials provider). The admin creates accounts at `/admin/users`. No public signup.
+- **Per-user data isolation.** Every table has a `user_id` column. All API routes scope queries with `WHERE user_id = session.user.id`. Unauthenticated requests return 401.
 - **Desktop only.** No mobile app.
 - **The user has other projects running.** Do not touch ports 8000 or 5173, or modify anything outside the `Life App/` folder.
 
@@ -106,6 +107,7 @@ These are the rules for working on this project. They come from the constitution
 | UI Refactoring V1 (nav, empty states, dark mode, polish) | Complete |
 | UI Refinements March (trimming, DnD, training display) | Complete |
 | UI Design Overhaul (typography, colors, motion, card redesign) | Complete |
+| Friend Release (multi-user auth, per-user isolation, admin UI, Railway) | Complete |
 
 See `ROADMAP.md` for full details on what each feature includes.
 

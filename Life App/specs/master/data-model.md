@@ -1,6 +1,10 @@
 # Data Model: Life App
 
-> Last updated: 2026-03-20. Reflects current schema including Feature 1 (Calendar Management), Feature 2 (Fitness Tracking → Activities), Feature 3 (Budget Management), v2 Overhaul (Sharpen the Saw removed, Overview removed, planned expenses added, activity-schedule linking), Goals V2 (goal hierarchy, goal_tallies table, targetUnit, pace tracking), Scheduler Rules (weekly spread, blackout dates, preferred days/time, session patterns), Training Periodization (consolidated training_plans + training_phases for climbing and tennis), and UI Refinements (mission statements removed, onboarding wizard removed).
+> Last updated: 2026-03-21. Reflects current schema including Feature 1 (Calendar Management), Feature 2 (Fitness Tracking → Activities), Feature 3 (Budget Management), v2 Overhaul, Goals V2, Scheduler Rules, Training Periodization, UI Refinements, and **Friend Release** (users table, user_id on all data tables, per-user data isolation).
+
+## Multi-User Architecture (Friend Release)
+
+All data tables now have a `user_id TEXT NOT NULL` column. Every API route scopes queries with `WHERE user_id = session.user.id`. The `users` table manages accounts — created by the admin via `/admin/users`. Junction tables (`goal_roles`, `goal_tallies`, `goal_session_patterns`, `weekly_focus_goals`, `training_phases`) do **not** have `user_id` — they are always accessed through their parent table's FK which is already user-scoped.
 
 ## Entity Relationship Diagram
 
@@ -27,8 +31,18 @@ erDiagram
     TrainingPlan ||--o{ TrainingPhase : "divided into"
     SchedulerSettings ||--o{ SchedulerBlackoutDate : "manages"
 
+    User {
+        string id PK
+        string username
+        string passwordHash
+        string role
+        boolean isActive
+        datetime createdAt
+    }
+
     Role {
         int id PK
+        string userId FK
         string name
         string description
         string color
