@@ -1,5 +1,8 @@
 const Database = require("better-sqlite3");
-const db = new Database("/data/life-app.db");
+const path = require("path");
+const dbPath = process.env.DB_PATH || "/data/life-app.db";
+console.log("apply-schema: using database at", dbPath);
+const db = new Database(dbPath);
 db.pragma("journal_mode = WAL");
 
 const statements = [
