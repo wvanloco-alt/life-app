@@ -1,0 +1,58 @@
+2026-03-21T11:40:11.374434776Z [inf]  Mounting volume on: /var/lib/containers/railwayapp/bind-mounts/e910a03d-e18c-422a-ae8c-ac531ecf65bc/vol_mhatcvtyudh4p6m6
+2026-03-21T11:40:13.289928556Z [inf]  Starting Container
+2026-03-21T11:40:17.117888408Z [inf]  apply-schema: using database at /data/life-app.db
+2026-03-21T11:40:17.117897946Z [err]  
+2026-03-21T11:40:17.117904281Z [err]  /app/node_modules/better-sqlite3/lib/database.js:69
+2026-03-21T11:40:17.117911817Z [err]  		[util.cppdb]: { value: new addon.Database(filename, filenameGiven, anonymous, readonly, fileMustExist, timeout, verbose || null, buffer || null) },
+2026-03-21T11:40:17.117917967Z [err]  		                       ^
+2026-03-21T11:40:17.117923576Z [err]  SqliteError: unable to open database file
+2026-03-21T11:40:17.117928904Z [err]      at new Database (/app/node_modules/better-sqlite3/lib/database.js:69:26)
+2026-03-21T11:40:17.117933829Z [err]      at Object.<anonymous> (/app/apply-schema.js:5:12)
+2026-03-21T11:40:17.117939414Z [err]      at Module._compile (node:internal/modules/cjs/loader:1521:14)
+2026-03-21T11:40:17.117945359Z [err]      at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+2026-03-21T11:40:17.117951054Z [err]      at Module.load (node:internal/modules/cjs/loader:1266:32)
+2026-03-21T11:40:17.117959796Z [err]      at Module._load (node:internal/modules/cjs/loader:1091:12)
+2026-03-21T11:40:17.117964654Z [err]      at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+2026-03-21T11:40:17.117969578Z [err]      at node:internal/main/run_main_module:28:49 {
+2026-03-21T11:40:17.117975201Z [err]    code: 'SQLITE_CANTOPEN'
+2026-03-21T11:40:17.117982057Z [err]  }
+2026-03-21T11:40:17.117987353Z [err]  
+2026-03-21T11:40:17.117992571Z [err]  Node.js v20.20.1
+2026-03-21T11:40:44.557836242Z [inf]  Mounting volume on: /var/lib/containers/railwayapp/bind-mounts/e910a03d-e18c-422a-ae8c-ac531ecf65bc/vol_mhatcvtyudh4p6m6
+2026-03-21T11:41:12.184454440Z [inf]  apply-schema: using database at /data/life-app.db
+2026-03-21T11:41:12.184461356Z [err]  
+2026-03-21T11:41:12.184467634Z [err]  /app/node_modules/better-sqlite3/lib/database.js:69
+2026-03-21T11:41:12.184503834Z [err]  		[util.cppdb]: { value: new addon.Database(filename, filenameGiven, anonymous, readonly, fileMustExist, timeout, verbose || null, buffer || null) },
+2026-03-21T11:41:12.184510250Z [err]  		                       ^
+2026-03-21T11:41:12.184515974Z [err]  SqliteError: unable to open database file
+2026-03-21T11:41:12.184522012Z [err]      at new Database (/app/node_modules/better-sqlite3/lib/database.js:69:26)
+2026-03-21T11:41:12.184869910Z [err]      at Object.<anonymous> (/app/apply-schema.js:5:12)
+2026-03-21T11:41:12.184881662Z [err]      at Module._compile (node:internal/modules/cjs/loader:1521:14)
+2026-03-21T11:41:12.187245972Z [err]      at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+2026-03-21T11:41:12.187265922Z [err]      at Module.load (node:internal/modules/cjs/loader:1266:32)
+2026-03-21T11:41:12.187280112Z [err]      at Module._load (node:internal/modules/cjs/loader:1091:12)
+2026-03-21T11:41:12.187289592Z [err]      at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+2026-03-21T11:41:12.187538565Z [err]  
+2026-03-21T11:41:12.187551251Z [err]  Node.js v20.20.1
+2026-03-21T11:41:12.187568235Z [err]      at node:internal/main/run_main_module:28:49 {
+2026-03-21T11:41:12.187576442Z [err]    code: 'SQLITE_CANTOPEN'
+2026-03-21T11:41:12.187586527Z [err]  }
+2026-03-21T11:41:40.604750751Z [inf]  Mounting volume on: /var/lib/containers/railwayapp/bind-mounts/e910a03d-e18c-422a-ae8c-ac531ecf65bc/vol_mhatcvtyudh4p6m6
+2026-03-21T11:41:42.818698098Z [err]  
+2026-03-21T11:41:42.818707050Z [err]  Node.js v20.20.1
+2026-03-21T11:41:42.818717901Z [err]      at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+2026-03-21T11:41:42.818725685Z [err]      at node:internal/main/run_main_module:28:49 {
+2026-03-21T11:41:42.818733353Z [err]    code: 'SQLITE_CANTOPEN'
+2026-03-21T11:41:42.818742224Z [err]  }
+2026-03-21T11:41:42.818743894Z [err]  		                       ^
+2026-03-21T11:41:42.818759024Z [err]  SqliteError: unable to open database file
+2026-03-21T11:41:42.818767642Z [err]      at new Database (/app/node_modules/better-sqlite3/lib/database.js:69:26)
+2026-03-21T11:41:42.818775195Z [err]      at Object.<anonymous> (/app/apply-schema.js:5:12)
+2026-03-21T11:41:42.818784183Z [err]      at Module._compile (node:internal/modules/cjs/loader:1521:14)
+2026-03-21T11:41:42.818793438Z [err]      at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+2026-03-21T11:41:42.818799895Z [err]      at Module.load (node:internal/modules/cjs/loader:1266:32)
+2026-03-21T11:41:42.818806969Z [err]      at Module._load (node:internal/modules/cjs/loader:1091:12)
+2026-03-21T11:41:42.818904403Z [inf]  apply-schema: using database at /data/life-app.db
+2026-03-21T11:41:42.818910006Z [err]  
+2026-03-21T11:41:42.818929787Z [err]  /app/node_modules/better-sqlite3/lib/database.js:69
+2026-03-21T11:41:42.818936905Z [err]  		[util.cppdb]: { value: new addon.Database(filename, filenameGiven, anonymous, readonly, fileMustExist, timeout, verbose || null, buffer || null) },

@@ -22,16 +22,13 @@ ENV PORT=3000
 # Default DB path — override via Railway volume env var if needed
 ENV DB_PATH=/data/life-app.db
 
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
-
 COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/migrations ./migrations
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/migrations ./migrations
 
 # Schema migration script (idempotent — safe to run on every boot)
-COPY --chown=nextjs:nodejs apply-schema.js ./apply-schema.js
+COPY apply-schema.js ./apply-schema.js
 
 # Copy the compiled better-sqlite3 native addon
 COPY --from=deps /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
@@ -41,9 +38,8 @@ COPY --from=deps /app/node_modules/file-uri-to-path ./node_modules/file-uri-to-p
 # bcryptjs is needed by apply-schema.js for admin password hashing at startup
 COPY --from=deps /app/node_modules/bcryptjs ./node_modules/bcryptjs
 
-RUN mkdir -p /data && chown nextjs:nodejs /data
+RUN mkdir -p /data
 
-USER nextjs
 EXPOSE 3000
 
 # Run schema migrations on every boot (idempotent), then start the app
