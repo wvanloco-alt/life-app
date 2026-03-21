@@ -46,6 +46,6 @@ export async function POST(request: NextRequest) {
 
   const maxOrder = (await db.select({ displayOrder: spendingCategories.displayOrder }).from(spendingCategories).where(eq(spendingCategories.userId, userId))).reduce((max, r) => Math.max(max, r.displayOrder), -1) + 1;
 
-  const [created] = await db.insert(spendingCategories).values({ name: name.trim(), icon: icon ?? "📦", color: color ?? "#6B7280", displayOrder: displayOrder ?? maxOrder, userId }).returning();
+  const [created] = await db.insert(spendingCategories).values({ name: name.trim(), icon: icon ?? "package", color: color ?? "#6B7280", displayOrder: displayOrder ?? maxOrder, userId }).returning();
   return NextResponse.json(created, { status: 201 });
 }

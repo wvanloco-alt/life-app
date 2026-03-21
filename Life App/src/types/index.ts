@@ -252,6 +252,7 @@ export interface BudgetSettings {
   monthlySavingsTarget: number;
   savingsGoalTotal: number | null;
   savingsGoalTargetDate: string | null;
+  savingsStartingBalance: number | null;
   createdAt: string;
   updatedAt: string;
 }

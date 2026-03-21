@@ -31,7 +31,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { getGradesForSystem } from "@/lib/grades";
 import type { ActivityType, ActivityLog } from "@/types";
-import { EmojiIcon } from "@/components/ui/emoji-icon";
+import { LucideIcon } from "@/components/ui/lucide-icon";
 
 export function WorkoutLog() {
   const [activityTypesList, setActivityTypesList] = useState<ActivityType[]>([]);
@@ -204,7 +204,7 @@ export function WorkoutLog() {
                       key={w.id}
                       className="flex items-start gap-3 rounded-lg border p-3"
                     >
-                      <EmojiIcon emoji={w.activityTypeIcon ?? "📋"} />
+                      <LucideIcon name={w.activityTypeIcon ?? "activity"} />
                       <div className="flex-1 min-w-0">
                         <div className="font-medium text-sm">
                           {w.activityTypeName}
@@ -295,7 +295,7 @@ export function WorkoutLog() {
               <SelectContent>
                 {activityTypesList.map((s) => (
                   <SelectItem key={s.id} value={s.id.toString()}>
-                    <span className="flex items-center gap-2"><EmojiIcon emoji={s.icon} size="sm" />{s.name}</span>
+                    <span className="flex items-center gap-2"><LucideIcon name={s.icon} size="sm" />{s.name}</span>
                   </SelectItem>
                 ))}
               </SelectContent>

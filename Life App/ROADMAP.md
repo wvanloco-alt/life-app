@@ -113,6 +113,55 @@ Each feature below becomes a separate spec-kit specification. Features are order
 
 ---
 
+### Lucide Icon System Refactor
+
+**Spec ID**: `lucide-icon-refactor`
+**Status**: Planned
+
+**What it does**: Replaces the emoji icon system used in spending categories and activity types with named Lucide icons. Currently, both `spending_categories.icon` and `activity_types.icon` store arbitrary emoji strings rendered via a custom `EmojiIcon` component. This conflicts with the design system's core rule — Lucide for all UI icons — and produces inconsistent rendering across platforms and sizes.
+
+The refactor introduces three new shared UI primitives (icon registry, `LucideIcon` rendering component, `IconPicker` grid), updates all default icon values, migrates existing database records in `apply-schema.js`, and replaces every `EmojiIcon` usage across 12 component files. The `icon TEXT` column is unchanged — Lucide icon names are strings and slot directly into the existing schema.
+
+**What will be built**:
+- `src/lib/icons.ts` — curated icon sets for categories (`CATEGORY_ICONS`) and activity types (`ACTIVITY_TYPE_ICONS`), plus `getLucideIcon(name)` lookup function
+- `src/components/ui/lucide-icon.tsx` — drop-in replacement for `EmojiIcon`; renders Lucide icon by name string with emoji fallback for legacy values
+- `src/components/ui/icon-picker.tsx` — reusable grid picker component used in both category and activity type forms
+- Updated defaults in `src/lib/defaults.ts` — emoji strings replaced with Lucide names
+- Data migration in `apply-schema.js` — UPDATE statements for all default-seeded categories and activity types
+- Updated forms: `categories-page.tsx` and `sport-form.tsx` — emoji picker replaced with `IconPicker`
+- Updated rendering in 12 component files — `EmojiIcon` replaced with `LucideIcon` throughout
+- `emoji-icon.tsx` — deleted once all usages are replaced
+
+**Schema changes**: None. The `icon TEXT` column is unchanged.
+
+**Routes modified**: None. Icon values are a client-side and default-seeding concern only.
+
+**Dependencies**: None (pure UI and data refactor).
+
+---
+
+### Savings Redesign
+
+**Spec ID**: `savings-redesign`
+**Status**: Planned
+
+**What it does**: Replaces the broken "leftover money = savings" calculation with an explicit model. Savings are only what you deliberately log. A "Savings" spending category tracks contributions. A "Savings Withdrawal" category tracks dips. A starting balance captures what you already had before tracking began. The savings goal progress on the Dashboard reflects reality.
+
+**What will be built**:
+- "Savings" and "Savings Withdrawal" default spending categories (added to `defaults.ts` + seeded for existing users)
+- `savingsStartingBalance` column on `budget_settings` (one migration)
+- New savings calculation: `starting balance + SUM(Savings entries) − SUM(Savings Withdrawal entries)`
+- Starting balance field in Budget Settings dialog
+- Savings goal progress card promoted to the Dashboard tab (currently only in Budget Goals tab)
+
+**Schema changes**: Add `savings_starting_balance` to `budget_settings`. No other table changes.
+
+**Routes modified**: `GET/PATCH /api/budget-settings`, `GET /api/budget/summary` (savings calculation rewrite)
+
+**Dependencies**: Feature 3 (Budget Management — built).
+
+---
+
 ### Feature 4: Overview Dashboard (Body Visualization)
 
 **Spec ID**: `004-overview-dashboard`

@@ -22,8 +22,8 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Plus, X } from "lucide-react";
 import type { ActivityType, MetricField, ActivityVariant } from "@/types";
-
-const ACTIVITY_ICONS = ["🏃", "🥾", "🎾", "🧗", "⛰️", "🚴", "🏊", "⚽", "🏀", "🏋️", "🧘", "🎿", "🏄", "📖", "📝", "🤝"];
+import { IconPicker } from "@/components/ui/icon-picker";
+import { ACTIVITY_TYPE_ICONS } from "@/lib/icons";
 
 interface ActivityTypeFormProps {
   open: boolean;
@@ -35,7 +35,7 @@ interface ActivityTypeFormProps {
 export function ActivityTypeForm({ open, onClose, onSave, activityType }: ActivityTypeFormProps) {
   const [name, setName] = useState(activityType?.name ?? "");
   const [type, setType] = useState(activityType?.type ?? "cardio");
-  const [icon, setIcon] = useState(activityType?.icon ?? "🏃");
+  const [icon, setIcon] = useState(activityType?.icon ?? "footprints");
   const [isTracked, setIsTracked] = useState(activityType?.isTracked ?? false);
   const [defaultCalories, setDefaultCalories] = useState(
     activityType?.defaultCalories?.toString() ?? ""
@@ -130,7 +130,7 @@ export function ActivityTypeForm({ open, onClose, onSave, activityType }: Activi
       setError("");
       setName(activityType?.name ?? "");
       setType(activityType?.type ?? "cardio");
-      setIcon(activityType?.icon ?? "🏃");
+      setIcon(activityType?.icon ?? "footprints");
       setIsTracked(activityType?.isTracked ?? false);
       setDefaultCalories(activityType?.defaultCalories?.toString() ?? "");
       setDefaultSteps(activityType?.defaultSteps?.toString() ?? "");
@@ -163,18 +163,7 @@ export function ActivityTypeForm({ open, onClose, onSave, activityType }: Activi
             </div>
             <div className="space-y-2">
               <Label>Icon</Label>
-              <Select value={icon} onValueChange={setIcon}>
-                <SelectTrigger className="w-16">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ACTIVITY_ICONS.map((ic) => (
-                    <SelectItem key={ic} value={ic}>
-                      {ic}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <IconPicker icons={ACTIVITY_TYPE_ICONS} value={icon} onChange={setIcon} />
             </div>
           </div>
 

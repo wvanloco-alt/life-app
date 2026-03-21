@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import type { Goal, Role, ActivityType, TargetPeriod, GoalHorizon } from "@/types";
 import { GRADE_ORDER } from "@/lib/training/periodization";
-import { EmojiIcon } from "@/components/ui/emoji-icon";
+import { LucideIcon } from "@/components/ui/lucide-icon";
 import { format } from "date-fns";
 
 export interface GoalFormPayload {
@@ -509,7 +509,7 @@ export function GoalFormStandalone({
                     <SelectItem value="none">None</SelectItem>
                     {activityTypes.map((at) => (
                       <SelectItem key={at.id} value={at.id.toString()}>
-                        <span className="flex items-center gap-2"><EmojiIcon emoji={at.icon} size="sm" />{at.name}</span>
+                        <span className="flex items-center gap-2"><LucideIcon name={at.icon} size="sm" />{at.name}</span>
                       </SelectItem>
                     ))}
                   </SelectContent>

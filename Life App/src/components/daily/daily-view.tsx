@@ -49,7 +49,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { EmojiIcon } from "@/components/ui/emoji-icon";
+import { LucideIcon } from "@/components/ui/lucide-icon";
 
 function NotesPreview({ notes }: { notes: string }) {
   const [expanded, setExpanded] = useState(false);
@@ -194,7 +194,7 @@ function LogActivityDialog({
               <SelectContent>
                 {activityTypes.map((at) => (
                   <SelectItem key={at.id} value={at.id.toString()}>
-                    <span className="flex items-center gap-2"><EmojiIcon emoji={at.icon} size="sm" />{at.name}</span>
+                    <span className="flex items-center gap-2"><LucideIcon name={at.icon} size="sm" />{at.name}</span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -629,7 +629,7 @@ export function DailyView() {
                         key={log.id}
                         className="flex items-start gap-3 rounded-lg border p-3"
                       >
-                        <EmojiIcon emoji={log.activityTypeIcon ?? "📋"} />
+                        <LucideIcon name={log.activityTypeIcon ?? "activity"} />
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-sm">
                             {log.activityTypeName ?? "Activity"}

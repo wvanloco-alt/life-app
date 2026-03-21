@@ -13,7 +13,7 @@ export const DEFAULT_ACTIVITY_TYPES = [
   {
     name: "Running",
     type: "cardio" as const,
-    icon: "🏃",
+    icon: "footprints",
     isTracked: true,
     defaultCalories: null,
     defaultSteps: null,
@@ -28,7 +28,7 @@ export const DEFAULT_ACTIVITY_TYPES = [
   {
     name: "Hiking",
     type: "cardio" as const,
-    icon: "🥾",
+    icon: "mountain",
     isTracked: false,
     defaultCalories: 400,
     defaultSteps: 12000,
@@ -42,7 +42,7 @@ export const DEFAULT_ACTIVITY_TYPES = [
   {
     name: "Tennis",
     type: "mixed" as const,
-    icon: "🎾",
+    icon: "circle-dot",
     isTracked: false,
     defaultCalories: 500,
     defaultSteps: 8000,
@@ -56,7 +56,7 @@ export const DEFAULT_ACTIVITY_TYPES = [
   {
     name: "Climbing (Gym)",
     type: "strength" as const,
-    icon: "🧗",
+    icon: "dumbbell",
     isTracked: false,
     defaultCalories: 400,
     defaultSteps: 0,
@@ -70,7 +70,7 @@ export const DEFAULT_ACTIVITY_TYPES = [
   {
     name: "Climbing (Outdoor)",
     type: "strength" as const,
-    icon: "⛰️",
+    icon: "mountain-snow",
     isTracked: false,
     defaultCalories: 500,
     defaultSteps: 3000,
@@ -85,7 +85,7 @@ export const DEFAULT_ACTIVITY_TYPES = [
   {
     name: "Reading",
     type: "cardio" as const,
-    icon: "📖",
+    icon: "book-open",
     isTracked: false,
     defaultCalories: null,
     defaultSteps: null,
@@ -99,7 +99,7 @@ export const DEFAULT_ACTIVITY_TYPES = [
   {
     name: "Meditation",
     type: "cardio" as const,
-    icon: "🧘",
+    icon: "wind",
     isTracked: false,
     defaultCalories: null,
     defaultSteps: null,
@@ -110,7 +110,7 @@ export const DEFAULT_ACTIVITY_TYPES = [
   {
     name: "Journaling",
     type: "cardio" as const,
-    icon: "📝",
+    icon: "pen-line",
     isTracked: false,
     defaultCalories: null,
     defaultSteps: null,
@@ -121,7 +121,7 @@ export const DEFAULT_ACTIVITY_TYPES = [
   {
     name: "Social Event",
     type: "cardio" as const,
-    icon: "🤝",
+    icon: "users",
     isTracked: false,
     defaultCalories: null,
     defaultSteps: null,
@@ -134,14 +134,16 @@ export const DEFAULT_ACTIVITY_TYPES = [
 export type DefaultActivityType = (typeof DEFAULT_ACTIVITY_TYPES)[number];
 
 export const DEFAULT_SPENDING_CATEGORIES = [
-  { name: "Food", icon: "🍕", color: "#EF4444" },
-  { name: "Rent", icon: "🏠", color: "#6366F1" },
-  { name: "Utilities", icon: "⚡", color: "#3B82F6" },
-  { name: "Groceries", icon: "🛒", color: "#10B981" },
-  { name: "Amusement", icon: "🎭", color: "#8B5CF6" },
-  { name: "Clothes", icon: "👕", color: "#F59E0B" },
-  { name: "Transport", icon: "🚗", color: "#0EA5E9" },
-  { name: "Other", icon: "📦", color: "#6B7280" },
+  { name: "Food", icon: "utensils", color: "#EF4444" },
+  { name: "Rent", icon: "home", color: "#6366F1" },
+  { name: "Utilities", icon: "zap", color: "#3B82F6" },
+  { name: "Groceries", icon: "shopping-cart", color: "#10B981" },
+  { name: "Amusement", icon: "popcorn", color: "#8B5CF6" },
+  { name: "Clothes", icon: "shirt", color: "#F59E0B" },
+  { name: "Transport", icon: "car", color: "#0EA5E9" },
+  { name: "Savings", icon: "piggy-bank", color: "#10B981" },
+  { name: "Savings Withdrawal", icon: "arrow-up-from-line", color: "#F59E0B" },
+  { name: "Other", icon: "package", color: "#6B7280" },
 ] as const;
 
 export type DefaultSpendingCategory = (typeof DEFAULT_SPENDING_CATEGORIES)[number];

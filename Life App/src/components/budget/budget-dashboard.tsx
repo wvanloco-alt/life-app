@@ -41,7 +41,7 @@ interface MonthOverview {
   fixedCosts: number;
   planned: number;
   spending: number;
-  savings: number;
+  unspent: number;
   net: number;
 }
 
@@ -76,7 +76,7 @@ export function BudgetDashboard({ month }: BudgetDashboardProps) {
         const d: BudgetSummary = await res.json();
         const [, mm] = m.split("-");
         const planned = d.totalPlannedExpenses ?? 0;
-        const savings = Math.max(0, d.totalIncome - d.totalFixedCosts - d.totalSpent - planned);
+        const unspent = Math.max(0, d.totalIncome - d.totalFixedCosts - d.totalSpent - planned);
         return {
           month: m,
           label: `${MONTH_LABELS[mm] ?? mm}`,
@@ -84,7 +84,7 @@ export function BudgetDashboard({ month }: BudgetDashboardProps) {
           fixedCosts: d.totalFixedCosts,
           planned,
           spending: d.totalSpent,
-          savings,
+          unspent,
           net: d.totalIncome - d.totalFixedCosts - d.totalSpent - planned,
         };
       })
@@ -180,6 +180,37 @@ export function BudgetDashboard({ month }: BudgetDashboardProps) {
         </CardContent>
       </Card>
 
+      {summary.savingsGoal && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Savings Goal</CardTitle>
+            <CardDescription>
+              {summary.savingsGoal.targetDate
+                ? `Target: ${formatEur(summary.savingsGoal.total)} by ${summary.savingsGoal.targetDate}`
+                : `Target: ${formatEur(summary.savingsGoal.total)}`}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {summary.savingsGoal.percentage >= 100 ? (
+              <p className="text-emerald-600 font-semibold text-lg">Goal reached 🎉</p>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>{formatEur(summary.savingsGoal.saved)} saved</span>
+                  <span>{summary.savingsGoal.percentage}%</span>
+                </div>
+                <div className="h-3 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-emerald-500 transition-all"
+                    style={{ width: `${Math.min(summary.savingsGoal.percentage, 100)}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -220,35 +251,6 @@ export function BudgetDashboard({ month }: BudgetDashboardProps) {
         </Card>
 
         <div className="space-y-4">
-          {summary.savingsGoal && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Savings Goal</CardTitle>
-                <CardDescription>
-                  {summary.savingsGoal.targetDate
-                    ? `Target: ${formatEur(summary.savingsGoal.total)} by ${summary.savingsGoal.targetDate}`
-                    : `Target: ${formatEur(summary.savingsGoal.total)}`}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>{formatEur(summary.savingsGoal.saved)} saved</span>
-                    <span>{summary.savingsGoal.percentage}%</span>
-                  </div>
-                  <div className="h-3 rounded-full bg-muted overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-emerald-500 transition-all"
-                      style={{
-                        width: `${Math.min(summary.savingsGoal.percentage, 100)}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
           <Card>
             <CardHeader>
               <CardTitle>Category Breakdown</CardTitle>
@@ -297,7 +299,7 @@ export function BudgetDashboard({ month }: BudgetDashboardProps) {
                 <Bar dataKey="fixedCosts" fill={palette.color("gray")} name="Fixed costs" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="planned" fill={palette.color("purple")} name="Planned" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="spending" fill={palette.color("amber")} name="Spending" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="savings" fill={palette.color("blue")} name="Savings" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="unspent" fill={palette.color("blue")} name="Unspent" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : null}
@@ -319,7 +321,7 @@ export function BudgetDashboard({ month }: BudgetDashboardProps) {
                   <th className="text-right py-2.5 text-xs font-medium text-muted-foreground">Fixed</th>
                   <th className="text-right py-2.5 text-xs font-medium text-muted-foreground">Planned</th>
                   <th className="text-right py-2.5 text-xs font-medium text-muted-foreground">Spending</th>
-                  <th className="text-right py-2.5 text-xs font-medium text-muted-foreground">Savings</th>
+                  <th className="text-right py-2.5 text-xs font-medium text-muted-foreground">Unspent</th>
                   <th className="text-right py-2.5 text-xs font-medium text-muted-foreground">Net</th>
                 </tr>
               </thead>
@@ -331,7 +333,7 @@ export function BudgetDashboard({ month }: BudgetDashboardProps) {
                     <td className="text-right py-2">{formatEur(row.fixedCosts)}</td>
                     <td className="text-right py-2">{formatEur(row.planned)}</td>
                     <td className="text-right py-2">{formatEur(row.spending)}</td>
-                    <td className="text-right py-2">{formatEur(row.savings)}</td>
+                    <td className="text-right py-2">{formatEur(row.unspent)}</td>
                     <td className="text-right py-2">{formatEur(row.net)}</td>
                   </tr>
                 ))}
@@ -342,10 +344,10 @@ export function BudgetDashboard({ month }: BudgetDashboardProps) {
                       fixedCosts: acc.fixedCosts + r.fixedCosts,
                       planned: acc.planned + r.planned,
                       spending: acc.spending + r.spending,
-                      savings: acc.savings + r.savings,
+                      unspent: acc.unspent + r.unspent,
                       net: acc.net + r.net,
                     }),
-                    { income: 0, fixedCosts: 0, planned: 0, spending: 0, savings: 0, net: 0 }
+                    { income: 0, fixedCosts: 0, planned: 0, spending: 0, unspent: 0, net: 0 }
                   );
                   return (
                     <tr className="border-t-2 font-bold">
@@ -354,7 +356,7 @@ export function BudgetDashboard({ month }: BudgetDashboardProps) {
                       <td className="text-right py-2">{formatEur(totals.fixedCosts)}</td>
                       <td className="text-right py-2">{formatEur(totals.planned)}</td>
                       <td className="text-right py-2">{formatEur(totals.spending)}</td>
-                      <td className="text-right py-2">{formatEur(totals.savings)}</td>
+                      <td className="text-right py-2">{formatEur(totals.unspent)}</td>
                       <td className="text-right py-2">{formatEur(totals.net)}</td>
                     </tr>
                   );

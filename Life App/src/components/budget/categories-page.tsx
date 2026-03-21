@@ -25,13 +25,10 @@ import {
 } from "@/components/ui/dialog";
 import type { SpendingCategory } from "@/types";
 import { MoreHorizontal, Plus } from "lucide-react";
-import { EmojiIcon } from "@/components/ui/emoji-icon";
+import { LucideIcon } from "@/components/ui/lucide-icon";
+import { IconPicker } from "@/components/ui/icon-picker";
+import { CATEGORY_ICONS } from "@/lib/icons";
 import { DEFAULT_SPENDING_CATEGORIES } from "@/lib/defaults";
-
-const EMOJI_OPTIONS = [
-  "🍕", "🏠", "⚡", "🛒", "🎭", "👕", "🚗", "📦",
-  "💊", "🎬", "📱", "✈️", "🎓", "🏋️", "🎁", "☕",
-];
 
 export function CategoriesPage() {
   const [categories, setCategories] = useState<SpendingCategory[]>([]);
@@ -39,7 +36,7 @@ export function CategoriesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [name, setName] = useState("");
-  const [icon, setIcon] = useState("");
+  const [icon, setIcon] = useState("package");
   const [color, setColor] = useState("#6B7280");
 
   const fetchCategories = useCallback(async () => {
@@ -53,11 +50,10 @@ export function CategoriesPage() {
     fetchCategories().finally(() => setLoading(false));
   }, [fetchCategories]);
 
-
   function openAdd() {
     setEditingId(null);
     setName("");
-    setIcon("📦");
+    setIcon("package");
     setColor("#6B7280");
     setDialogOpen(true);
   }
@@ -80,7 +76,7 @@ export function CategoriesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
-          icon: icon || "📦",
+          icon: icon || "package",
           color: color || "#6B7280",
         }),
       });
@@ -94,7 +90,7 @@ export function CategoriesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
-          icon: icon || "📦",
+          icon: icon || "package",
           color: color || "#6B7280",
         }),
       });
@@ -154,7 +150,7 @@ export function CategoriesPage() {
             <Card key={cat.id}>
               <CardHeader className="flex flex-row items-start justify-between pb-2">
                 <div className="flex items-center gap-2">
-                  <EmojiIcon emoji={cat.icon} size="lg" />
+                  <LucideIcon name={cat.icon} size="lg" />
                   <CardTitle className="text-base">{cat.name}</CardTitle>
                 </div>
                 <DropdownMenu>
@@ -205,18 +201,7 @@ export function CategoriesPage() {
             </div>
             <div className="space-y-2">
               <Label>Icon</Label>
-              <div className="flex flex-wrap gap-1">
-                {EMOJI_OPTIONS.map((em) => (
-                  <button
-                    key={em}
-                    type="button"
-                    onClick={() => setIcon(em)}
-                    className={`rounded-md p-1.5 text-lg hover:bg-muted transition-colors ${icon === em ? "bg-primary/10 ring-2 ring-primary" : ""}`}
-                  >
-                    {em}
-                  </button>
-                ))}
-              </div>
+              <IconPicker icons={CATEGORY_ICONS} value={icon} onChange={setIcon} />
             </div>
             <div className="space-y-2">
               <Label>Color</Label>

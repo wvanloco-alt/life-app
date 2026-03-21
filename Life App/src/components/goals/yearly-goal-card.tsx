@@ -21,7 +21,7 @@ import {
   Mountain,
 } from "lucide-react";
 import { RoleBadge } from "@/components/roles/role-badge";
-import { EmojiIcon } from "@/components/ui/emoji-icon";
+import { LucideIcon } from "@/components/ui/lucide-icon";
 import { TrainingPlanSection } from "./training-plan-section";
 import type { Goal, GoalProgress, PaceStatus, TrainingPlan } from "@/types";
 import { format } from "date-fns";
@@ -109,7 +109,7 @@ export function YearlyGoalCard({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-0.5">
                 {goal.activityTypeIcon && (
-                  <EmojiIcon emoji={goal.activityTypeIcon} size="sm" />
+                  <LucideIcon name={goal.activityTypeIcon} size="sm" />
                 )}
                 <h3 className="font-[family-name:var(--font-display)] font-semibold text-base leading-tight truncate">
                   {goal.title}

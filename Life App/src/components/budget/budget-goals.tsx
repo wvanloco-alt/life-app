@@ -36,7 +36,7 @@ import { formatEur } from "@/lib/currency";
 import { format, parseISO } from "date-fns";
 import type { BudgetSettings, PlannedExpense, SpendingCategory } from "@/types";
 import { MoreHorizontal, Plus, Pencil } from "lucide-react";
-import { EmojiIcon } from "@/components/ui/emoji-icon";
+import { LucideIcon } from "@/components/ui/lucide-icon";
 
 const MONTHS = [
   "01",
@@ -66,6 +66,7 @@ export function BudgetGoals() {
   const [editingGoal, setEditingGoal] = useState(false);
   const [goalAmount, setGoalAmount] = useState("");
   const [goalDate, setGoalDate] = useState("");
+  const [goalStartingBalance, setGoalStartingBalance] = useState("");
   const [savingGoal, setSavingGoal] = useState(false);
 
   // Planned expenses state
@@ -88,6 +89,7 @@ export function BudgetGoals() {
       data.savingsGoalTotal != null ? String(data.savingsGoalTotal) : ""
     );
     setGoalDate(data.savingsGoalTargetDate ?? "");
+    setGoalStartingBalance(String(data.savingsStartingBalance ?? 0));
   }, []);
 
   const fetchSavingsProgress = useCallback(async () => {
@@ -140,6 +142,7 @@ export function BudgetGoals() {
         savingsGoalTargetDate: goalDate && /^\d{4}-\d{2}-\d{2}$/.test(goalDate)
           ? goalDate
           : null,
+        savingsStartingBalance: parseFloat(goalStartingBalance) || 0,
       }),
     });
     setSavingGoal(false);
@@ -267,6 +270,18 @@ export function BudgetGoals() {
                         onChange={(e) => setGoalDate(e.target.value)}
                       />
                     </div>
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label>Existing savings (€)</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={goalStartingBalance}
+                        onChange={(e) => setGoalStartingBalance(e.target.value)}
+                        placeholder="0"
+                      />
+                      <p className="text-xs text-muted-foreground">Money you already had saved before using this app</p>
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <Button
@@ -285,6 +300,7 @@ export function BudgetGoals() {
                             : ""
                         );
                         setGoalDate(settings.savingsGoalTargetDate ?? "");
+                        setGoalStartingBalance(String(settings.savingsStartingBalance ?? 0));
                       }}
                     >
                       Cancel
@@ -386,10 +402,13 @@ export function BudgetGoals() {
                     <div>
                       {format(parseISO(exp.month + "-01"), "MMM yyyy")}
                     </div>
-                    <div className="text-muted-foreground text-sm">
-                      {exp.categoryName
-                        ? `${exp.categoryIcon ?? ""} ${exp.categoryName}`.trim()
-                        : "—"}
+                    <div className="text-muted-foreground text-sm flex items-center gap-1.5">
+                      {exp.categoryName ? (
+                        <>
+                          <LucideIcon name={exp.categoryIcon ?? "package"} size="sm" />
+                          {exp.categoryName}
+                        </>
+                      ) : "—"}
                     </div>
                     <div className="text-muted-foreground text-sm truncate max-w-[120px]">
                       {exp.notes ?? "—"}
@@ -478,7 +497,7 @@ export function BudgetGoals() {
                   <SelectItem value="">None</SelectItem>
                   {categories.map((c) => (
                     <SelectItem key={c.id} value={String(c.id)}>
-                      <span className="flex items-center gap-2"><EmojiIcon emoji={c.icon} size="sm" />{c.name}</span>
+                      <span className="flex items-center gap-2"><LucideIcon name={c.icon} size="sm" />{c.name}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>

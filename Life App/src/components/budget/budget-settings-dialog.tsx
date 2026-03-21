@@ -29,6 +29,7 @@ export function BudgetSettingsDialog({
   const [monthlySavingsTarget, setMonthlySavingsTarget] = useState("");
   const [savingsGoalTotal, setSavingsGoalTotal] = useState("");
   const [savingsGoalTargetDate, setSavingsGoalTargetDate] = useState("");
+  const [savingsStartingBalance, setSavingsStartingBalance] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -42,6 +43,7 @@ export function BudgetSettingsDialog({
             data.savingsGoalTotal != null ? String(data.savingsGoalTotal) : ""
           );
           setSavingsGoalTargetDate(data.savingsGoalTargetDate ?? "");
+          setSavingsStartingBalance(String(data.savingsStartingBalance ?? 0));
         });
     }
   }, [open]);
@@ -61,6 +63,7 @@ export function BudgetSettingsDialog({
               : parseFloat(savingsGoalTotal) || null,
           savingsGoalTargetDate:
             savingsGoalTargetDate === "" ? null : savingsGoalTargetDate,
+          savingsStartingBalance: parseFloat(savingsStartingBalance) || 0,
         }),
       });
       if (res.ok) {
@@ -119,6 +122,18 @@ export function BudgetSettingsDialog({
               value={savingsGoalTargetDate}
               onChange={(e) => setSavingsGoalTargetDate(e.target.value)}
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="savingsStartingBalance">Existing savings (€)</Label>
+            <Input
+              id="savingsStartingBalance"
+              type="number"
+              min={0}
+              step={0.01}
+              value={savingsStartingBalance}
+              onChange={(e) => setSavingsStartingBalance(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">Money you already had saved before using this app</p>
           </div>
         </div>
         <SheetFooter>

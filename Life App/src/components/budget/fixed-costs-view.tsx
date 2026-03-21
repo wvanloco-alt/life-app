@@ -37,7 +37,7 @@ import { formatEur } from "@/lib/currency";
 import { format, parseISO } from "date-fns";
 import type { FixedCost, SpendingCategory } from "@/types";
 import { MoreHorizontal, Plus } from "lucide-react";
-import { EmojiIcon } from "@/components/ui/emoji-icon";
+import { LucideIcon } from "@/components/ui/lucide-icon";
 
 interface FixedCostsViewProps {
   month: string;
@@ -261,7 +261,7 @@ export function FixedCostsView({ month }: FixedCostsViewProps) {
                 <SelectContent>
                   {categories.map((c) => (
                     <SelectItem key={c.id} value={c.name}>
-                      <span className="flex items-center gap-2"><EmojiIcon emoji={c.icon} size="sm" />{c.name}</span>
+                      <span className="flex items-center gap-2"><LucideIcon name={c.icon} size="sm" />{c.name}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
