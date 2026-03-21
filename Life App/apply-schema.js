@@ -335,5 +335,33 @@ for (const sql of alterStatements) {
   run(sql);
 }
 
+// ─── 3. Bootstrap admin account from env vars (first boot only) ──────────────
+// If ADMIN_USERNAME and ADMIN_PASSWORD are set and no users exist, create the
+// admin account automatically. Safe to leave set after first boot — the check
+// `WHERE 1` count prevents duplicate creation.
+
+const adminUsername = process.env.ADMIN_USERNAME;
+const adminPassword = process.env.ADMIN_PASSWORD;
+
+if (adminUsername && adminPassword) {
+  const userCount = db.prepare("SELECT COUNT(*) as count FROM users").get();
+  if (userCount.count === 0) {
+    console.log("apply-schema: no users found, creating admin account...");
+    // bcryptjs is available in node_modules from the app build
+    const bcrypt = require("bcryptjs");
+    const { randomUUID } = require("crypto");
+    const hash = bcrypt.hashSync(adminPassword, 12);
+    const id = randomUUID();
+    db.prepare(
+      "INSERT INTO users (id, username, password_hash, role, is_active) VALUES (?, ?, ?, 'admin', 1)"
+    ).run(id, adminUsername, hash);
+    console.log("apply-schema: admin account created for username:", adminUsername);
+  } else {
+    console.log("apply-schema: users already exist, skipping admin bootstrap.");
+  }
+} else {
+  console.log("apply-schema: ADMIN_USERNAME/ADMIN_PASSWORD not set, skipping bootstrap.");
+}
+
 db.close();
 console.log("\napply-schema: done.");
