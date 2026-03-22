@@ -329,13 +329,64 @@ const alterStatements = [
   `ALTER TABLE goals ADD COLUMN month TEXT`,
   `ALTER TABLE goals ADD COLUMN preferred_days TEXT`,
   `ALTER TABLE goals ADD COLUMN preferred_time_slot TEXT`,
+  `ALTER TABLE budget_settings ADD COLUMN savings_starting_balance REAL DEFAULT 0`,
 ];
 
 for (const sql of alterStatements) {
   run(sql);
 }
 
-// ─── 3. Bootstrap admin account from env vars (first boot only) ──────────────
+// ─── 3. Seed new default spending categories for existing users ──────────────
+// Idempotent — checks before inserting, safe to re-run on every deploy.
+
+const categoryUsers = db.prepare("SELECT DISTINCT user_id FROM spending_categories").all();
+for (const { user_id } of categoryUsers) {
+  const existing = db.prepare(
+    "SELECT name FROM spending_categories WHERE user_id = ? AND name IN ('Savings','Savings Withdrawal')"
+  ).all(user_id).map(r => r.name);
+  if (!existing.includes('Savings')) {
+    db.prepare("INSERT INTO spending_categories (name, icon, color, user_id) VALUES (?, ?, ?, ?)")
+      .run('Savings', 'piggy-bank', '#10B981', user_id);
+    console.log("apply-schema: seeded 'Savings' category for user", user_id);
+  }
+  if (!existing.includes('Savings Withdrawal')) {
+    db.prepare("INSERT INTO spending_categories (name, icon, color, user_id) VALUES (?, ?, ?, ?)")
+      .run('Savings Withdrawal', 'arrow-up-from-line', '#F59E0B', user_id);
+    console.log("apply-schema: seeded 'Savings Withdrawal' category for user", user_id);
+  }
+}
+
+// ─── 4. Migrate emoji icons → Lucide icon names ──────────────────────────────
+// These UPDATE statements are idempotent: the AND icon = 'emoji' guard means
+// they are no-ops once already migrated or if the row doesn't exist yet.
+// The Savings / Savings Withdrawal rows depend on savings-redesign seeding;
+// they will silently no-op until that feature ships and then activate on the
+// next container restart.
+
+db.exec(`UPDATE spending_categories SET icon = 'utensils' WHERE name = 'Food' AND icon = '🍕'`);
+db.exec(`UPDATE spending_categories SET icon = 'home' WHERE name = 'Rent' AND icon = '🏠'`);
+db.exec(`UPDATE spending_categories SET icon = 'zap' WHERE name = 'Utilities' AND icon = '⚡'`);
+db.exec(`UPDATE spending_categories SET icon = 'shopping-cart' WHERE name = 'Groceries' AND icon = '🛒'`);
+db.exec(`UPDATE spending_categories SET icon = 'popcorn' WHERE name = 'Amusement' AND icon = '🎭'`);
+db.exec(`UPDATE spending_categories SET icon = 'shirt' WHERE name = 'Clothes' AND icon = '👕'`);
+db.exec(`UPDATE spending_categories SET icon = 'car' WHERE name = 'Transport' AND icon = '🚗'`);
+db.exec(`UPDATE spending_categories SET icon = 'piggy-bank' WHERE name = 'Savings' AND icon = '🏦'`);
+db.exec(`UPDATE spending_categories SET icon = 'arrow-up-from-line' WHERE name = 'Savings Withdrawal' AND icon = '💸'`);
+db.exec(`UPDATE spending_categories SET icon = 'package' WHERE name = 'Other' AND icon = '📦'`);
+
+db.exec(`UPDATE activity_types SET icon = 'footprints' WHERE name = 'Running' AND icon = '🏃'`);
+db.exec(`UPDATE activity_types SET icon = 'mountain' WHERE name = 'Hiking' AND icon = '🥾'`);
+db.exec(`UPDATE activity_types SET icon = 'circle-dot' WHERE name = 'Tennis' AND icon = '🎾'`);
+db.exec(`UPDATE activity_types SET icon = 'dumbbell' WHERE name = 'Climbing (Gym)' AND icon = '🧗'`);
+db.exec(`UPDATE activity_types SET icon = 'mountain-snow' WHERE name = 'Climbing (Outdoor)' AND icon = '⛰️'`);
+db.exec(`UPDATE activity_types SET icon = 'book-open' WHERE name = 'Reading' AND icon = '📖'`);
+db.exec(`UPDATE activity_types SET icon = 'wind' WHERE name = 'Meditation' AND icon = '🧘'`);
+db.exec(`UPDATE activity_types SET icon = 'pen-line' WHERE name = 'Journaling' AND icon = '📝'`);
+db.exec(`UPDATE activity_types SET icon = 'users' WHERE name = 'Social Event' AND icon = '🤝'`);
+
+console.log("apply-schema: emoji → Lucide icon migration applied.");
+
+// ─── 5. Bootstrap admin account from env vars (first boot only) ──────────────
 // If ADMIN_USERNAME and ADMIN_PASSWORD are set and no users exist, create the
 // admin account automatically. Safe to leave set after first boot — the check
 // `WHERE 1` count prevents duplicate creation.

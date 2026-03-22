@@ -35,7 +35,7 @@ import { formatEur } from "@/lib/currency";
 import { format, parseISO } from "date-fns";
 import type { SpendingEntry, SpendingCategory } from "@/types";
 import { MoreHorizontal } from "lucide-react";
-import { EmojiIcon } from "@/components/ui/emoji-icon";
+import { LucideIcon } from "@/components/ui/lucide-icon";
 
 interface SpendingLogProps {
   month: string;
@@ -187,7 +187,7 @@ export function SpendingLog({ month }: SpendingLogProps) {
                     {categories.map((c) => (
                       <SelectItem key={c.id} value={c.name}>
                         <span className="flex items-center gap-2">
-                          <EmojiIcon emoji={c.icon} size="sm" />
+                          <LucideIcon name={c.icon} size="sm" />
                           {c.name}
                         </span>
                       </SelectItem>
@@ -259,7 +259,7 @@ export function SpendingLog({ month }: SpendingLogProps) {
                           className="flex items-center justify-between py-2 border-b last:border-0"
                         >
                           <div className="flex items-center gap-2">
-                            <EmojiIcon emoji={cat?.icon ?? "📦"} size="sm" />
+                            <LucideIcon name={cat?.icon ?? "package"} size="sm" />
                             <span>
                               {entry.description ??
                                 (entry.isItemized ? entry.category : `Total for ${entry.category}`)}
@@ -328,7 +328,7 @@ export function SpendingLog({ month }: SpendingLogProps) {
                 <SelectContent>
                   {categories.map((c) => (
                     <SelectItem key={c.id} value={c.name}>
-                      <span className="flex items-center gap-2"><EmojiIcon emoji={c.icon} size="sm" />{c.name}</span>
+                      <span className="flex items-center gap-2"><LucideIcon name={c.icon} size="sm" />{c.name}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>

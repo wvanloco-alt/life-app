@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
   const [created] = await db.insert(activityTypes).values({
     name: name.trim(),
     type: type ?? "cardio",
-    icon: icon ?? "🏃",
+    icon: icon ?? "activity",
     isTracked: isTracked ?? false,
     defaultCalories: defaultCalories ?? null,
     defaultSteps: defaultSteps ?? null,

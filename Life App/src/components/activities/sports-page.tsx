@@ -20,7 +20,7 @@ import { Plus, MoreVertical, Pencil, Trash2, Sparkles } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ActivityTypeForm } from "./sport-form";
 import type { ActivityType } from "@/types";
-import { EmojiIcon } from "@/components/ui/emoji-icon";
+import { LucideIcon } from "@/components/ui/lucide-icon";
 import { DEFAULT_ACTIVITY_TYPES } from "@/lib/defaults";
 
 export function SportsPage() {
@@ -136,7 +136,7 @@ export function SportsPage() {
             <Card key={at.id}>
               <CardHeader className="flex flex-row items-start justify-between pb-2">
                 <div className="flex items-center gap-3">
-                  <EmojiIcon emoji={at.icon} size="lg" />
+                  <LucideIcon name={at.icon} size="lg" />
                   <div>
                     <CardTitle className="text-base">{at.name}</CardTitle>
                     <CardDescription className="capitalize">

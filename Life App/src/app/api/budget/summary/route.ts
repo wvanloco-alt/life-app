@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { budgetSettings, incomeEntries, fixedCosts, spendingEntries, spendingCategories, plannedExpenses } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { format, parseISO, getDaysInMonth, differenceInDays, endOfMonth, addMonths, parse } from "date-fns";
+import { format, parseISO, getDaysInMonth, differenceInDays, endOfMonth, parse, addMonths, isBefore, isAfter } from "date-fns";
 import type { BudgetSummary } from "@/types";
 import { auth } from "@/lib/auth";
 
@@ -70,12 +70,12 @@ export async function GET(request: NextRequest) {
   const byCategory = new Map<string, { amount: number; icon: string; color: string }>();
   const activeFixedCosts = allFixedCosts.filter((fc) => fc.endMonth == null || (fc.startMonth <= month && fc.endMonth >= month));
   for (const fc of activeFixedCosts) {
-    const cur = byCategory.get(fc.category) ?? { amount: 0, icon: "🏠", color: "#6B7280" };
+    const cur = byCategory.get(fc.category) ?? { amount: 0, icon: "home", color: "#6B7280" };
     cur.amount += fc.amount;
     byCategory.set(fc.category, cur);
   }
   for (const e of monthSpending) {
-    const cur = byCategory.get(e.category) ?? { amount: 0, icon: "📦", color: "#6B7280" };
+    const cur = byCategory.get(e.category) ?? { amount: 0, icon: "package", color: "#6B7280" };
     cur.amount += e.amount;
     byCategory.set(e.category, cur);
   }
@@ -104,40 +104,40 @@ export async function GET(request: NextRequest) {
   const catMap = new Map(categories.map((c) => [c.name, c]));
   const spendingByCategory = Array.from(byCategory.entries()).map(([category, { amount }]) => {
     const cat = catMap.get(category);
-    return { category, amount, icon: cat?.icon ?? "📦", color: cat?.color ?? "#6B7280" };
+    return { category, amount, icon: cat?.icon ?? "package", color: cat?.color ?? "#6B7280" };
   });
 
   let savingsGoal: BudgetSummary["savingsGoal"] = null;
   if (settings.savingsGoalTotal != null && settings.savingsGoalTotal > 0) {
-    const allIncome = await db.select().from(incomeEntries).where(eq(incomeEntries.userId, userId));
-    const allSpendingAll = await db.select().from(spendingEntries).where(eq(spendingEntries.userId, userId));
-    const allFixed = await db.select().from(fixedCosts).where(and(eq(fixedCosts.isActive, true), eq(fixedCosts.userId, userId)));
-    const allPlanned = await db.select().from(plannedExpenses).where(eq(plannedExpenses.userId, userId));
+    const allSavingsEntries = await db.select().from(spendingEntries)
+      .where(and(eq(spendingEntries.userId, userId), eq(spendingEntries.category, "Savings")));
+    const allWithdrawalEntries = await db.select().from(spendingEntries)
+      .where(and(eq(spendingEntries.userId, userId), eq(spendingEntries.category, "Savings Withdrawal")));
 
-    const firstMonth = allIncome.length > 0 ? allIncome.reduce((min, e) => (e.month < min ? e.month : min), allIncome[0].month) : month;
-    const firstDate = parse(firstMonth + "-01", "yyyy-MM-dd", new Date());
-    const currentMonthDate = parse(month + "-01", "yyyy-MM-dd", new Date());
+    const totalContributions = allSavingsEntries.reduce((s, e) => s + e.amount, 0);
+    const totalWithdrawals = allWithdrawalEntries.reduce((s, e) => s + e.amount, 0);
 
-    let totalSaved = 0;
-    let d = firstDate;
-    while (d <= currentMonthDate) {
-      const m = format(d, "yyyy-MM");
-      const mStart = m + "-01";
-      const mEnd = format(endOfMonth(d), "yyyy-MM-dd");
-      const mIncome = allIncome.filter((e) => e.month === m).reduce((s, e) => s + e.amount, 0);
-      const mRecBySource = new Map<string, number>();
-      for (const e of allIncome) { if (e.isRecurring) mRecBySource.set(e.source, e.amount); }
-      let mRecurring = 0;
-      const mSources = new Set(allIncome.filter((e) => e.month === m).map((e) => e.source));
-      for (const [source, amt] of mRecBySource) { if (!mSources.has(source)) mRecurring += amt; }
-      const mFixed = allFixed.filter((fc) => fc.endMonth == null || (fc.startMonth <= m && fc.endMonth >= m)).reduce((s, fc) => s + fc.amount, 0);
-      const mSpending = allSpendingAll.filter((e) => e.date >= mStart && e.date <= mEnd).reduce((s, e) => s + e.amount, 0);
-      const mPlanned = allPlanned.filter((pe) => pe.month === m).reduce((s, pe) => s + pe.amount, 0);
-      totalSaved += mIncome + mRecurring - mFixed - mSpending - mPlanned;
-      d = addMonths(d, 1);
+    // Count recurring fixed costs categorised as "Savings" across all months they've been active up to and including the viewed month.
+    const savingsFixedCosts = await db.select().from(fixedCosts)
+      .where(and(eq(fixedCosts.userId, userId), eq(fixedCosts.category, "Savings")));
+
+    let fixedSavingsTotal = 0;
+    const viewedMonthDate = parse(month + "-01", "yyyy-MM-dd", new Date());
+    for (const fc of savingsFixedCosts) {
+      const start = parse(fc.startMonth + "-01", "yyyy-MM-dd", new Date());
+      const end = fc.endMonth ? parse(fc.endMonth + "-01", "yyyy-MM-dd", new Date()) : viewedMonthDate;
+      const effectiveEnd = isBefore(end, viewedMonthDate) ? end : viewedMonthDate;
+      if (isAfter(start, effectiveEnd)) continue;
+      let d = start;
+      while (!isAfter(d, effectiveEnd)) {
+        fixedSavingsTotal += fc.amount;
+        d = addMonths(d, 1);
+      }
     }
 
-    const saved = Math.max(0, totalSaved);
+    const startingBalance = settings.savingsStartingBalance ?? 0;
+    const saved = Math.max(0, startingBalance + totalContributions + fixedSavingsTotal - totalWithdrawals);
+
     const total = settings.savingsGoalTotal;
     savingsGoal = { total, targetDate: settings.savingsGoalTargetDate, saved, percentage: total > 0 ? Math.min(100, Math.round((saved / total) * 10000) / 100) : 0 };
   }

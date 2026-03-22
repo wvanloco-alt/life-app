@@ -41,7 +41,7 @@ import { RunningTrainingPlanDialog } from "./running-training-plan-dialog";
 import { format, isPast, differenceInDays } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Goal, Role, GoalStatus, GoalProgress, TrainingPlan, TrainingSport } from "@/types";
-import { EmojiIcon } from "@/components/ui/emoji-icon";
+import { LucideIcon } from "@/components/ui/lucide-icon";
 
 type ChildGoal = Goal & { progress: { current: number; target: number; percentage: number } };
 
@@ -488,7 +488,7 @@ export function GoalsPage() {
                           <div className="flex items-center gap-1.5 flex-wrap mt-1">
                             {goal.activityTypeIcon && goal.activityTypeName && (
                               <Badge variant="secondary" className="text-xs gap-1">
-                                <EmojiIcon emoji={goal.activityTypeIcon} size="sm" />
+                                <LucideIcon name={goal.activityTypeIcon} size="sm" />
                                 {goal.activityTypeName}
                               </Badge>
                             )}
@@ -623,7 +623,7 @@ export function GoalsPage() {
                           )}
                           {goal.activityTypeIcon && goal.activityTypeName && (
                             <Badge variant="secondary" className="text-xs gap-1">
-                              <EmojiIcon emoji={goal.activityTypeIcon} size="sm" />
+                              <LucideIcon name={goal.activityTypeIcon} size="sm" />
                               {goal.activityTypeName}
                             </Badge>
                           )}

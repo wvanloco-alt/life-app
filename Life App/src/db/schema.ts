@@ -250,6 +250,7 @@ export const budgetSettings = sqliteTable("budget_settings", {
   monthlySavingsTarget: real("monthly_savings_target").notNull().default(0),
   savingsGoalTotal: real("savings_goal_total"),
   savingsGoalTargetDate: text("savings_goal_target_date"),
+  savingsStartingBalance: real("savings_starting_balance").default(0),
   userId: text("user_id").notNull().default(""),
   createdAt: timestamp(),
   updatedAt: updatedAt(),

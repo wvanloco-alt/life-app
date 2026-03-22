@@ -32,6 +32,7 @@ export async function PATCH(request: NextRequest) {
   if (body.monthlySavingsTarget !== undefined) updates.monthlySavingsTarget = Number(body.monthlySavingsTarget);
   if (body.savingsGoalTotal !== undefined) updates.savingsGoalTotal = body.savingsGoalTotal == null ? null : Number(body.savingsGoalTotal);
   if (body.savingsGoalTargetDate !== undefined) updates.savingsGoalTargetDate = body.savingsGoalTargetDate == null ? null : String(body.savingsGoalTargetDate);
+  if (body.savingsStartingBalance !== undefined) updates.savingsStartingBalance = body.savingsStartingBalance == null ? 0 : Number(body.savingsStartingBalance);
 
   const [updated] = await db.update(budgetSettings).set(updates).where(eq(budgetSettings.id, settings.id)).returning();
   return NextResponse.json(updated);

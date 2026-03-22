@@ -22,7 +22,7 @@ import {
 import { QUADRANTS } from "@/lib/quadrants";
 import { generateTimeSlots } from "@/lib/dates";
 import type { Activity, Role, Goal, Quadrant, ActivityType } from "@/types";
-import { EmojiIcon } from "@/components/ui/emoji-icon";
+import { LucideIcon } from "@/components/ui/lucide-icon";
 
 interface ActivityFormProps {
   open: boolean;
@@ -252,7 +252,7 @@ export function ActivityForm({
                   {activityTypes.map((at) => (
                     <SelectItem key={at.id} value={at.id.toString()}>
                       <span className="flex items-center gap-2">
-                        <EmojiIcon emoji={at.icon} size="sm" />
+                        <LucideIcon name={at.icon} size="sm" />
                         {at.name}
                       </span>
                     </SelectItem>

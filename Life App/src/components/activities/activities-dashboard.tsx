@@ -32,7 +32,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { EmptyState } from "@/components/ui/empty-state";
-import { EmojiIcon } from "@/components/ui/emoji-icon";
+import { LucideIcon } from "@/components/ui/lucide-icon";
 import { usePalette } from "@/hooks/use-palette";
 
 interface RoleActivity {
@@ -373,7 +373,7 @@ export function ActivitiesDashboard() {
                     key={s.activityTypeId}
                     className="flex items-center gap-3"
                   >
-                    <EmojiIcon emoji={s.activityTypeIcon} />
+                    <LucideIcon name={s.activityTypeIcon} />
                     <div className="flex-1">
                       <div className="text-sm font-medium">{s.activityTypeName}</div>
                     </div>
@@ -410,7 +410,7 @@ export function ActivitiesDashboard() {
                       key={w.id}
                       className="flex items-center gap-2 text-sm"
                     >
-                      <EmojiIcon emoji={w.activityTypeIcon} size="sm" />
+                      <LucideIcon name={w.activityTypeIcon} size="sm" />
                       <div className="flex-1 min-w-0">
                         <div className="font-medium truncate">
                           {w.activityTypeName}
