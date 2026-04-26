@@ -65,7 +65,7 @@ Each feature below becomes a separate spec-kit specification. Features are order
 - Goals support measurable targets (activityTypeId, targetMetric, targetValue, targetPeriod) with progress tracking
 - Default activity types include non-physical activities (Reading, Meditation, Journaling, Social Event)
 - Schema refactor (sports→activityTypes, workouts→activityLogs), auto-calendar linking, goal progress API, expanded defaults
-- Activity type definitions with type (cardio/strength/mixed), icon, tracked toggle, default calories/steps, custom metrics config, variants (e.g., singles/doubles for tennis), French grade system for climbing
+- Activity type definitions with type (cardio/strength/mixed/wellness/cognitive), icon, tracked toggle, default calories/steps, custom metrics config, variants (e.g., singles/doubles for tennis), French grade system for climbing
 - Body metrics tracking (weight in kg, VO2max in ml/kg/min, resting HR in bpm) with trend line charts
 - Fitness dashboard with stacked bar chart (weekly training volume by activity type), consistency streaks, latest body metrics with trend arrows, recent activity logs
 
@@ -526,6 +526,23 @@ The refactor introduces three new shared UI primitives (icon registry, `LucideIc
 **New files**: `src/lib/auth.ts`, `src/lib/seed-user-defaults.ts`, `src/lib/rate-limit.ts`, `src/components/layout/layout-wrapper.tsx`, `src/middleware.ts`, `apply-schema.js`, `Dockerfile`, `railway.toml`
 
 **Dependencies**: All prior features (this is a cross-cutting change).
+
+---
+
+### Activity Form & Type UX Fixes
+
+**Status**: Complete
+**Completed**: 2026-04-26
+
+**What was fixed**:
+- **Quadrant field removed from Schedule Activity form**: The Quadrant selector was removed from the `ActivityForm` dialog. The value is still stored in the database (defaulting to Q2 for new activities, preserved on edit) but is no longer exposed to the user — it added conceptual overhead without practical value at the individual activity level. Quadrant assignment for goals remains derived from target date as before.
+- **Edit activity double-click bug**: Editing an existing activity opened a stale or empty form on the first click, requiring a second click to see correct data. Fixed by adding `key={editingActivity?.id ?? "new"}` to `ActivityForm` in both `weekly-plan-view.tsx` and `daily-view.tsx`, forcing React to mount a fresh form instance for each distinct activity.
+- **Activity type categories expanded**: Added `wellness` and `cognitive` to the `ActivityCategory` type enum (previously only `cardio`, `strength`, `mixed`). Default activity types corrected: Meditation and Social Event → `wellness`; Reading and Journaling → `cognitive`.
+- **Savings fixed cost future-month inflation**: The savings calculation was incorrectly counting recurring fixed-cost savings contributions for months that hadn't occurred yet when navigating to a future month in the budget view. Fixed by capping the loop upper bound at the current calendar month regardless of which month is being viewed.
+
+**Schema changes**: None.
+**Routes modified**: `GET /api/budget/summary` (savings fixed cost calculation).
+**Files changed**: `activity-form.tsx`, `weekly-plan-view.tsx`, `daily-view.tsx`, `sport-form.tsx`, `types/index.ts`, `defaults.ts`, `budget/summary/route.ts`.
 
 ---
 

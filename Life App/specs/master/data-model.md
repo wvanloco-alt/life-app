@@ -444,7 +444,7 @@ Defines an activity type the user does (e.g., Running, Tennis, Reading, Meditati
 |-------|------|-------------|-------------|
 | id | INTEGER | PK, auto-increment | Unique identifier |
 | name | TEXT | NOT NULL | Activity name (e.g., "Running", "Reading") |
-| type | TEXT | NOT NULL, default 'cardio' | One of: 'cardio', 'strength', 'mixed' (ActivityCategory) |
+| type | TEXT | NOT NULL, default 'cardio' | One of: 'cardio', 'strength', 'mixed', 'wellness', 'cognitive' (ActivityCategory) |
 | icon | TEXT | NOT NULL, default '🏃' | Emoji icon for display |
 | isTracked | INTEGER | NOT NULL, default 0 | 1 = user wears a tracker, calories/steps come from device |
 | defaultCalories | INTEGER | nullable | Auto-fill for untracked activities |

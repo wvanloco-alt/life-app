@@ -1,7 +1,7 @@
 # Life App -- Agent Onboarding Document
 
 > **Purpose**: Get a new AI agent up to speed on the Life App project quickly.
-> **Last updated**: 2026-03-21
+> **Last updated**: 2026-04-26
 
 ---
 
