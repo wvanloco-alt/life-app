@@ -564,6 +564,7 @@ export function WeeklyPlanView() {
       />
 
       <ActivityForm
+        key={editingActivity?.id ?? "new"}
         open={activityFormOpen}
         onClose={() => {
           setActivityFormOpen(false);

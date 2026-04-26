@@ -157,7 +157,7 @@ export interface SchedulerBlackoutDate {
 
 // ─── Activity Types & Logs ──────────────────────────────
 
-export type ActivityCategory = "cardio" | "strength" | "mixed";
+export type ActivityCategory = "cardio" | "strength" | "mixed" | "wellness" | "cognitive";
 
 export interface MetricField {
   key: string;

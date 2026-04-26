@@ -653,6 +653,7 @@ export function DailyView() {
       )}
 
       <ActivityForm
+        key={editingActivity?.id ?? "new"}
         open={formOpen}
         onClose={() => {
           setFormOpen(false);

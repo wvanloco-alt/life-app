@@ -178,6 +178,8 @@ export function ActivityTypeForm({ open, onClose, onSave, activityType }: Activi
                   <SelectItem value="cardio">Cardio</SelectItem>
                   <SelectItem value="strength">Strength</SelectItem>
                   <SelectItem value="mixed">Mixed</SelectItem>
+                  <SelectItem value="wellness">Wellness</SelectItem>
+                  <SelectItem value="cognitive">Cognitive</SelectItem>
                 </SelectContent>
               </Select>
             </div>

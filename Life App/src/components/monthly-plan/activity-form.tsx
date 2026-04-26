@@ -19,7 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { QUADRANTS } from "@/lib/quadrants";
 import { generateTimeSlots } from "@/lib/dates";
 import type { Activity, Role, Goal, Quadrant, ActivityType } from "@/types";
 import { LucideIcon } from "@/components/ui/lucide-icon";
@@ -59,7 +58,6 @@ export function ActivityForm({
   const [activityDate, setActivityDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
-  const [quadrant, setQuadrant] = useState<Quadrant>("Q2");
   const [roleId, setRoleId] = useState<string>("none");
   const [goalId, setGoalId] = useState<string>("none");
   const [activityTypeId, setActivityTypeId] = useState<string>("none");
@@ -76,7 +74,6 @@ export function ActivityForm({
       setActivityDate(activity?.activityDate ?? defaultDate ?? "");
       setStartTime(activity?.startTime ?? defaultStartTime ?? "06:00");
       setEndTime(activity?.endTime ?? getDefaultEndTime(defaultStartTime ?? "06:00"));
-      setQuadrant(activity?.quadrant ?? "Q2");
       setRoleId(activity?.roleId?.toString() ?? "none");
       setGoalId(activity?.goalId?.toString() ?? "none");
       setActivityTypeId(activity?.activityTypeId?.toString() ?? "none");
@@ -121,7 +118,7 @@ export function ActivityForm({
       activityDate,
       startTime,
       endTime,
-      quadrant,
+      quadrant: "Q2",
       roleId: roleId !== "none" ? parseInt(roleId) : null,
       goalId: goalId !== "none" ? parseInt(goalId) : null,
       activityTypeId: activityTypeId !== "none" ? parseInt(activityTypeId) : null,
@@ -197,47 +194,27 @@ export function ActivityForm({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Role (optional)</Label>
-              <Select value={roleId} onValueChange={(v) => { setRoleId(v); setGoalId("none"); }}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No role</SelectItem>
-                  {roles.map((r) => (
-                    <SelectItem key={r.id} value={r.id.toString()}>
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="inline-block h-2.5 w-2.5 rounded-full"
-                          style={{ backgroundColor: r.color }}
-                        />
-                        {r.name}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Quadrant</Label>
-              <Select
-                value={quadrant}
-                onValueChange={(v) => setQuadrant(v as Quadrant)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {QUADRANTS.map((q) => (
-                    <SelectItem key={q.id} value={q.id}>
-                      {q.shortLabel}: {q.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <Label>Role (optional)</Label>
+            <Select value={roleId} onValueChange={(v) => { setRoleId(v); setGoalId("none"); }}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No role</SelectItem>
+                {roles.map((r) => (
+                  <SelectItem key={r.id} value={r.id.toString()}>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="inline-block h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: r.color }}
+                      />
+                      {r.name}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {activityTypes.length > 0 && (

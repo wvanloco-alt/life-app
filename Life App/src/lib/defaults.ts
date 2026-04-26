@@ -84,7 +84,7 @@ export const DEFAULT_ACTIVITY_TYPES = [
   },
   {
     name: "Reading",
-    type: "cardio" as const,
+    type: "cognitive" as const,
     icon: "book-open",
     isTracked: false,
     defaultCalories: null,
@@ -98,7 +98,7 @@ export const DEFAULT_ACTIVITY_TYPES = [
   },
   {
     name: "Meditation",
-    type: "cardio" as const,
+    type: "wellness" as const,
     icon: "wind",
     isTracked: false,
     defaultCalories: null,
@@ -109,7 +109,7 @@ export const DEFAULT_ACTIVITY_TYPES = [
   },
   {
     name: "Journaling",
-    type: "cardio" as const,
+    type: "cognitive" as const,
     icon: "pen-line",
     isTracked: false,
     defaultCalories: null,
@@ -120,7 +120,7 @@ export const DEFAULT_ACTIVITY_TYPES = [
   },
   {
     name: "Social Event",
-    type: "cardio" as const,
+    type: "wellness" as const,
     icon: "users",
     isTracked: false,
     defaultCalories: null,
