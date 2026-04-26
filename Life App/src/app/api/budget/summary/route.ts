@@ -123,10 +123,13 @@ export async function GET(request: NextRequest) {
 
     let fixedSavingsTotal = 0;
     const viewedMonthDate = parse(month + "-01", "yyyy-MM-dd", new Date());
+    const currentMonthDate = parse(format(today, "yyyy-MM") + "-01", "yyyy-MM-dd", new Date());
+    // Never count future months — cap at whichever is earlier: the viewed month or today's month.
+    const upperBound = isBefore(viewedMonthDate, currentMonthDate) ? viewedMonthDate : currentMonthDate;
     for (const fc of savingsFixedCosts) {
       const start = parse(fc.startMonth + "-01", "yyyy-MM-dd", new Date());
-      const end = fc.endMonth ? parse(fc.endMonth + "-01", "yyyy-MM-dd", new Date()) : viewedMonthDate;
-      const effectiveEnd = isBefore(end, viewedMonthDate) ? end : viewedMonthDate;
+      const end = fc.endMonth ? parse(fc.endMonth + "-01", "yyyy-MM-dd", new Date()) : upperBound;
+      const effectiveEnd = isBefore(end, upperBound) ? end : upperBound;
       if (isAfter(start, effectiveEnd)) continue;
       let d = start;
       while (!isAfter(d, effectiveEnd)) {

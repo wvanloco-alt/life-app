@@ -118,7 +118,7 @@ export function ActivityForm({
       activityDate,
       startTime,
       endTime,
-      quadrant: "Q2",
+      quadrant: activity?.quadrant ?? "Q2",
       roleId: roleId !== "none" ? parseInt(roleId) : null,
       goalId: goalId !== "none" ? parseInt(goalId) : null,
       activityTypeId: activityTypeId !== "none" ? parseInt(activityTypeId) : null,
