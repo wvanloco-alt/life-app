@@ -309,4 +309,259 @@ describe("generateSchedule", () => {
     expect(supplemental[0].notes).toContain("SUPP BLOCK");
     expect(supplemental[0].reason).toContain("[Supplemental]");
   });
+
+  // ─── T032: training-supplemental-split scheduler distribution ────────────
+
+  it("places 2+1 split across a 4-week month: 8 training + 4 supplemental", () => {
+    const role = makeRole({ id: 1, name: "Athlete" });
+    const goal = makeGoal({
+      id: 1,
+      title: "Climb hard",
+      sessionsPerWeek: 3,
+      roles: [{ id: 1, name: "Athlete", color: "#EF4444" }],
+    });
+    const phaseMap = new Map<number, TrainingPhaseInfo>([
+      [
+        1,
+        {
+          phaseType: "skill-stamina",
+          displayName: "Skill & Stamina",
+          phaseStartDate: "2026-02-02",
+          durationWeeks: 4,
+          isRest: false,
+          description: "FULL",
+          sportFocusContent: "CLIMB",
+          supplementalContent: "SUPP",
+          mentalGameContent: "MENTAL",
+        },
+      ],
+    ]);
+    const splitMap = new Map<number, TrainingPlanSplit>([
+      [
+        1,
+        {
+          trainingSessionsPerWeek: 2,
+          supplementalSessionsPerWeek: 1,
+          trainingPreferredDays: [],
+          supplementalPreferredDays: [],
+        },
+      ],
+    ]);
+
+    // February 2026 has exactly 28 days = 4 weeks. With sessionsPerWeek = 3
+    // and a 2+1 split, the scheduler must allocate 8 training + 4 supplemental
+    // over the month (allocateSplitTotals proportional math).
+    const result = generateSchedule(
+      [goal],
+      [],
+      [],
+      [role],
+      "2026-02-02",
+      defaultSettings,
+      "month",
+      undefined,
+      undefined,
+      undefined,
+      phaseMap,
+      splitMap
+    );
+
+    const training = result.activities.filter((a) => a.sessionType === "training");
+    const supplemental = result.activities.filter(
+      (a) => a.sessionType === "supplemental"
+    );
+    expect(training.length).toBe(8);
+    expect(supplemental.length).toBe(4);
+  });
+
+  it("honors training and supplemental preferred days separately within a week", () => {
+    const role = makeRole({ id: 1, name: "Athlete" });
+    const goal = makeGoal({
+      id: 1,
+      title: "Climb",
+      sessionsPerWeek: 3,
+      roles: [{ id: 1, name: "Athlete", color: "#EF4444" }],
+    });
+    const phaseMap = new Map<number, TrainingPhaseInfo>([
+      [
+        1,
+        {
+          phaseType: "skill-stamina",
+          displayName: "Skill & Stamina",
+          phaseStartDate: "2026-03-02",
+          durationWeeks: 4,
+          isRest: false,
+          description: "FULL",
+          sportFocusContent: "CLIMB",
+          supplementalContent: "SUPP",
+          mentalGameContent: "MENTAL",
+        },
+      ],
+    ]);
+    const splitMap = new Map<number, TrainingPlanSplit>([
+      [
+        1,
+        {
+          trainingSessionsPerWeek: 2,
+          supplementalSessionsPerWeek: 1,
+          trainingPreferredDays: [1, 3], // Mon, Wed
+          supplementalPreferredDays: [5], // Fri
+        },
+      ],
+    ]);
+
+    // weekStart is Monday 2026-03-02. The 7-day window covers Mon..Sun.
+    const result = generateSchedule(
+      [goal],
+      [],
+      [],
+      [role],
+      "2026-03-02",
+      defaultSettings,
+      "week",
+      undefined,
+      undefined,
+      undefined,
+      phaseMap,
+      splitMap
+    );
+
+    const training = result.activities.filter((a) => a.sessionType === "training");
+    const supplemental = result.activities.filter(
+      (a) => a.sessionType === "supplemental"
+    );
+    expect(training.length).toBe(2);
+    expect(supplemental.length).toBe(1);
+
+    // ISO weekday (1=Mon..7=Sun) from yyyy-mm-dd. Mirrors scheduler.ts's getDayOfWeek.
+    function isoWeekday(dateStr: string): number {
+      const [y, m, d] = dateStr.split("-").map(Number);
+      const dow = new Date(y, m - 1, d).getDay();
+      return dow === 0 ? 7 : dow;
+    }
+
+    for (const t of training) {
+      expect([1, 3]).toContain(isoWeekday(t.activityDate));
+    }
+    for (const s of supplemental) {
+      expect(isoWeekday(s.activityDate)).toBe(5);
+    }
+  });
+
+  it("falls back to any available day when both preferred-day sets are empty", () => {
+    const role = makeRole({ id: 1, name: "Athlete" });
+    const goal = makeGoal({
+      id: 1,
+      title: "Climb",
+      sessionsPerWeek: 3,
+      roles: [{ id: 1, name: "Athlete", color: "#EF4444" }],
+    });
+    const phaseMap = new Map<number, TrainingPhaseInfo>([
+      [
+        1,
+        {
+          phaseType: "skill-stamina",
+          displayName: "Skill & Stamina",
+          phaseStartDate: "2026-03-02",
+          durationWeeks: 4,
+          isRest: false,
+          description: "FULL",
+          sportFocusContent: "CLIMB",
+          supplementalContent: "SUPP",
+          mentalGameContent: "MENTAL",
+        },
+      ],
+    ]);
+    const splitMap = new Map<number, TrainingPlanSplit>([
+      [
+        1,
+        {
+          trainingSessionsPerWeek: 2,
+          supplementalSessionsPerWeek: 1,
+          trainingPreferredDays: [],
+          supplementalPreferredDays: [],
+        },
+      ],
+    ]);
+
+    // Empty preferred-day sets mean the scheduler falls back to "any available
+    // day". The split totals must still be correct, and the existing
+    // distribute-across-days behavior must still hold.
+    const result = generateSchedule(
+      [goal],
+      [],
+      [],
+      [role],
+      "2026-03-02",
+      defaultSettings,
+      "week",
+      undefined,
+      undefined,
+      undefined,
+      phaseMap,
+      splitMap
+    );
+
+    const training = result.activities.filter((a) => a.sessionType === "training");
+    const supplemental = result.activities.filter(
+      (a) => a.sessionType === "supplemental"
+    );
+    expect(training.length).toBe(2);
+    expect(supplemental.length).toBe(1);
+
+    const dates = result.activities.map((a) => a.activityDate);
+    expect(new Set(dates).size).toBe(3);
+  });
+
+  it("generates no sessions when the goal is in a rest phase", () => {
+    const role = makeRole({ id: 1, name: "Athlete" });
+    const goal = makeGoal({
+      id: 1,
+      title: "Climb (rest)",
+      sessionsPerWeek: 3,
+      roles: [{ id: 1, name: "Athlete", color: "#EF4444" }],
+    });
+    const phaseMap = new Map<number, TrainingPhaseInfo>([
+      [
+        1,
+        {
+          phaseType: "rest",
+          displayName: "Rest",
+          phaseStartDate: "2026-03-02",
+          durationWeeks: 1,
+          isRest: true,
+        },
+      ],
+    ]);
+    // A split is also provided so the test proves the rest flag is what filters
+    // the goal out, not the absence of a split.
+    const splitMap = new Map<number, TrainingPlanSplit>([
+      [
+        1,
+        {
+          trainingSessionsPerWeek: 2,
+          supplementalSessionsPerWeek: 1,
+          trainingPreferredDays: [],
+          supplementalPreferredDays: [],
+        },
+      ],
+    ]);
+
+    const result = generateSchedule(
+      [goal],
+      [],
+      [],
+      [role],
+      "2026-03-02",
+      defaultSettings,
+      "week",
+      undefined,
+      undefined,
+      undefined,
+      phaseMap,
+      splitMap
+    );
+
+    expect(result.activities).toHaveLength(0);
+  });
 });
