@@ -1,0 +1,34 @@
+---
+description: Writing style rules for all text output, applies to documents, messages, headings, tables, and any prose
+alwaysApply: true
+---
+
+# Writing style
+
+## 1. No em dashes
+Never use " — " or " — " as a connector. Use a comma or colon instead.
+
+- Wrong: "The Gateway validates the JWT — blocking unauthorized access"
+- Right: "The Gateway validates the JWT, blocking unauthorized access"
+- Wrong: "The silent expert — doesn't explain much but solves hard problems"
+- Right: "The silent expert: doesn't explain much but solves hard problems"
+
+## 2. Sentence case in headings
+Capitalize only the first word and proper nouns. Never use Title Case.
+
+- Wrong: "## How It Integrates with the Catalog"
+- Right: "## How it integrates with the Catalog"
+- Wrong: "### Request Lifecycle — Approved Server"
+- Right: "### Request lifecycle: approved server"
+- Proper nouns stay capitalized: "## Social IdP security: solved at the Gateway level"
+
+## 3. No superlatives about own work
+Don't hype what was built. Describe it, let the reader decide if it's impressive.
+
+- Wrong: "This is my proudest technical achievement"
+- Wrong: "Skills are the newest and most powerful layer"
+- Wrong: "This is transformative for non-technical builders"
+- Right: just describe what it does and how it works
+
+## 4. No unsolicited advice paragraphs
+Don't add wrap-up paragraphs that tell the reader what to take away. If the content is clear, it speaks for itself. Avoid "For you:" or "The takeaway:" summary blocks at the end of sections.
