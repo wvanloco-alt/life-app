@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Sparkles,
   Repeat,
@@ -21,9 +22,22 @@ import { RecurringManager } from "./recurring-manager";
 import { FocusPicker } from "./focus-picker";
 import { SchedulerSettingsDialog } from "./scheduler-settings-dialog";
 import { getWeekStartDate, getWeekDates } from "@/lib/dates";
+import {
+  getSessionTypeCardClasses,
+  shouldShowSupplementalBadge,
+} from "@/lib/session-type-styles";
+import { cn } from "@/lib/utils";
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, eachWeekOfInterval } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Role, Goal, Activity, RecurringActivity, WeeklyPlan, Quadrant } from "@/types";
+import type {
+  Role,
+  Goal,
+  Activity,
+  RecurringActivity,
+  WeeklyPlan,
+  Quadrant,
+  SessionType,
+} from "@/types";
 import type { ScheduleProposal } from "@/lib/scheduler";
 
 export function WeeklyPlanView() {
@@ -192,6 +206,7 @@ export function WeeklyPlanView() {
     goalId: number | null;
     activityTypeId: number | null;
     notes: string;
+    sessionType: SessionType;
   }) {
     if (editingActivity) {
       await fetch(`/api/activities/${editingActivity.id}`, {
@@ -354,6 +369,11 @@ export function WeeklyPlanView() {
   const monthWeekStarts = eachWeekOfInterval(
     { start: startOfMonth(currentDate), end: endOfMonth(currentDate) },
     { weekStartsOn: 1 }
+  );
+
+  const dragOverlaySessionType = draggingActivity?.sessionType ?? "training";
+  const showDragOverlaySupplementalBadge = shouldShowSupplementalBadge(
+    dragOverlaySessionType
   );
 
   if (loading) {
@@ -537,9 +557,31 @@ export function WeeklyPlanView() {
 
         <DragOverlay>
           {draggingActivity && (
-            <div className="rounded px-2 py-1 text-xs bg-background border shadow-lg max-w-[140px]">
-              <div className="font-medium truncate">{draggingActivity.title}</div>
-              <div className="text-muted-foreground">{draggingActivity.startTime}–{draggingActivity.endTime}</div>
+            <div
+              className={cn(
+                "relative rounded px-2 py-1 text-xs border shadow-lg max-w-[160px]",
+                getSessionTypeCardClasses(dragOverlaySessionType)
+              )}
+            >
+              {showDragOverlaySupplementalBadge && (
+                <Badge
+                  variant="secondary"
+                  className="absolute right-0.5 top-0.5 h-4 px-1 text-[9px] font-normal leading-none"
+                >
+                  Supplemental
+                </Badge>
+              )}
+              <div
+                className={cn(
+                  "font-medium truncate",
+                  showDragOverlaySupplementalBadge && "pr-11"
+                )}
+              >
+                {draggingActivity.title}
+              </div>
+              <div className="text-muted-foreground">
+                {draggingActivity.startTime}–{draggingActivity.endTime}
+              </div>
             </div>
           )}
         </DragOverlay>

@@ -20,6 +20,7 @@ export async function PATCH(
   if (existing.length === 0) return NextResponse.json({ error: "Activity not found" }, { status: 404 });
 
   const body = await request.json();
+  // Only keys listed below are written; omitted fields (e.g. sessionType on date-only PATCH) stay unchanged.
   const updates: Record<string, unknown> = { updatedAt: new Date().toISOString() };
 
   if (body.title !== undefined) updates.title = body.title.trim();
@@ -33,6 +34,12 @@ export async function PATCH(
   if (body.roleId !== undefined) updates.roleId = body.roleId;
   if (body.goalId !== undefined) updates.goalId = body.goalId;
   if (body.activityTypeId !== undefined) updates.activityTypeId = body.activityTypeId;
+  if (body.sessionType !== undefined) {
+    if (body.sessionType !== "training" && body.sessionType !== "supplemental") {
+      return NextResponse.json({ error: "sessionType must be training or supplemental" }, { status: 400 });
+    }
+    updates.sessionType = body.sessionType;
+  }
 
   const [updated] = await db.update(activities).set(updates).where(and(eq(activities.id, activityId), eq(activities.userId, userId))).returning();
   return NextResponse.json(updated);

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { generateSchedule } from "../scheduler";
+import { generateSchedule, type TrainingPhaseInfo } from "../scheduler";
 import type { Goal, Activity, RecurringActivity, Role, SchedulerSettings } from "@/types";
+import type { TrainingPlanSplit } from "../training/split";
 
 function makeRole(overrides: Partial<Role> & { id: number; name: string }): Role {
   return {
@@ -182,6 +183,7 @@ describe("generateSchedule", () => {
         isLogEntry: false,
         notes: null,
         carryForwardFrom: null,
+        sessionType: "training",
         createdAt: "",
         updatedAt: "",
       },
@@ -247,5 +249,64 @@ describe("generateSchedule", () => {
     expect(resultMonth.activities.length).toBeGreaterThan(
       resultWeek.activities.length
     );
+  });
+
+  it("tags training vs supplemental when a training plan split is present", () => {
+    const role = makeRole({ id: 1, name: "Athlete" });
+    const goal = makeGoal({
+      id: 1,
+      title: "Climb hard",
+      sessionsPerWeek: 4,
+      roles: [{ id: 1, name: "Athlete", color: "#EF4444" }],
+    });
+    const phaseMap = new Map<number, TrainingPhaseInfo>([
+      [
+        1,
+        {
+          phaseType: "skill-stamina",
+          displayName: "Skill & Stamina",
+          phaseStartDate: weekStart,
+          durationWeeks: 4,
+          isRest: false,
+          description: "FULL DESC",
+          sportFocusContent: "CLIMB FOCUS",
+          supplementalContent: "SUPP BLOCK",
+          mentalGameContent: "MENTAL BLOCK",
+        },
+      ],
+    ]);
+    const splitMap = new Map<number, TrainingPlanSplit>([
+      [
+        1,
+        {
+          trainingSessionsPerWeek: 2,
+          supplementalSessionsPerWeek: 2,
+          trainingPreferredDays: [],
+          supplementalPreferredDays: [],
+        },
+      ],
+    ]);
+    const result = generateSchedule(
+      [goal],
+      [],
+      [],
+      [role],
+      weekStart,
+      defaultSettings,
+      "week",
+      undefined,
+      undefined,
+      undefined,
+      phaseMap,
+      splitMap
+    );
+    const training = result.activities.filter((a) => a.sessionType === "training");
+    const supplemental = result.activities.filter((a) => a.sessionType === "supplemental");
+    expect(training.length).toBe(2);
+    expect(supplemental.length).toBe(2);
+    expect(training[0].notes).toContain("CLIMB FOCUS");
+    expect(training[0].notes).toContain("MENTAL BLOCK");
+    expect(supplemental[0].notes).toContain("SUPP BLOCK");
+    expect(supplemental[0].reason).toContain("[Supplemental]");
   });
 });

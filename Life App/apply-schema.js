@@ -330,10 +330,42 @@ const alterStatements = [
   `ALTER TABLE goals ADD COLUMN preferred_days TEXT`,
   `ALTER TABLE goals ADD COLUMN preferred_time_slot TEXT`,
   `ALTER TABLE budget_settings ADD COLUMN savings_starting_balance REAL DEFAULT 0`,
+  `ALTER TABLE training_plans ADD COLUMN training_sessions_per_week INTEGER`,
+  `ALTER TABLE training_plans ADD COLUMN supplemental_sessions_per_week INTEGER`,
+  `ALTER TABLE training_plans ADD COLUMN training_preferred_days TEXT DEFAULT '[]'`,
+  `ALTER TABLE training_plans ADD COLUMN supplemental_preferred_days TEXT DEFAULT '[]'`,
+  `ALTER TABLE training_phases ADD COLUMN sport_focus_content TEXT`,
+  `ALTER TABLE training_phases ADD COLUMN supplemental_content TEXT`,
+  `ALTER TABLE training_phases ADD COLUMN mental_game_content TEXT`,
+  `ALTER TABLE activities ADD COLUMN session_type TEXT NOT NULL DEFAULT 'training'`,
 ];
 
 for (const sql of alterStatements) {
   run(sql);
+}
+
+// ─── 2b. Backfill training_plans split for existing rows (training-supplemental-split V1) ─
+// Default formula: supplemental = min(2, max(0, sessions_per_week - 2)); training = sessions_per_week - supplemental.
+// Gated by `IS NULL` so user-edited values are never overwritten. Safe to re-run.
+
+try {
+  db.exec(`
+    UPDATE training_plans
+    SET
+      training_sessions_per_week = (
+        SELECT g.sessions_per_week - MIN(2, MAX(0, g.sessions_per_week - 2))
+        FROM goals g WHERE g.id = training_plans.goal_id
+      ),
+      supplemental_sessions_per_week = (
+        SELECT MIN(2, MAX(0, g.sessions_per_week - 2))
+        FROM goals g WHERE g.id = training_plans.goal_id
+      )
+    WHERE training_sessions_per_week IS NULL
+       OR supplemental_sessions_per_week IS NULL
+  `);
+  console.log("apply-schema: training_plans split backfill applied (idempotent).");
+} catch (e) {
+  console.error("apply-schema: training_plans split backfill FAILED:", e.message);
 }
 
 // ─── 3. Seed new default spending categories for existing users ──────────────

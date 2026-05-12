@@ -2,10 +2,16 @@
 
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Plus, CheckCircle2, Circle, Repeat, FileCheck, FileText } from "lucide-react";
 import { useDroppable, useDraggable } from "@dnd-kit/core";
 import { isToday } from "@/lib/dates";
 import { getQuadrantInfo } from "@/lib/quadrants";
+import {
+  getSessionTypeCardClasses,
+  shouldShowSupplementalBadge,
+} from "@/lib/session-type-styles";
+import { cn } from "@/lib/utils";
 import type { Activity, RecurringActivity } from "@/types";
 
 interface DayColumnProps {
@@ -38,10 +44,17 @@ function DraggableActivity({
   });
 
   const quadrant = getQuadrantInfo(activity.quadrant);
+  const sessionType = activity.sessionType ?? "training";
+  const isSupplemental = sessionType === "supplemental";
+  const showSupplementalBadge = shouldShowSupplementalBadge(sessionType);
   const style: React.CSSProperties = {
-    backgroundColor: activity.roleColor
-      ? `${activity.roleColor}20`
-      : `${quadrant.hexColor}15`,
+    ...(!isSupplemental
+      ? {
+          backgroundColor: activity.roleColor
+            ? `${activity.roleColor}20`
+            : `${quadrant.hexColor}15`,
+        }
+      : {}),
     borderLeft: `3px solid ${activity.roleColor ?? quadrant.hexColor}`,
     ...(transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : {}),
     opacity: isDragging ? 0.4 : activity.isCompleted ? 0.5 : 1,
@@ -57,10 +70,21 @@ function DraggableActivity({
       onClick={() => onClick(activity)}
       role="button"
       tabIndex={0}
-      className="w-full text-left rounded px-1.5 py-1 text-xs transition-opacity hover:opacity-80"
+      className={cn(
+        "relative w-full text-left rounded px-1.5 py-1 text-xs transition-opacity hover:opacity-80 border",
+        getSessionTypeCardClasses(sessionType)
+      )}
       style={style}
     >
-      <div className="flex items-start gap-1">
+      {showSupplementalBadge && (
+        <Badge
+          variant="secondary"
+          className="absolute right-0.5 top-0.5 z-10 h-4 px-1 text-[9px] font-normal leading-none"
+        >
+          Supplemental
+        </Badge>
+      )}
+      <div className={cn("flex items-start gap-1", showSupplementalBadge && "pr-12")}>
         <button
           onClick={(e) => {
             e.stopPropagation();

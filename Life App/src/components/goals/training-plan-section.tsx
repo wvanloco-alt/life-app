@@ -10,6 +10,7 @@ import {
   Trash2,
   ChevronDown,
   ChevronUp,
+  Pencil,
 } from "lucide-react";
 import type { TrainingPlan, TrainingPhase, TennisSportProfile, RunningSportProfile } from "@/types";
 import { getPhaseDisplayName } from "@/lib/training/periodization";
@@ -17,6 +18,10 @@ import { getPhaseDisplayName } from "@/lib/training/periodization";
 interface TrainingPlanSectionProps {
   plan: TrainingPlan;
   onRefresh: () => void;
+  /** Shown on the goal card; used to reconcile split with goal.sessionsPerWeek */
+  goalSessionsPerWeek: number;
+  /** Climbing-only: opens edit dialog for split & preferred days */
+  onEditTrainingSplit?: () => void;
 }
 
 const PHASE_COLORS: Record<string, string> = {
@@ -91,7 +96,12 @@ const GOAL_DISTANCE_LABELS: Record<string, string> = {
   general: "General Fitness",
 };
 
-export function TrainingPlanSection({ plan, onRefresh }: TrainingPlanSectionProps) {
+export function TrainingPlanSection({
+  plan,
+  onRefresh,
+  goalSessionsPerWeek,
+  onEditTrainingSplit,
+}: TrainingPlanSectionProps) {
   const [expanded, setExpanded] = useState(false);
   const [acting, setActing] = useState(false);
 
@@ -99,6 +109,7 @@ export function TrainingPlanSection({ plan, onRefresh }: TrainingPlanSectionProp
   const activePhase = phases.find((p) => p.status === "active");
   const totalWeeks = phases.reduce((s, p) => s + p.durationWeeks, 0);
   const isCompleted = plan.status === "completed";
+  const isClimbingPlan = plan.sport === "climbing";
   const isTennis = plan.sport === "tennis";
   const isRunning = plan.sport === "running";
   const tennisProfile = isTennis ? (plan.sportProfile as TennisSportProfile) : null;
@@ -301,7 +312,30 @@ export function TrainingPlanSection({ plan, onRefresh }: TrainingPlanSectionProp
             ))}
           </div>
 
-          <div className="flex gap-2 pt-1">
+          {isClimbingPlan &&
+            plan.trainingSessionsPerWeek != null &&
+            plan.supplementalSessionsPerWeek != null &&
+            plan.trainingSessionsPerWeek + plan.supplementalSessionsPerWeek !== goalSessionsPerWeek && (
+              <p className="text-[10px] text-amber-600 dark:text-amber-400">
+                Weekly split sums to{" "}
+                {plan.trainingSessionsPerWeek + plan.supplementalSessionsPerWeek}; goal is{" "}
+                {goalSessionsPerWeek}/wk — open Edit plan to align.
+              </p>
+            )}
+
+          <div className="flex gap-2 pt-1 flex-wrap">
+            {isClimbingPlan && onEditTrainingSplit && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-6 text-[10px] px-2"
+                onClick={onEditTrainingSplit}
+                disabled={acting}
+              >
+                <Pencil className="mr-1 h-3 w-3" />
+                Edit plan
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"

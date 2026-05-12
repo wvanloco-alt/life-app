@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
     isLogEntry: activities.isLogEntry,
     notes: activities.notes,
     carryForwardFrom: activities.carryForwardFrom,
+    sessionType: activities.sessionType,
     createdAt: activities.createdAt,
     updatedAt: activities.updatedAt,
     roleName: roles.name,
@@ -61,10 +62,30 @@ export async function POST(request: NextRequest) {
   const userId = session.user.id;
 
   const body = await request.json();
-  const { title, quadrant, activityDate, startTime, endTime, roleId, goalId, notes, isLogEntry, activityTypeId } = body;
+  const {
+    title,
+    quadrant,
+    activityDate,
+    startTime,
+    endTime,
+    roleId,
+    goalId,
+    notes,
+    isLogEntry,
+    activityTypeId,
+    sessionType: rawSessionType,
+  } = body;
 
   if (!title || !activityDate || !startTime || !endTime) {
     return NextResponse.json({ error: "title, activityDate, startTime, and endTime are required" }, { status: 400 });
+  }
+
+  let sessionType: "training" | "supplemental" = "training";
+  if (rawSessionType !== undefined) {
+    if (rawSessionType !== "training" && rawSessionType !== "supplemental") {
+      return NextResponse.json({ error: "sessionType must be training or supplemental" }, { status: 400 });
+    }
+    sessionType = rawSessionType;
   }
 
   const [created] = await db.insert(activities).values({
@@ -78,6 +99,7 @@ export async function POST(request: NextRequest) {
     activityTypeId: activityTypeId ?? null,
     notes: notes?.trim() || null,
     isLogEntry: isLogEntry ?? false,
+    sessionType,
     userId,
   }).returning();
 

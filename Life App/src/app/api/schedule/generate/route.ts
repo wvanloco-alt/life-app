@@ -17,6 +17,7 @@ import {
 import { eq, and } from "drizzle-orm";
 import { generateSchedule, type MonthlyOverride, type SessionPattern, type TrainingPhaseInfo } from "@/lib/scheduler";
 import { getPhaseDisplayName } from "@/lib/training/periodization";
+import { defaultSplit, type TrainingPlanSplit } from "@/lib/training/split";
 import { deriveQuadrant } from "@/lib/quadrants";
 import type { SchedulerSettings } from "@/types";
 import { auth } from "@/lib/auth";
@@ -70,6 +71,16 @@ function getMonthDateRange(weekStartDate: string): string[] {
     dates.push(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`);
   }
   return dates;
+}
+
+function parseDayIds(raw: string | null | undefined): number[] {
+  if (!raw) return [];
+  try {
+    const v = JSON.parse(raw);
+    return Array.isArray(v) ? v.filter((x): x is number => typeof x === "number") : [];
+  } catch {
+    return [];
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -194,11 +205,29 @@ export async function POST(request: NextRequest) {
     }
 
     const trainingPhaseMap = new Map<number, TrainingPhaseInfo>();
+    const trainingPlanSplitMap = new Map<number, TrainingPlanSplit>();
     for (const fg of focusGoals) {
       const lookupId = parentIdMap.get(fg.id) ?? fg.id;
       const plans = await db.select().from(trainingPlans).where(and(eq(trainingPlans.goalId, lookupId), eq(trainingPlans.userId, userId)));
       if (plans.length > 0) {
-        const activePhases = await db.select().from(trainingPhases).where(and(eq(trainingPhases.trainingPlanId, plans[0].id), eq(trainingPhases.status, "active")));
+        const planRow = plans[0];
+        const override = monthlyOverrides.get(fg.id);
+        const spwForSplit = override?.sessionsPerWeek ?? fg.sessionsPerWeek;
+        let trainingCount = planRow.trainingSessionsPerWeek;
+        let supplementalCount = planRow.supplementalSessionsPerWeek;
+        if (trainingCount == null || supplementalCount == null) {
+          const d = defaultSplit(spwForSplit);
+          trainingCount = d.training;
+          supplementalCount = d.supplemental;
+        }
+        trainingPlanSplitMap.set(fg.id, {
+          trainingSessionsPerWeek: trainingCount,
+          supplementalSessionsPerWeek: supplementalCount,
+          trainingPreferredDays: parseDayIds(planRow.trainingPreferredDays),
+          supplementalPreferredDays: parseDayIds(planRow.supplementalPreferredDays),
+        });
+
+        const activePhases = await db.select().from(trainingPhases).where(and(eq(trainingPhases.trainingPlanId, planRow.id), eq(trainingPhases.status, "active")));
         if (activePhases.length > 0) {
           const ap = activePhases[0];
           trainingPhaseMap.set(fg.id, {
@@ -208,6 +237,9 @@ export async function POST(request: NextRequest) {
             durationWeeks: ap.durationWeeks,
             isRest: ap.phaseType === "rest" || ap.phaseType === "recovery",
             description: ap.description || undefined,
+            sportFocusContent: ap.sportFocusContent ?? undefined,
+            supplementalContent: ap.supplementalContent ?? undefined,
+            mentalGameContent: ap.mentalGameContent ?? undefined,
             limitationNotes: ap.limitationNotes || undefined,
           });
         }
@@ -225,7 +257,8 @@ export async function POST(request: NextRequest) {
       monthlyOverrides.size > 0 ? monthlyOverrides : undefined,
       blackoutDates,
       goalPatterns.size > 0 ? goalPatterns : undefined,
-      trainingPhaseMap.size > 0 ? trainingPhaseMap : undefined
+      trainingPhaseMap.size > 0 ? trainingPhaseMap : undefined,
+      trainingPlanSplitMap.size > 0 ? trainingPlanSplitMap : undefined
     );
 
     return NextResponse.json({

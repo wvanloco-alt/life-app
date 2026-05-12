@@ -29,7 +29,7 @@ export async function POST(
 
   await db.delete(trainingPhases).where(eq(trainingPhases.trainingPlanId, planId));
 
-  let newPhases: { phaseType: string; orderIndex: number; durationWeeks: number; startDate: string; endDate: string; description: string; limitationNotes?: string | null }[];
+  let newPhases: { phaseType: string; orderIndex: number; durationWeeks: number; startDate: string; endDate: string; description: string; sportFocusContent?: string | null; supplementalContent?: string | null; mentalGameContent?: string | null; limitationNotes?: string | null }[];
 
   if (plan.sport === "running") {
     const profile = JSON.parse(plan.sportProfile) as RunningSportProfile;
@@ -44,10 +44,30 @@ export async function POST(
 
   const insertedPhases = [];
   for (const gp of newPhases) {
-    const [phase] = await db.insert(trainingPhases).values({ trainingPlanId: planId, phaseType: gp.phaseType, orderIndex: gp.orderIndex, durationWeeks: gp.durationWeeks, startDate: gp.startDate, endDate: gp.endDate, status: gp.orderIndex === 0 ? "active" : "upcoming", description: gp.description, limitationNotes: gp.limitationNotes ?? null }).returning();
+    const [phase] = await db
+      .insert(trainingPhases)
+      .values({
+        trainingPlanId: planId,
+        phaseType: gp.phaseType,
+        orderIndex: gp.orderIndex,
+        durationWeeks: gp.durationWeeks,
+        startDate: gp.startDate,
+        endDate: gp.endDate,
+        status: gp.orderIndex === 0 ? "active" : "upcoming",
+        description: gp.description,
+        sportFocusContent: gp.sportFocusContent ?? null,
+        supplementalContent: gp.supplementalContent ?? null,
+        mentalGameContent: gp.mentalGameContent ?? null,
+        limitationNotes: gp.limitationNotes ?? null,
+      })
+      .returning();
     insertedPhases.push(phase);
   }
 
+  // NOTE: This UPDATE deliberately does NOT touch trainingSessionsPerWeek,
+  // supplementalSessionsPerWeek, trainingPreferredDays, or
+  // supplementalPreferredDays. The split is a deliberate user preference and
+  // persists across cycle restarts (FR-009). Audit verified 2026-05-11.
   await db.update(trainingPlans).set({ startDate: today, status: "active", updatedAt: new Date().toISOString() }).where(and(eq(trainingPlans.id, planId), eq(trainingPlans.userId, userId)));
   const [updatedPlan] = await db.select().from(trainingPlans).where(eq(trainingPlans.id, planId));
 

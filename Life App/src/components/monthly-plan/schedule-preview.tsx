@@ -17,6 +17,11 @@ import {
 import { AlertTriangle, CalendarPlus, Sparkles, Clock } from "lucide-react";
 import { formatTime, formatDate } from "@/lib/dates";
 import { getQuadrantInfo } from "@/lib/quadrants";
+import {
+  getSessionTypeCardClasses,
+  shouldShowSupplementalBadge,
+} from "@/lib/session-type-styles";
+import { cn } from "@/lib/utils";
 import type { ScheduleProposal } from "@/lib/scheduler";
 
 interface SchedulePreviewProps {
@@ -93,11 +98,27 @@ export function SchedulePreview({
                   <div className="space-y-2">
                     {dayActivities.map((act, i) => {
                       const quadrant = getQuadrantInfo(act.quadrant);
+                      const sessionType = act.sessionType ?? "training";
+                      const showSupplementalBadge =
+                        shouldShowSupplementalBadge(sessionType);
                       return (
-                        <Card key={i}>
-                          <CardContent className="flex items-start gap-3 py-3">
+                        <Card key={i} className={cn("border", getSessionTypeCardClasses(sessionType))}>
+                          <CardContent className="relative flex items-start gap-3 py-3">
+                            {showSupplementalBadge && (
+                              <Badge
+                                variant="secondary"
+                                className="absolute right-3 top-2.5 text-[10px] font-normal"
+                              >
+                                Supplemental
+                              </Badge>
+                            )}
                             <Clock className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                            <div className="flex-1 min-w-0">
+                            <div
+                              className={cn(
+                                "flex-1 min-w-0",
+                                showSupplementalBadge && "pr-24"
+                              )}
+                            >
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-medium text-sm">
                                   {act.title}

@@ -9,6 +9,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   ChevronLeft,
@@ -29,9 +30,22 @@ import {
   getWeekStartDate,
 } from "@/lib/dates";
 import { getQuadrantInfo } from "@/lib/quadrants";
+import {
+  getSessionTypeCardClasses,
+  shouldShowSupplementalBadge,
+} from "@/lib/session-type-styles";
+import { cn } from "@/lib/utils";
 import { ActivityForm } from "@/components/monthly-plan/activity-form";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Activity, Role, Goal, Quadrant, ActivityLog, ActivityType } from "@/types";
+import type {
+  Activity,
+  Role,
+  Goal,
+  Quadrant,
+  ActivityLog,
+  ActivityType,
+  SessionType,
+} from "@/types";
 import {
   Dialog,
   DialogContent,
@@ -342,6 +356,7 @@ export function DailyView() {
     goalId: number | null;
     activityTypeId: number | null;
     notes: string;
+    sessionType: SessionType;
   }) {
     if (editingActivity) {
       await fetch(`/api/activities/${editingActivity.id}`, {
@@ -439,16 +454,39 @@ export function DailyView() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    {activeCarryForward.map((activity) => (
+                    {activeCarryForward.map((activity) => {
+                      const sessionType = activity.sessionType ?? "training";
+                      const showSupplementalBadge =
+                        shouldShowSupplementalBadge(sessionType);
+                      return (
                       <div
                         key={activity.id}
-                        className="flex items-center gap-2 text-sm rounded-md border border-amber-200 dark:border-amber-900 bg-background p-2"
+                        className={cn(
+                          "flex items-center gap-2 text-sm rounded-md border border-amber-200 dark:border-amber-900 p-2",
+                          sessionType === "supplemental"
+                            ? "bg-muted/50"
+                            : "bg-background"
+                        )}
                       >
                         <div className="flex-1 min-w-0">
-                          <span className="font-medium">{activity.title}</span>
-                          <span className="text-xs text-muted-foreground ml-2">
-                            from {format(new Date(activity.activityDate + "T00:00:00"), "EEE")}
-                          </span>
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                            <span className="font-medium">{activity.title}</span>
+                            {showSupplementalBadge && (
+                              <Badge
+                                variant="secondary"
+                                className="text-[10px] font-normal shrink-0"
+                              >
+                                Supplemental
+                              </Badge>
+                            )}
+                            <span className="text-xs text-muted-foreground">
+                              from{" "}
+                              {format(
+                                new Date(activity.activityDate + "T00:00:00"),
+                                "EEE"
+                              )}
+                            </span>
+                          </div>
                         </div>
                         <Button
                           variant="outline"
@@ -468,7 +506,8 @@ export function DailyView() {
                           <X className="h-3 w-3" />
                         </Button>
                       </div>
-                    ))}
+                    );
+                    })}
                   </div>
                 </CardContent>
               </Card>
@@ -518,6 +557,10 @@ export function DailyView() {
                   <div className="space-y-2">
                     {sortedActivities.map((activity) => {
                       const quadrant = getQuadrantInfo(activity.quadrant);
+                      const sessionType = activity.sessionType ?? "training";
+                      const isSupplemental = sessionType === "supplemental";
+                      const showSupplementalBadge =
+                        shouldShowSupplementalBadge(sessionType);
                       const effectiveActivityTypeId =
                         activity.activityTypeId ??
                         goals.find((g) => g.id === activity.goalId)?.activityTypeId ??
@@ -528,9 +571,11 @@ export function DailyView() {
                       return (
                         <div
                           key={activity.id}
-                          className={`group flex items-start gap-3 rounded-lg border p-3 transition-opacity cursor-pointer hover:bg-accent/50 ${
-                            activity.isCompleted ? "opacity-50" : ""
-                          }`}
+                          className={cn(
+                            "group relative flex items-start gap-3 rounded-lg border p-3 transition-opacity cursor-pointer hover:bg-accent/50",
+                            getSessionTypeCardClasses(sessionType),
+                            activity.isCompleted && "opacity-50"
+                          )}
                           onClick={() => {
                             setEditingActivity(activity);
                             setFormOpen(true);
@@ -541,6 +586,14 @@ export function DailyView() {
                               activity.roleColor ?? quadrant.hexColor,
                           }}
                         >
+                          {showSupplementalBadge && (
+                            <Badge
+                              variant="secondary"
+                              className="absolute right-2 top-2 z-10 text-[10px] font-normal"
+                            >
+                              Supplemental
+                            </Badge>
+                          )}
                           <Checkbox
                             checked={activity.isCompleted}
                             onCheckedChange={(checked) => {
@@ -549,7 +602,12 @@ export function DailyView() {
                             onClick={(e) => e.stopPropagation()}
                             className="mt-0.5"
                           />
-                          <div className="flex-1 min-w-0">
+                          <div
+                            className={cn(
+                              "flex-1 min-w-0",
+                              showSupplementalBadge && "pr-24"
+                            )}
+                          >
                             <div
                               className={`font-medium text-sm ${
                                 activity.isCompleted ? "line-through" : ""
@@ -580,11 +638,20 @@ export function DailyView() {
                             )}
                           </div>
                           <span
-                            className="text-xs px-1.5 py-0.5 rounded shrink-0"
-                            style={{
-                              backgroundColor: `${quadrant.hexColor}20`,
-                              color: quadrant.hexColor,
-                            }}
+                            className={cn(
+                              "text-xs px-1.5 py-0.5 rounded shrink-0",
+                              isSupplemental
+                                ? "bg-muted/50 text-muted-foreground"
+                                : ""
+                            )}
+                            style={
+                              isSupplemental
+                                ? undefined
+                                : {
+                                    backgroundColor: `${quadrant.hexColor}20`,
+                                    color: quadrant.hexColor,
+                                  }
+                            }
                           >
                             {quadrant.shortLabel}
                           </span>

@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
         goalId: act.goalId ?? null,
         activityTypeId: act.activityTypeId ?? null,
         notes: act.notes ? `${act.reason}\n\n${act.notes}` : act.reason,
+        sessionType: act.sessionType ?? "training",
         userId,
       }).returning();
       created.push(row);

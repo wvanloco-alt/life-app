@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { trainingPlans, trainingPhases } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { buildClimbingPhaseDescription, buildClimbingLimitationNotes } from "@/lib/training/periodization";
+import { buildClimbingPhaseDescription, buildClimbingPhaseContent, buildClimbingLimitationNotes } from "@/lib/training/periodization";
 import { buildPhaseDescription, buildLimitationNotes } from "@/lib/training/tennis-periodization";
 import { buildRunningPhaseDescription, buildRunningLimitationNotes } from "@/lib/training/running-periodization";
 import type { ClimbingPhaseType, ClimbingSportProfile, ClimbingLimitation, TennisSportProfile, TennisPlayingStyle, TennisPlayerLevel, PhysicalLimitation, ClimberLevel, RunningSportProfile, RunningPhaseType, RunningGoalDistance, RunnerLevel, RunningLimitation } from "@/types";
@@ -23,6 +23,12 @@ export async function POST() {
     for (const phase of phases) {
       let description: string;
       let limitationNotes: string | null = null;
+      // Climbing phases get the three layered content fields written separately
+      // (training-supplemental-split V1). Tennis and running leave them NULL
+      // until their content rollouts (V1.1, V1.2).
+      let sportFocusContent: string | null = null;
+      let supplementalContent: string | null = null;
+      let mentalGameContent: string | null = null;
 
       if (plan.sport === "tennis") {
         const tp = profile as TennisSportProfile;
@@ -34,11 +40,20 @@ export async function POST() {
         limitationNotes = buildRunningLimitationNotes(phase.phaseType as RunningPhaseType, (rp.physicalLimitations ?? []) as RunningLimitation[]);
       } else {
         const cp = profile as ClimbingSportProfile;
-        description = buildClimbingPhaseDescription(phase.phaseType as ClimbingPhaseType, cp.discipline ?? "bouldering", plan.playerLevel as ClimberLevel);
+        const discipline = cp.discipline ?? "bouldering";
+        const level = plan.playerLevel as ClimberLevel;
+        description = buildClimbingPhaseDescription(phase.phaseType as ClimbingPhaseType, discipline, level);
         limitationNotes = buildClimbingLimitationNotes(phase.phaseType as ClimbingPhaseType, (cp.physicalLimitations ?? []) as ClimbingLimitation[]);
+        const layers = buildClimbingPhaseContent(phase.phaseType as ClimbingPhaseType, discipline, level);
+        sportFocusContent = layers.sportFocusContent;
+        supplementalContent = layers.supplementalContent;
+        mentalGameContent = layers.mentalGameContent;
       }
 
-      await db.update(trainingPhases).set({ description, limitationNotes }).where(eq(trainingPhases.id, phase.id));
+      await db
+        .update(trainingPhases)
+        .set({ description, limitationNotes, sportFocusContent, supplementalContent, mentalGameContent })
+        .where(eq(trainingPhases.id, phase.id));
       updated++;
     }
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useLayoutEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +20,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { generateTimeSlots } from "@/lib/dates";
-import type { Activity, Role, Goal, Quadrant, ActivityType } from "@/types";
+import type {
+  Activity,
+  Role,
+  Goal,
+  Quadrant,
+  ActivityType,
+  SessionType,
+} from "@/types";
 import { LucideIcon } from "@/components/ui/lucide-icon";
 
 interface ActivityFormProps {
@@ -36,6 +43,7 @@ interface ActivityFormProps {
     goalId: number | null;
     activityTypeId: number | null;
     notes: string;
+    sessionType: SessionType;
   }) => void;
   roles: Role[];
   goals: Goal[];
@@ -63,12 +71,17 @@ export function ActivityForm({
   const [activityTypeId, setActivityTypeId] = useState<string>("none");
   const [activityTypes, setActivityTypes] = useState<ActivityType[]>([]);
   const [notes, setNotes] = useState("");
+  const [sessionType, setSessionType] = useState<SessionType>("training");
+  /** `null` while checking whether the selected goal has a training plan */
+  const [goalHasTrainingPlan, setGoalHasTrainingPlan] = useState<
+    boolean | null
+  >(false);
   const [error, setError] = useState("");
 
   const timeSlots = generateTimeSlots();
   const isEditing = !!activity;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (open) {
       setTitle(activity?.title ?? "");
       setActivityDate(activity?.activityDate ?? defaultDate ?? "");
@@ -78,9 +91,36 @@ export function ActivityForm({
       setGoalId(activity?.goalId?.toString() ?? "none");
       setActivityTypeId(activity?.activityTypeId?.toString() ?? "none");
       setNotes(activity?.notes ?? "");
+      setSessionType(activity?.sessionType ?? "training");
       setError("");
     }
   }, [open, activity, defaultDate, defaultStartTime]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (goalId === "none") {
+      setGoalHasTrainingPlan(false);
+      return;
+    }
+    let cancelled = false;
+    setGoalHasTrainingPlan(null);
+    fetch(`/api/training-plans?goalId=${goalId}`)
+      .then((res) => res.json())
+      .then((data: unknown) => {
+        if (cancelled) return;
+        const hasPlan = data != null;
+        setGoalHasTrainingPlan(hasPlan);
+        if (!hasPlan) setSessionType("training");
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setGoalHasTrainingPlan(false);
+        setSessionType("training");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, goalId]);
 
   useEffect(() => {
     if (open) {
@@ -112,7 +152,14 @@ export function ActivityForm({
       setError("End time must be after start time");
       return;
     }
+    if (goalId !== "none" && goalHasTrainingPlan === null) {
+      setError("Still loading goal details — try again in a moment");
+      return;
+    }
     setError("");
+    const gid = goalId !== "none" ? parseInt(goalId) : null;
+    const resolvedSessionType: SessionType =
+      gid != null && goalHasTrainingPlan === true ? sessionType : "training";
     onSave({
       title: title.trim(),
       activityDate,
@@ -120,9 +167,10 @@ export function ActivityForm({
       endTime,
       quadrant: activity?.quadrant ?? "Q2",
       roleId: roleId !== "none" ? parseInt(roleId) : null,
-      goalId: goalId !== "none" ? parseInt(goalId) : null,
+      goalId: gid,
       activityTypeId: activityTypeId !== "none" ? parseInt(activityTypeId) : null,
       notes: notes.trim(),
+      sessionType: resolvedSessionType,
     });
   }
 
@@ -196,7 +244,14 @@ export function ActivityForm({
 
           <div className="space-y-2">
             <Label>Role (optional)</Label>
-            <Select value={roleId} onValueChange={(v) => { setRoleId(v); setGoalId("none"); }}>
+            <Select
+              value={roleId}
+              onValueChange={(v) => {
+                setRoleId(v);
+                setGoalId("none");
+                setSessionType("training");
+              }}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -242,7 +297,13 @@ export function ActivityForm({
           {filteredGoals.length > 0 && (
             <div className="space-y-2">
               <Label>Linked Goal (optional)</Label>
-              <Select value={goalId} onValueChange={setGoalId}>
+              <Select
+                value={goalId}
+                onValueChange={(v) => {
+                  setGoalId(v);
+                  if (v === "none") setSessionType("training");
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -255,6 +316,28 @@ export function ActivityForm({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          )}
+
+          {goalId !== "none" && goalHasTrainingPlan === true && (
+            <div className="space-y-2">
+              <Label>Session type</Label>
+              <Select
+                value={sessionType}
+                onValueChange={(v) => setSessionType(v as SessionType)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="training">Training</SelectItem>
+                  <SelectItem value="supplemental">Supplemental</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Matches how the scheduler labels on-wall vs gym-style sessions for
+                this goal.
+              </p>
             </div>
           )}
 
@@ -276,7 +359,10 @@ export function ActivityForm({
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit">
+            <Button
+              type="submit"
+              disabled={goalId !== "none" && goalHasTrainingPlan === null}
+            >
               {isEditing ? "Save" : "Schedule"}
             </Button>
           </DialogFooter>

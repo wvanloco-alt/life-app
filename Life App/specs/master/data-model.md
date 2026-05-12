@@ -1,6 +1,6 @@
 # Data Model: Life App
 
-> Last updated: 2026-03-21. Reflects current schema including Feature 1 (Calendar Management), Feature 2 (Fitness Tracking → Activities), Feature 3 (Budget Management), v2 Overhaul, Goals V2, Scheduler Rules, Training Periodization, UI Refinements, and **Friend Release** (users table, user_id on all data tables, per-user data isolation).
+> Last updated: 2026-05-11. Reflects current schema including Feature 1 (Calendar Management), Feature 2 (Fitness Tracking → Activities), Feature 3 (Budget Management), v2 Overhaul, Goals V2, Scheduler Rules, Training Periodization, **Training vs Supplemental Session Split (V1, partial)**, UI Refinements, and **Friend Release** (users table, user_id on all data tables, per-user data isolation).
 
 ## Multi-User Architecture (Friend Release)
 
@@ -114,6 +114,10 @@ erDiagram
         json sportProfile
         string startDate
         string status
+        int trainingSessionsPerWeek
+        int supplementalSessionsPerWeek
+        string trainingPreferredDays
+        string supplementalPreferredDays
         datetime createdAt
         datetime updatedAt
     }
@@ -128,6 +132,9 @@ erDiagram
         string endDate
         string status
         string description
+        string sportFocusContent
+        string supplementalContent
+        string mentalGameContent
         string limitationNotes
         datetime createdAt
         datetime updatedAt
@@ -180,6 +187,7 @@ erDiagram
         boolean isLogEntry
         string notes
         string carryForwardFrom
+        string sessionType
         datetime createdAt
         datetime updatedAt
     }
@@ -396,6 +404,7 @@ A scheduled time block on the calendar, optionally linked to a goal, role, and/o
 | isLogEntry | INTEGER | NOT NULL, default 0 | 1 = auto-created from activity log (displayed with "logged" badge, no time slot) |
 | notes | TEXT | nullable | Free-form notes |
 | carryForwardFrom | TEXT | nullable, ISO date | Original date if carried forward |
+| sessionType | TEXT | NOT NULL, default `'training'` | Scheduler / user: `'training'` (sport-focused session) or `'supplemental'` (gym supplemental). Supplemental still uses the goal’s `activityTypeId` for goal progress. |
 | createdAt | TEXT | NOT NULL, ISO 8601 | When created |
 | updatedAt | TEXT | NOT NULL, ISO 8601 | Last modification time |
 
@@ -522,13 +531,17 @@ A periodization plan attached to a goal. Shared across sports (climbing, tennis)
 |-------|------|-------------|-------------|
 | id | INTEGER | PK, auto-increment | Unique identifier |
 | goalId | INTEGER | FK -> Goal.id, NOT NULL, UNIQUE, CASCADE DELETE | The goal this plan structures |
-| sport | TEXT | NOT NULL | Sport discriminator: "climbing" or "tennis" |
+| sport | TEXT | NOT NULL | Sport discriminator: `"climbing"`, `"tennis"`, or `"running"` |
 | periodizationModel | TEXT | NOT NULL | Cycle model (e.g., "4-1", "4-3-2-1", "3-2-1", "3-1", "3-3-2-1") |
 | playerLevel | TEXT | NOT NULL | Derived level: "beginner", "intermediate", "club", "advanced" |
 | yearsExperience | INTEGER | NOT NULL | Years of experience in the sport |
 | sportProfile | TEXT | NOT NULL, default '{}' | JSON blob with sport-specific data. Climbing: `{ discipline, maxBoulderGrade, maxSportGrade, physicalLimitations }`. Tennis: `{ selfRating, playingStyle, matchesPerWeek, physicalLimitations }`. Running: `{ goalDistance, runsPerWeek, longestRecentRun, canRun30MinContinuous, hasRaced, physicalLimitations }` |
 | startDate | TEXT | NOT NULL, ISO date | When the first phase begins |
 | status | TEXT | NOT NULL, default 'active' | One of: 'active', 'paused', 'completed' |
+| trainingSessionsPerWeek | INTEGER | nullable | How many weekly scheduled sessions are treated as **training** (must align with goal when set; backfilled from default formula). |
+| supplementalSessionsPerWeek | INTEGER | nullable | How many weekly sessions are **supplemental** (gym); sum with training must equal parent goal `sessions_per_week`. |
+| trainingPreferredDays | TEXT | default `'[]'` | JSON array of weekday numbers 1–7 (Mon–Sun) for scheduler bias; empty = no preference. |
+| supplementalPreferredDays | TEXT | default `'[]'` | Same, for supplemental slots. |
 | createdAt | TEXT | NOT NULL, ISO 8601 | When created |
 | updatedAt | TEXT | NOT NULL, ISO 8601 | Last modification time |
 
@@ -537,6 +550,7 @@ A periodization plan attached to a goal. Shared across sports (climbing, tennis)
 - `playerLevel` is generic (renamed from `climber_level`) -- each sport's assessment engine populates it.
 - Sport-specific columns (`discipline`, `max_boulder_grade`, `max_sport_grade`) were migrated from direct columns to `sportProfile` JSON during the Tennis V1 consolidation.
 - One plan per goal enforced by `UNIQUE` constraint on `goalId`.
+- **Training vs supplemental (V1)**: Split counts are user-editable (`PATCH /api/training-plans/:id`). Cycle **restart** rewrites phases but does **not** reset split or preferred-day columns.
 
 ---
 
@@ -554,7 +568,10 @@ An ordered phase within a training plan cycle. Phases have date ranges, statuses
 | startDate | TEXT | NOT NULL, ISO date | Calculated from plan start + preceding phases |
 | endDate | TEXT | NOT NULL, ISO date | startDate + (durationWeeks * 7) |
 | status | TEXT | NOT NULL, default 'upcoming' | One of: 'upcoming', 'active', 'completed' |
-| description | TEXT | NOT NULL | What to focus on during this phase |
+| description | TEXT | NOT NULL | Legacy full-phase text (concatenated layers for climbing; still used for tennis/running and as scheduler fallback). |
+| sportFocusContent | TEXT | nullable | **Climbing (V1)**: On-wall / discipline focus for **training** sessions. |
+| supplementalContent | TEXT | nullable | **Climbing (V1)**: Gym supplemental block for **supplemental** sessions. |
+| mentalGameContent | TEXT | nullable | **Climbing (V1)**: Mental layer; scheduler appends to **training** session notes when present. |
 | limitationNotes | TEXT | nullable | Extra precautions based on physical limitations (populated for tennis and running, null for climbing without limitations) |
 | createdAt | TEXT | NOT NULL, ISO 8601 | When created |
 | updatedAt | TEXT | NOT NULL, ISO 8601 | Last modification time |
@@ -563,7 +580,7 @@ An ordered phase within a training plan cycle. Phases have date ranges, statuses
 - Phase transitions are manual (button press), not automated.
 - Rest/Recovery phases cause the scheduler to skip the goal entirely for that period.
 - `limitationNotes` is populated by the tennis periodization engine when physical limitations are declared. Climbing phases leave this null.
-- Phases are regenerated (deleted + recreated) on cycle restart.
+- Phases are regenerated (deleted + recreated) on cycle restart. **Restart** also rewrites the three climbing layer columns from current profile (split on parent plan unchanged).
 
 ---
 

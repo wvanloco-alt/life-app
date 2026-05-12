@@ -423,6 +423,20 @@
 
 ---
 
+## Training vs Supplemental Session Split — Phases 1–6 (2026-05-11)
+
+**Spec**: `Life App/feature requests/training-supplemental-split/spec.md`
+
+- [x] Schema: `training_plans` split + dual preferred-day JSON columns; `training_phases` three content layers; `activities.session_type` — `apply-schema.js` idempotent alters + split backfill.
+- [x] Types & helpers: `SessionType`, `TrainingPlanSplit`, `defaultSplit` / `isValidSplit` / `weeklySessionTargets` / `allocateSplitTotals` in `src/lib/training/split.ts`.
+- [x] Climbing: `buildClimbingPhaseContent`, phase insert/restart/refresh-descriptions write layers; `POST`/`PATCH` training plans for split + preferred days.
+- [x] Scheduler + generate route: split map, layered notes, `ProposedActivity.sessionType`; apply route persists `session_type`.
+- [x] UI: climbing `TrainingPlanDialog` (split, weekday chips, create/edit, reconcile banner); Goals page + `TrainingPlanSection` **Edit plan**; regression test in `training-supplemental-split.test.ts` (restart split preservation); scheduler test for session tagging.
+
+**Not done yet** (see feature `tasks.md`): full Phase 7 test matrix; any remaining doc polish (T035c-style entries). **Done:** Phases 5–6 — calendar/badge styling for supplemental rows; activity form session-type control; `sessionType` on `GET`/`POST`/`PATCH` activities.
+
+---
+
 ## Scheduler & Goal Form Fixes (completed)
 
 - [x] Training plan availability extended to standalone goals (was yearly-only). Updated condition in `goal-form-standalone.tsx` and save payload.
@@ -462,3 +476,4 @@
 | 2026-03-20 | UI Design Overhaul | Typography (Plus Jakarta Sans + Fraunces + JetBrains Mono), warm amber color palette, Lucide sidebar icons, motion system, goal card redesign, activity bar chart, DnD fix, training plan in goal creation, cascade delete, Today tab cleanup |
 | 2026-03-20 | Running Training Periodization V1 | Running periodization engine (3-phase beginner, 4-phase intermediate/advanced), 5 goal distance modifiers, 6 physical limitation modifiers, three-layered phase descriptions, RunningTrainingPlanDialog, detectSport() updated, phase colors, 0 schema changes |
 | 2026-03-21 | Scheduler & Goal Form Fixes | Training plans extended to standalone goals, activityTypeId propagation fix (scheduler → apply route), auto-seeding defaults (roles, activity types, spending categories), default goal horizon changed to "Yearly" |
+| 2026-05-11 | Training vs Supplemental Session Split (V1, partial) | Schema + climbing layer columns + split-aware scheduler + apply `session_type` + climbing training-plan dialog (split / preferred days / edit). ROADMAP, `data-model.md`, `api-routes.md` updated. Phases 5–7 pending — see `feature requests/training-supplemental-split/tasks.md`. |

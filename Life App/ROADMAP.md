@@ -1,6 +1,6 @@
-# Life App -- Feature Roadmap
+﻿# Life App -- Feature Roadmap
 
-> Last updated: 2026-03-21.
+> Last updated: 2026-05-11.
 
 ## Product Vision
 
@@ -360,6 +360,30 @@ The refactor introduces three new shared UI primitives (icon registry, `LucideIc
 **Routes modified**: `POST /api/training-plans` and `POST /api/training-plans/:id/restart` updated to pass limitations to phase generation.
 
 **Dependencies**: Climbing Periodization V1 (built), Tennis Periodization V1 (used as reference implementation).
+
+---
+
+### Training vs Supplemental Session Split (V1)
+
+**Spec / working docs**: `Life App/feature requests/training-supplemental-split/` (`scope.md`, `spec.md`, `plan.md`, `tasks.md`)
+**Status**: In progress - **Phases 1-6 shipped** (schema through activity edit form). Phase 7 (automated test matrix) not yet started.
+
+**What it does**: Separates **on-wall / sport training** from **gym supplemental** sessions for goals with a training plan. The user configures how many sessions per week are training vs supplemental (must sum to the goal's `sessionsPerWeek`). The scheduler tags each proposed activity with `sessionType` (`training` | `supplemental`), attaches phase notes from the correct content layer, and persists `session_type` when applying the schedule. Climbing is the first sport with **three persisted phase columns** plus split-aware UI; tennis/running reuse existing single `description` until later rollout.
+
+**What has been built**:
+- **Schema**: `training_plans` - `training_sessions_per_week`, `supplemental_sessions_per_week`, `training_preferred_days`, `supplemental_preferred_days` (JSON arrays of weekday 1-7). `training_phases` - `sport_focus_content`, `supplemental_content`, `mental_game_content`. `activities` - `session_type` (default `training`). Idempotent `ALTER` + split backfill in `apply-schema.js`.
+- **Types & helpers**: `SessionType`, `defaultSplit` / `isValidSplit`, `weeklySessionTargets`, `allocateSplitTotals`, `TrainingPlanSplit` in `src/lib/training/split.ts`.
+- **Climbing content**: `buildClimbingPhaseContent()` + phase generation writes three layers; legacy `description` kept; `POST`/`restart`/`refresh-descriptions` populate layers for climbing. Beginner supplemental copy is self-contained (no ambiguous `same exercises` reference).
+- **API**: `GET /api/training-plans?goalId=` returns parsed preferred-day arrays; `POST` accepts split + preferred days; `PATCH /api/training-plans/:id` edits split and preferred days; restart preserves split columns. `GET`/`POST`/`PATCH /api/activities` all accept and return `sessionType`.
+- **Scheduler**: Dual preferred-day scoring, training placed before supplemental per ISO week, `ProposedActivity.sessionType`, notes from layers with fallback to `description`.
+- **Apply**: `POST /api/schedule/apply` persists `sessionType` on new activities.
+- **UI (climbing only)**: `TrainingPlanDialog` - split inputs, weekday chips for training vs supplemental preferred days, create vs edit (PATCH), reconcile banner when stored split != goal `sessionsPerWeek`, hint when goal is 2x/wk. Goals page + `TrainingPlanSection` - **Edit plan** entry point.
+- **Calendar visual treatment** (Phase 5): Shared helper `src/lib/session-type-styles.ts`. Supplemental sessions render with muted background + Supplemental badge across `day-column.tsx`, `weekly-plan-view.tsx` (incl. `DragOverlay`), `schedule-preview.tsx`, and `daily-view.tsx`. Drag-and-drop preserves the visual treatment.
+- **Activity edit form** (Phase 6): `ActivityForm` shows a **Session type** select (Training / Supplemental) when the linked goal has a training plan; hidden otherwise. Backed by `PATCH /api/activities/:id` with optional `sessionType`.
+
+**Follow-up (see `tasks.md`)**: Phase 7 automated test matrix (T031-T034); tennis/running parity deferred by spec.
+
+**Dependencies**: Climbing phase content upgrade (three-layer source content), Feature 1 (scheduler / apply).
 
 ---
 

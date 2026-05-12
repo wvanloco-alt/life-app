@@ -66,8 +66,21 @@ export function GoalsPage() {
   const [tallyGoal, setTallyGoal] = useState<Goal | null>(null);
   const [trainingPlansMap, setTrainingPlansMap] = useState<Record<number, TrainingPlan>>({});
   const [trainingPlanGoal, setTrainingPlanGoal] = useState<Goal | null>(null);
+  const [climbingPlanDialog, setClimbingPlanDialog] = useState<{
+    goal: Goal;
+    plan?: TrainingPlan;
+  } | null>(null);
 
-  const currentMonth = format(new Date(), "yyyy-MM");
+  const openTrainingPlanCreator = useCallback((goal: Goal) => {
+    const sport = detectSport(goal);
+    if (sport === "climbing") {
+      setTrainingPlanGoal(null);
+      setClimbingPlanDialog({ goal });
+      return;
+    }
+    setClimbingPlanDialog(null);
+    setTrainingPlanGoal(goal);
+  }, []);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -140,6 +153,8 @@ export function GoalsPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const currentMonth = format(new Date(), "yyyy-MM");
 
   const activeGoals = allGoals.filter((g) => g.status === "active");
   const yearlyGoals = activeGoals.filter((g) => g.horizon === "yearly");
@@ -236,7 +251,7 @@ export function GoalsPage() {
           roles: [],
           quadrant: "Q2",
         };
-        setTrainingPlanGoal(newGoal);
+        openTrainingPlanCreator(newGoal);
         return;
       }
     }
@@ -400,7 +415,12 @@ export function GoalsPage() {
                     onArchive={() => handleArchive(g)}
                     onDelete={() => handleDelete(g.id)}
                     onLogTally={() => setTallyGoal(g)}
-                    onCreateTrainingPlan={detectSport(g) ? () => setTrainingPlanGoal(g) : undefined}
+                    onCreateTrainingPlan={detectSport(g) ? () => openTrainingPlanCreator(g) : undefined}
+                    onEditTrainingSplit={
+                      detectSport(g) === "climbing" && trainingPlansMap[g.id]
+                        ? () => setClimbingPlanDialog({ goal: g, plan: trainingPlansMap[g.id] })
+                        : undefined
+                    }
                     onTrainingPlanChanged={() => fetchData()}
                   />
                 ))}
@@ -532,7 +552,7 @@ export function GoalsPage() {
                               <Pencil className="mr-2 h-4 w-4" /> Edit
                             </DropdownMenuItem>
                             {detectSport(goal) && !trainingPlansMap[goal.id] && (
-                              <DropdownMenuItem onClick={() => setTrainingPlanGoal(goal)}>
+                              <DropdownMenuItem onClick={() => openTrainingPlanCreator(goal)}>
                                 <Mountain className="mr-2 h-4 w-4" /> Create Training Plan
                               </DropdownMenuItem>
                             )}
@@ -554,6 +574,16 @@ export function GoalsPage() {
                           <TrainingPlanSection
                             plan={trainingPlansMap[goal.id]}
                             onRefresh={() => fetchData()}
+                            goalSessionsPerWeek={goal.sessionsPerWeek}
+                            onEditTrainingSplit={
+                              detectSport(goal) === "climbing"
+                                ? () =>
+                                    setClimbingPlanDialog({
+                                      goal,
+                                      plan: trainingPlansMap[goal.id],
+                                    })
+                                : undefined
+                            }
                           />
                         </div>
                       )}
@@ -722,6 +752,19 @@ export function GoalsPage() {
         </Dialog>
       )}
 
+      {climbingPlanDialog && (
+        <TrainingPlanDialog
+          key={`${climbingPlanDialog.goal.id}-${climbingPlanDialog.plan?.id ?? "new"}`}
+          open
+          onClose={() => setClimbingPlanDialog(null)}
+          goalId={climbingPlanDialog.goal.id}
+          goalTitle={climbingPlanDialog.goal.title}
+          goalSessionsPerWeek={climbingPlanDialog.goal.sessionsPerWeek}
+          existingPlan={climbingPlanDialog.plan}
+          onSuccess={() => fetchData()}
+        />
+      )}
+
       {trainingPlanGoal && detectSport(trainingPlanGoal) === "tennis" && (
         <TennisTrainingPlanDialog
           open={!!trainingPlanGoal}
@@ -733,15 +776,6 @@ export function GoalsPage() {
       )}
       {trainingPlanGoal && detectSport(trainingPlanGoal) === "running" && (
         <RunningTrainingPlanDialog
-          open={!!trainingPlanGoal}
-          onClose={() => setTrainingPlanGoal(null)}
-          goalId={trainingPlanGoal.id}
-          goalTitle={trainingPlanGoal.title}
-          onCreated={() => fetchData()}
-        />
-      )}
-      {trainingPlanGoal && detectSport(trainingPlanGoal) === "climbing" && (
-        <TrainingPlanDialog
           open={!!trainingPlanGoal}
           onClose={() => setTrainingPlanGoal(null)}
           goalId={trainingPlanGoal.id}

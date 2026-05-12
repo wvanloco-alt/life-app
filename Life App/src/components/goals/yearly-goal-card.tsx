@@ -38,6 +38,7 @@ interface YearlyGoalCardProps {
   onLogTally: () => void;
   onCreateTrainingPlan?: () => void;
   onTrainingPlanChanged?: () => void;
+  onEditTrainingSplit?: () => void;
 }
 
 const paceColors: Record<PaceStatus, string> = {
@@ -88,6 +89,7 @@ export function YearlyGoalCard({
   onLogTally,
   onCreateTrainingPlan,
   onTrainingPlanChanged,
+  onEditTrainingSplit,
 }: YearlyGoalCardProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -212,7 +214,12 @@ export function YearlyGoalCard({
 
         {trainingPlan && onTrainingPlanChanged && (
           <div className="border-t">
-            <TrainingPlanSection plan={trainingPlan} onRefresh={onTrainingPlanChanged} />
+            <TrainingPlanSection
+              plan={trainingPlan}
+              onRefresh={onTrainingPlanChanged}
+              goalSessionsPerWeek={goal.sessionsPerWeek}
+              onEditTrainingSplit={onEditTrainingSplit}
+            />
           </div>
         )}
 

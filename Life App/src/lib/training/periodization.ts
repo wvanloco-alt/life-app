@@ -15,6 +15,9 @@ export interface GeneratedPhase {
   startDate: string;
   endDate: string;
   description: string;
+  sportFocusContent?: string | null;
+  supplementalContent?: string | null;
+  mentalGameContent?: string | null;
   limitationNotes?: string | null;
 }
 
@@ -44,7 +47,7 @@ const PHASE_CONTENT: Record<ClimbingPhaseType, ClimbingPhaseContent> = {
     supplemental:
       "Core stability (hollow body holds 3x30sec, plank variations 3x45sec, hanging leg raises 3x10), antagonist work (push-ups 3x15, wrist extensions 3x20, reverse flys 3x12, external shoulder rotations 3x15/arm). Antagonist work is not optional -- it prevents the muscle imbalances that cause shoulder impingement and golfer's elbow. The pulling-to-pushing ratio in climbing is heavily skewed; if you do not actively counterbalance it, injury is a matter of when, not if (Hörst, Ch. 6). Minimum 2x/week, ideally at the end of each climbing session.",
     supplementalBeginner:
-      "Same exercises, 2 sets instead of 3, bodyweight only. Add basic pull-ups if you can do fewer than 5: hang from a bar and do slow negatives (3-second lowering) for 3x3. Do not use a fingerboard -- your tendons need 1-2 years of climbing-specific loading before they can handle isolated finger training safely.",
+      "Core stability (hollow body holds 2x30sec, plank variations 2x45sec, hanging leg raises 2x10), antagonist work (push-ups 2x15, wrist extensions 2x20, reverse flys 2x12, external shoulder rotations 2x15/arm). This is the same movement “family” as standard supplemental for this phase—just at a beginner volume: 2 sets instead of 3, bodyweight only. Minimum 2x/week, ideally at the end of each climbing session. Add basic pull-ups if you can do fewer than 5: hang from a bar and do slow negatives (3-second lowering) for 3x3. Do not use a fingerboard—your tendons need 1-2 years of climbing-specific loading before they can handle isolated finger training safely.",
     mentalGame:
       "Separate your self-image from your climbing performance (Hörst, Mental Wings #1). When you fall off a problem, observe it without judgment: \"I fell on move 7 because my foot slipped\" not \"I'm weak\" or \"I suck.\" This is the foundation of the performance mindset -- you are gathering data, not passing verdicts. Practice the 60-second visualization exercise before your hardest attempt: close your eyes, replay your best send in vivid detail -- the holds, the sequence, the feeling of sticking the crux. Then open your eyes and climb.\n\nTrack your Energy-Emotion state at the start of each session: Energy 0-10, Emotion -5 to +5. Over weeks, you'll notice patterns: what conditions produce your best sessions? What kills your motivation? Write it down. This is Hörst's ANSWER sequence -- Awareness, Notice, Study, Willing adjustment, Evaluation, Repeat.",
   },
@@ -92,33 +95,66 @@ const PHASE_CONTENT: Record<ClimbingPhaseType, ClimbingPhaseContent> = {
   },
 };
 
+export interface ClimbingPhaseContentLayers {
+  sportFocusContent: string;
+  supplementalContent: string;
+  mentalGameContent: string;
+}
+
+/**
+ * Returns the three content layers for a climbing phase as separate strings.
+ * Used by Phase 2 of the training-supplemental-split feature to write each
+ * layer to its own column on `training_phases`.
+ *
+ * The session-type-aware scheduler picks the relevant layer at notes-attachment
+ * time: training sessions get sportFocus + mentalGame; supplemental sessions
+ * get supplementalContent only.
+ */
+export function buildClimbingPhaseContent(
+  phaseType: ClimbingPhaseType,
+  discipline: Discipline,
+  level: ClimberLevel
+): ClimbingPhaseContentLayers {
+  const content = PHASE_CONTENT[phaseType];
+  const isBeginner = level === "beginner";
+
+  const sportFocusContent =
+    isBeginner && content.climbingBeginner
+      ? content.climbingBeginner
+      : content.climbing[discipline];
+
+  const supplementalContent =
+    isBeginner && content.supplementalBeginner
+      ? content.supplementalBeginner
+      : content.supplemental;
+
+  return {
+    sportFocusContent,
+    supplementalContent,
+    mentalGameContent: content.mentalGame,
+  };
+}
+
+/**
+ * Legacy wrapper. Concatenates the three layers into the format used historically
+ * by `training_phases.description`. Kept for backward compatibility — any code
+ * path still reading `description` continues to work unchanged.
+ */
 export function buildClimbingPhaseDescription(
   phaseType: ClimbingPhaseType,
   discipline: Discipline,
   level: ClimberLevel
 ): string {
-  const content = PHASE_CONTENT[phaseType];
-  const isBeginner = level === "beginner";
-
-  const climbingFocus =
-    isBeginner && content.climbingBeginner
-      ? content.climbingBeginner
-      : content.climbing[discipline];
-
-  const supplemental =
-    isBeginner && content.supplementalBeginner
-      ? content.supplementalBeginner
-      : content.supplemental;
-
+  const layers = buildClimbingPhaseContent(phaseType, discipline, level);
   return [
     "CLIMBING FOCUS",
-    climbingFocus,
+    layers.sportFocusContent,
     "",
     "SUPPLEMENTAL TRAINING",
-    supplemental,
+    layers.supplementalContent,
     "",
     "MENTAL TRAINING",
-    content.mentalGame,
+    layers.mentalGameContent,
   ].join("\n");
 }
 
@@ -330,6 +366,7 @@ export function generatePhases(
       "yyyy-MM-dd"
     );
 
+    const layers = buildClimbingPhaseContent(t.type, discipline, level);
     phases.push({
       phaseType: t.type,
       orderIndex: i,
@@ -337,6 +374,9 @@ export function generatePhases(
       startDate: phaseStart,
       endDate: phaseEnd,
       description: buildClimbingPhaseDescription(t.type, discipline, level),
+      sportFocusContent: layers.sportFocusContent,
+      supplementalContent: layers.supplementalContent,
+      mentalGameContent: layers.mentalGameContent,
       limitationNotes: buildClimbingLimitationNotes(t.type, physicalLimitations),
     });
 

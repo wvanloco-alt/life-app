@@ -1,6 +1,6 @@
 # API Routes Contract: Life App
 
-> Last updated: 2026-03-21. Reflects current API surface including Feature 1, Feature 2 (Activities), Feature 3 (Budget), v2 Overhaul, Goals V2 (goal hierarchy, tallies, pace tracking), Scheduler Rules (blackout dates, session patterns, activity type propagation), schedule regeneration/reset, and UI Design Overhaul (cascade delete, activity summary extension). Onboarding Wizard removed.
+> Last updated: 2026-05-11. Reflects current API surface including Feature 1, Feature 2 (Activities), Feature 3 (Budget), v2 Overhaul, Goals V2 (goal hierarchy, tallies, pace tracking), Scheduler Rules (blackout dates, session patterns, activity type propagation), **training vs supplemental split (climbing phases + scheduler + apply)**, schedule regeneration/reset, and UI Design Overhaul (cascade delete, activity summary extension). Onboarding Wizard removed.
 
 All API routes use Next.js Route Handlers. Base URL: `http://localhost:3000/api`
 
@@ -508,7 +508,7 @@ Get activities. Requires one of:
 - `?date=YYYY-MM-DD` — single day
 - `?weekStart=YYYY-MM-DD` — full week (7 days from Monday)
 
-Response includes joined `roleName`, `roleColor`, and `isLogEntry` (true when created from an activity log).
+Response includes joined `roleName`, `roleColor`, `isLogEntry` (true when created from an activity log), and **`sessionType`** (`training` \| `supplemental`).
 
 ### POST /api/activities
 
@@ -525,15 +525,18 @@ Create an activity.
   "roleId": 2,
   "goalId": 1,
   "notes": "Easy pace",
-  "isLogEntry": false
+  "isLogEntry": false,
+  "sessionType": "training"
 }
 ```
 
 `isLogEntry` is optional (default false). Set to `true` when the activity was created from logging via `/api/activity-logs`.
 
+`sessionType` is optional on create (default `training`). Must be `training` or `supplemental` when provided.
+
 ### PATCH /api/activities/:id
 
-Update an activity (reschedule, complete, add notes, etc.).
+Update an activity (reschedule, complete, add notes, etc.). Optional **`sessionType`**: `training` \| `supplemental` — used when editing session type from the activity form; omitted fields are unchanged (e.g. drag-reschedule sends only `activityDate`).
 
 ### DELETE /api/activities/:id
 
@@ -611,7 +614,9 @@ Generate a proposed schedule based on focus goals, existing activities, recurrin
       "activityTypeId": 1,
       "roleName": "Athlete",
       "roleColor": "#EF4444",
-      "reason": "Session 1/4 — personal time"
+      "reason": "Session 1/4 — personal time",
+      "notes": "…",
+      "sessionType": "training"
     }
   ],
   "warnings": ["Could only fit 2/4 sessions for \"Learn Python\""],
@@ -633,9 +638,11 @@ When `regenerate` is `true`, the response includes `focusGoalIds` and `dateRange
 
 **[Goals V2]** When a focus goal has a monthly sub-goal for the current month, the `reason` field in the generated activity will note: `"Using March benchmark: 5 sessions/week"`.
 
+**[Training vs supplemental V1]** When a focus goal has an **active** training plan, the handler loads split counts, preferred weekday arrays, and phase **layer** columns. `generateSchedule` receives a per-goal split map; each proposed activity includes **`sessionType`**: `"training"` or `"supplemental"`. Training sessions are placed first each ISO week up to `trainingSessionsPerWeek`, then supplemental up to `supplementalSessionsPerWeek`. Notes use `sportFocusContent` + `mentalGameContent` for training, `supplementalContent` for supplemental, with fallback to full `description`. Goals without a plan keep `sessionType: "training"`.
+
 ### POST /api/schedule/apply
 
-Apply a generated schedule by creating all proposed activities. Each activity inherits `activityTypeId` from its linked goal (enabling correct activity type display and matching with activity logs). When `regenerate` is `true`, deletes old scheduler-generated activities (non-logged, non-completed) for the specified focus goals within the date range before inserting new ones.
+Apply a generated schedule by creating all proposed activities. Each activity inherits `activityTypeId` from its linked goal (enabling correct activity type display and matching with activity logs) and **`sessionType`** from the proposal (`training` or `supplemental`, defaulting to `training` if omitted). When `regenerate` is `true`, deletes old scheduler-generated activities (non-logged, non-completed) for the specified focus goals within the date range before inserting new ones.
 
 **Request body**:
 ```json
@@ -772,6 +779,53 @@ Replace all session patterns for a goal (delete existing, create new).
 ### DELETE /api/goal-session-patterns/:id
 
 Delete a single session pattern entry.
+
+---
+
+## Training plans (periodization + split)
+
+Multi-sport training plans share `GET/POST/DELETE` on `/api/training-plans` plus assess-level, phase transition, restart, refresh-descriptions, and **split editing** for an existing plan.
+
+### GET /api/training-plans?goalId={id}
+
+Returns the plan for that goal or `null`. Response includes `sportProfile` as a parsed object and **`trainingPreferredDays` / `supplementalPreferredDays` as number arrays** (parsed from stored JSON strings). Includes `phases` ordered by `orderIndex`.
+
+### POST /api/training-plans
+
+Creates a plan for `goalId` (409 if one already exists). Body includes `sport`, `yearsExperience`, `startDate`, `sportProfile`, and optionally:
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `trainingSessionsPerWeek` | No* | If either split field is sent, **both** must be sent and must sum to the goal’s `sessionsPerWeek`. |
+| `supplementalSessionsPerWeek` | No* | See above. If omitted, server uses `defaultSplit(goal.sessionsPerWeek)`. |
+| `trainingPreferredDays` | No | `number[]`, weekday 1–7. |
+| `supplementalPreferredDays` | No | `number[]`. |
+
+For **climbing**, inserted phases include `sportFocusContent`, `supplementalContent`, `mentalGameContent` when generated; tennis/running phases leave those columns null and use `description` only.
+
+### PATCH /api/training-plans/:id
+
+Updates split and/or preferred days only (does not regenerate phases). Body: optional `trainingSessionsPerWeek`, `supplementalSessionsPerWeek` (must be sent together and sum to goal `sessionsPerWeek`), `trainingPreferredDays`, `supplementalPreferredDays`. Returns the updated plan with parsed day arrays.
+
+### DELETE /api/training-plans/:id
+
+Deletes the plan (and phases via FK cascade).
+
+### POST /api/training-plans/assess-level
+
+**Climbing**: body includes `sport: "climbing"`, grades, `yearsExperience`. Returns derived level and recommended model (used by the climbing plan dialog).
+
+### POST /api/training-phases/:id/transition
+
+Advances the active phase (user-confirmed in UI).
+
+### POST /api/training-plans/:id/restart
+
+Regenerates phases from today; **does not** clear `training_sessions_per_week`, `supplemental_sessions_per_week`, or preferred-day columns on the plan.
+
+### POST /api/training-plans/refresh-descriptions
+
+Recomputes phase text for all of the user’s plans. For **climbing**, also writes the three layer columns from `buildClimbingPhaseContent`.
 
 ---
 

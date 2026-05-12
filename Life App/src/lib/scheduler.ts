@@ -5,7 +5,10 @@ import type {
   Role,
   Quadrant,
   SchedulerSettings,
+  SessionType,
 } from "@/types";
+import type { TrainingPlanSplit } from "@/lib/training/split";
+import { allocateSplitTotals, weeklySessionTargets } from "@/lib/training/split";
 
 export interface ProposedActivity {
   title: string;
@@ -20,6 +23,7 @@ export interface ProposedActivity {
   roleColor?: string;
   reason: string;
   notes?: string;
+  sessionType: SessionType;
 }
 
 export interface ScheduleProposal {
@@ -46,6 +50,9 @@ export interface TrainingPhaseInfo {
   durationWeeks: number;
   isRest: boolean;
   description?: string;
+  sportFocusContent?: string | null;
+  supplementalContent?: string | null;
+  mentalGameContent?: string | null;
   limitationNotes?: string | null;
 }
 
@@ -335,6 +342,12 @@ interface GoalSlot {
   sessionPatterns?: SessionPattern[];
   patternIndex: number;
   trainingPhase?: TrainingPhaseInfo;
+  /** When set, the scheduler places `trainingTotalNeeded` then `supplementalTotalNeeded` sessions with dual preferred-day logic. */
+  planSplit?: TrainingPlanSplit;
+  trainingTotalNeeded: number;
+  supplementalTotalNeeded: number;
+  trainingSessionsPlaced: number;
+  supplementalSessionsPlaced: number;
 }
 
 export function generateSchedule(
@@ -348,7 +361,8 @@ export function generateSchedule(
   monthlyOverrides?: Map<number, MonthlyOverride>,
   blackoutDates?: Set<string>,
   goalSessionPatterns?: Map<number, SessionPattern[]>,
-  trainingPhases?: Map<number, TrainingPhaseInfo>
+  trainingPhases?: Map<number, TrainingPhaseInfo>,
+  trainingPlanSplits?: Map<number, TrainingPlanSplit>
 ): ScheduleProposal {
   const dates =
     scope === "month"
@@ -406,6 +420,8 @@ export function generateSchedule(
   const goalSlots: GoalSlot[] = sortedGoals
     .map((goal) => {
       const phase = trainingPhases?.get(goal.id);
+      const planSplit = trainingPlanSplits?.get(goal.id);
+      const useSplit = Boolean(phase && planSplit);
 
       if (phase?.isRest) {
         return null;
@@ -413,8 +429,9 @@ export function generateSchedule(
 
       const override = monthlyOverrides?.get(goal.id);
       const spw = override?.sessionsPerWeek ?? goal.sessionsPerWeek ?? 3;
-      const totalSessions = spw * numWeeks;
+      const totalSessionsRaw = spw * numWeeks;
       const existing = existingGoalSessions.get(goal.id) ?? 0;
+      const sessionsRemaining = Math.max(0, totalSessionsRaw - existing);
       const roleIds = getGoalRoleIds(goal);
       const hasWorkRole = roleIds.some((id) => rolesById.get(id)?.isWorkRole);
       const patterns = goalSessionPatterns?.get(goal.id);
@@ -424,10 +441,21 @@ export function generateSchedule(
         ? g.preferredDays.split(",").map(Number)
         : undefined;
 
+      let trainingTotalNeeded = 0;
+      let supplementalTotalNeeded = 0;
+      let totalSessionsNeeded = sessionsRemaining;
+
+      if (useSplit && planSplit) {
+        const alloc = allocateSplitTotals(planSplit, numWeeks, sessionsRemaining);
+        trainingTotalNeeded = alloc.trainingTotal;
+        supplementalTotalNeeded = alloc.supplementalTotal;
+        totalSessionsNeeded = trainingTotalNeeded + supplementalTotalNeeded;
+      }
+
       return {
         goal,
         sessionsPerWeek: spw,
-        totalSessionsNeeded: Math.max(0, totalSessions - existing),
+        totalSessionsNeeded,
         sessionsPlaced: 0,
         usedDays: new Set<string>(),
         isWorkGoal: hasWorkRole,
@@ -438,6 +466,11 @@ export function generateSchedule(
         sessionPatterns: patterns,
         patternIndex: 0,
         trainingPhase: phase,
+        planSplit: useSplit ? planSplit : undefined,
+        trainingTotalNeeded,
+        supplementalTotalNeeded,
+        trainingSessionsPlaced: 0,
+        supplementalSessionsPlaced: 0,
       };
     })
     .filter((gs) => gs !== null && gs.totalSessionsNeeded > 0) as GoalSlot[];
@@ -547,22 +580,69 @@ function placeWeekByWeek(
     for (const gs of goalSlots) {
       if (gs.sessionsPlaced >= gs.totalSessionsNeeded) continue;
 
-      const weekCap = gs.sessionsPerWeek;
-      let placedThisWeek = 0;
+      if (gs.planSplit) {
+        const weekKey =
+          availableDates.length > 0 ? getWeekKey(availableDates[0]) : "";
+        const targets = weeklySessionTargets(gs.planSplit, weekKey);
+        let trainWeek = 0;
+        while (
+          trainWeek < targets.trainingCount &&
+          gs.trainingSessionsPlaced < gs.trainingTotalNeeded &&
+          gs.sessionsPlaced < gs.totalSessionsNeeded
+        ) {
+          const placed = tryPlaceSession(
+            gs,
+            availableDates,
+            dayClassMap,
+            occupied,
+            rolesById,
+            roleDaySessions,
+            settings,
+            proposed,
+            "training"
+          );
+          if (!placed) break;
+          trainWeek++;
+        }
+        let supWeek = 0;
+        while (
+          supWeek < targets.supplementalCount &&
+          gs.supplementalSessionsPlaced < gs.supplementalTotalNeeded &&
+          gs.sessionsPlaced < gs.totalSessionsNeeded
+        ) {
+          const placed = tryPlaceSession(
+            gs,
+            availableDates,
+            dayClassMap,
+            occupied,
+            rolesById,
+            roleDaySessions,
+            settings,
+            proposed,
+            "supplemental"
+          );
+          if (!placed) break;
+          supWeek++;
+        }
+      } else {
+        const weekCap = gs.sessionsPerWeek;
+        let placedThisWeek = 0;
 
-      while (placedThisWeek < weekCap && gs.sessionsPlaced < gs.totalSessionsNeeded) {
-        const placed = tryPlaceSession(
-          gs,
-          availableDates,
-          dayClassMap,
-          occupied,
-          rolesById,
-          roleDaySessions,
-          settings,
-          proposed
-        );
-        if (!placed) break;
-        placedThisWeek++;
+        while (placedThisWeek < weekCap && gs.sessionsPlaced < gs.totalSessionsNeeded) {
+          const placed = tryPlaceSession(
+            gs,
+            availableDates,
+            dayClassMap,
+            occupied,
+            rolesById,
+            roleDaySessions,
+            settings,
+            proposed,
+            "training"
+          );
+          if (!placed) break;
+          placedThisWeek++;
+        }
       }
     }
   }
@@ -590,24 +670,81 @@ function placeFlat(
     madeProgress = false;
     for (const gs of goalSlots) {
       if (gs.sessionsPlaced >= gs.totalSessionsNeeded) continue;
-      const placed = tryPlaceSession(
-        gs,
-        availableDates,
-        dayClassMap,
-        occupied,
-        rolesById,
-        roleDaySessions,
-        settings,
-        proposed
-      );
-      if (placed) madeProgress = true;
+
+      if (gs.planSplit) {
+        const typeToPlace: SessionType | null =
+          gs.trainingSessionsPlaced < gs.trainingTotalNeeded
+            ? "training"
+            : gs.supplementalSessionsPlaced < gs.supplementalTotalNeeded
+              ? "supplemental"
+              : null;
+        if (!typeToPlace) continue;
+        const placed = tryPlaceSession(
+          gs,
+          availableDates,
+          dayClassMap,
+          occupied,
+          rolesById,
+          roleDaySessions,
+          settings,
+          proposed,
+          typeToPlace
+        );
+        if (placed) madeProgress = true;
+      } else {
+        const placed = tryPlaceSession(
+          gs,
+          availableDates,
+          dayClassMap,
+          occupied,
+          rolesById,
+          roleDaySessions,
+          settings,
+          proposed,
+          "training"
+        );
+        if (placed) madeProgress = true;
+      }
     }
   }
 }
 
-/**
- * Try to place a single session for a goal. Returns true if successful.
- */
+/** Preferred weekdays (1–7 Mon–Sun) for scoring: off-preference days get +10. */
+function preferredDayPenalty(dow: number, pref: number[] | undefined): number {
+  if (!pref || pref.length === 0) return 0;
+  return pref.includes(dow) ? 0 : 10;
+}
+
+function getPreferredDaysForSession(
+  gs: GoalSlot,
+  sessionType: SessionType
+): number[] | undefined {
+  if (!gs.planSplit) return gs.preferredDays;
+  if (sessionType === "training") {
+    const d = gs.planSplit.trainingPreferredDays;
+    return d.length > 0 ? d : undefined;
+  }
+  const d = gs.planSplit.supplementalPreferredDays;
+  return d.length > 0 ? d : undefined;
+}
+
+/** Extra penalty when supplemental lands on a day listed in both preference arrays (training has priority). */
+function supplementalSharedPreferencePenalty(
+  dow: number,
+  split: TrainingPlanSplit,
+  sessionType: SessionType
+): number {
+  if (sessionType !== "supplemental") return 0;
+  if (
+    split.trainingPreferredDays.includes(dow) &&
+    split.supplementalPreferredDays.includes(dow)
+  ) {
+    return 18;
+  }
+  return 0;
+}
+
+/** Try to place one session of the given type. */
 function tryPlaceSession(
   gs: GoalSlot,
   availableDates: string[],
@@ -616,7 +753,8 @@ function tryPlaceSession(
   rolesById: Map<number, Role>,
   roleDaySessions: Map<number, Set<string>>,
   settings: SchedulerSettings,
-  proposed: ProposedActivity[]
+  proposed: ProposedActivity[],
+  sessionType: SessionType
 ): boolean {
   const primaryRole = gs.goal.roles[0];
   const roleIds = getGoalRoleIds(gs.goal);
@@ -628,6 +766,8 @@ function tryPlaceSession(
 
   if (candidateDays.length === 0) return false;
 
+  const prefForScore = getPreferredDaysForSession(gs, sessionType);
+
   const scoredDays = shuffledSort(candidateDays, (dc) => {
     let score = countActivitiesOnDate(dc.date, occupied);
 
@@ -635,11 +775,15 @@ function tryPlaceSession(
       score += 1000;
     }
 
-    if (gs.preferredDays && gs.preferredDays.length > 0) {
-      const dow = getDayOfWeek(dc.date);
-      if (!gs.preferredDays.includes(dow)) {
-        score += 10;
-      }
+    const dow = getDayOfWeek(dc.date);
+    score += preferredDayPenalty(dow, prefForScore);
+
+    if (gs.planSplit) {
+      score += supplementalSharedPreferencePenalty(
+        dow,
+        gs.planSplit,
+        sessionType
+      );
     }
 
     return score;
@@ -671,7 +815,18 @@ function tryPlaceSession(
       if (prefWindows) {
         const slot = findSlotInWindows(dc.date, prefWindows, GOAL_DURATION_MINUTES, occupied);
         if (slot) {
-          commitSession(gs, dc, slot, primaryRole, roleIds, currentPattern, occupied, roleDaySessions, proposed);
+          commitSession(
+            gs,
+            dc,
+            slot,
+            primaryRole,
+            roleIds,
+            currentPattern,
+            occupied,
+            roleDaySessions,
+            proposed,
+            sessionType
+          );
           return true;
         }
       }
@@ -679,7 +834,18 @@ function tryPlaceSession(
 
     const slot = findSlotInWindows(dc.date, windows, GOAL_DURATION_MINUTES, occupied);
     if (slot) {
-      commitSession(gs, dc, slot, primaryRole, roleIds, currentPattern, occupied, roleDaySessions, proposed);
+      commitSession(
+        gs,
+        dc,
+        slot,
+        primaryRole,
+        roleIds,
+        currentPattern,
+        occupied,
+        roleDaySessions,
+        proposed,
+        sessionType
+      );
       return true;
     }
   }
@@ -706,7 +872,18 @@ function tryPlaceSession(
     );
 
     if (slot) {
-      commitSession(gs, dc, slot, primaryRole, roleIds, currentPattern, occupied, roleDaySessions, proposed);
+      commitSession(
+        gs,
+        dc,
+        slot,
+        primaryRole,
+        roleIds,
+        currentPattern,
+        occupied,
+        roleDaySessions,
+        proposed,
+        sessionType
+      );
       return true;
     }
   }
@@ -738,9 +915,14 @@ function commitSession(
   pattern: SessionPattern | null,
   occupied: Map<string, { start: string; end: string }[]>,
   roleDaySessions: Map<number, Set<string>>,
-  proposed: ProposedActivity[]
+  proposed: ProposedActivity[],
+  sessionType: SessionType
 ) {
   gs.sessionsPlaced++;
+  if (gs.planSplit) {
+    if (sessionType === "training") gs.trainingSessionsPlaced++;
+    else gs.supplementalSessionsPlaced++;
+  }
 
   let title: string;
   if (gs.trainingPhase) {
@@ -753,12 +935,24 @@ function commitSession(
     title = gs.goal.title;
   }
 
-  const reason = buildReason(gs, dc, pattern);
+  const reason = buildReason(gs, dc, pattern, sessionType);
 
   let notes: string | undefined;
-  if (gs.trainingPhase?.description) {
-    notes = gs.trainingPhase.description;
-    if (gs.trainingPhase.limitationNotes) {
+  if (gs.trainingPhase) {
+    if (sessionType === "training") {
+      if (gs.trainingPhase.sportFocusContent) {
+        notes = gs.trainingPhase.sportFocusContent;
+        if (gs.trainingPhase.mentalGameContent) {
+          notes += `\n\n${gs.trainingPhase.mentalGameContent}`;
+        }
+      }
+    } else if (gs.trainingPhase.supplementalContent) {
+      notes = gs.trainingPhase.supplementalContent;
+    }
+    if (!notes && gs.trainingPhase.description) {
+      notes = gs.trainingPhase.description;
+    }
+    if (notes && gs.trainingPhase.limitationNotes) {
       notes += `\n\n[PHYSICAL LIMITATIONS]\n${gs.trainingPhase.limitationNotes}`;
     }
   } else if (gs.goal.description) {
@@ -778,6 +972,7 @@ function commitSession(
     roleColor: primaryRole?.color,
     reason,
     notes,
+    sessionType,
   });
 
   markOccupied(occupied, dc.date, slot.start, slot.end);
@@ -793,11 +988,17 @@ function commitSession(
   }
 }
 
-function buildReason(gs: GoalSlot, dc: DayClassification, pattern: SessionPattern | null): string {
+function buildReason(
+  gs: GoalSlot,
+  dc: DayClassification,
+  pattern: SessionPattern | null,
+  sessionType: SessionType
+): string {
   const sessionLabel = `Session ${gs.sessionsPlaced}/${gs.totalSessionsNeeded}`;
   const parts = [sessionLabel];
 
   if (gs.trainingPhase) parts.push(`[${gs.trainingPhase.displayName} phase]`);
+  if (sessionType === "supplemental" && gs.trainingPhase) parts.push("[Supplemental]");
   if (gs.benchmarkLabel) parts.push(`(${gs.benchmarkLabel})`);
   if (pattern) parts.push(`[${pattern.label}]`);
 

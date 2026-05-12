@@ -62,6 +62,8 @@ export interface WeeklyFocusGoal {
   goal?: Goal;
 }
 
+export type SessionType = "training" | "supplemental";
+
 export interface Activity {
   id: number;
   goalId: number | null;
@@ -77,6 +79,7 @@ export interface Activity {
   isLogEntry: boolean;
   notes: string | null;
   carryForwardFrom: string | null;
+  sessionType: SessionType;
   createdAt: string;
   updatedAt: string;
   roleName?: string;
@@ -412,6 +415,10 @@ export interface TrainingPlan {
   sportProfile: SportProfile;
   startDate: string;
   status: TrainingPlanStatus;
+  trainingSessionsPerWeek: number | null;
+  supplementalSessionsPerWeek: number | null;
+  trainingPreferredDays: number[];
+  supplementalPreferredDays: number[];
   createdAt: string;
   updatedAt: string;
   phases?: TrainingPhase[];
@@ -427,6 +434,9 @@ export interface TrainingPhase {
   endDate: string;
   status: PhaseStatus;
   description: string;
+  sportFocusContent: string | null;
+  supplementalContent: string | null;
+  mentalGameContent: string | null;
   limitationNotes: string | null;
   createdAt: string;
   updatedAt: string;
