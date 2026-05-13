@@ -76,7 +76,7 @@ export interface Activity {
   startTime: string;
   endTime: string;
   isCompleted: boolean;
-  isLogEntry: boolean;
+  createdFromLog: boolean;
   notes: string | null;
   carryForwardFrom: string | null;
   sessionType: SessionType;
@@ -183,6 +183,7 @@ export interface ActivityType {
   isTracked: boolean;
   defaultCalories: number | null;
   defaultSteps: number | null;
+  defaultDurationMinutes: number;
   metricsConfig: MetricField[];
   variants: ActivityVariant[] | null;
   gradeSystem: string | null;

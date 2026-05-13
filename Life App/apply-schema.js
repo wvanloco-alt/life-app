@@ -338,10 +338,31 @@ const alterStatements = [
   `ALTER TABLE training_phases ADD COLUMN supplemental_content TEXT`,
   `ALTER TABLE training_phases ADD COLUMN mental_game_content TEXT`,
   `ALTER TABLE activities ADD COLUMN session_type TEXT NOT NULL DEFAULT 'training'`,
+  `ALTER TABLE activity_types ADD COLUMN default_duration_minutes INTEGER NOT NULL DEFAULT 60`,
 ];
 
 for (const sql of alterStatements) {
   run(sql);
+}
+
+// ─── 2a. Rename activities.is_log_entry → activities.created_from_log ─────────
+// Guarded by PRAGMA table_info so it's idempotent. SQLite 3.25+ supports
+// ALTER TABLE ... RENAME COLUMN; better-sqlite3 ships with 3.43+.
+
+try {
+  const activitiesCols = db.prepare(`PRAGMA table_info(activities)`).all();
+  const hasOldName = activitiesCols.some((c) => c.name === "is_log_entry");
+  const hasNewName = activitiesCols.some((c) => c.name === "created_from_log");
+  if (hasOldName && !hasNewName) {
+    db.exec(`ALTER TABLE activities RENAME COLUMN is_log_entry TO created_from_log`);
+    console.log("OK: ALTER TABLE activities RENAME COLUMN is_log_entry TO created_from_log");
+  } else if (hasNewName) {
+    console.log("SKIP: activities.created_from_log already exists");
+  } else {
+    console.log("SKIP: activities table missing is_log_entry column (fresh schema?)");
+  }
+} catch (e) {
+  console.error("ERROR renaming activities.is_log_entry:", e.message);
 }
 
 // ─── 2b. Backfill training_plans split for existing rows (training-supplemental-split V1) ─

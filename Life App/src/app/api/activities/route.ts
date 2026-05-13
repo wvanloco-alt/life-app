@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     startTime: activities.startTime,
     endTime: activities.endTime,
     isCompleted: activities.isCompleted,
-    isLogEntry: activities.isLogEntry,
+    createdFromLog: activities.createdFromLog,
     notes: activities.notes,
     carryForwardFrom: activities.carryForwardFrom,
     sessionType: activities.sessionType,
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     roleId,
     goalId,
     notes,
-    isLogEntry,
+    createdFromLog,
     activityTypeId,
     sessionType: rawSessionType,
   } = body;
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
     goalId: goalId ?? null,
     activityTypeId: activityTypeId ?? null,
     notes: notes?.trim() || null,
-    isLogEntry: isLogEntry ?? false,
+    createdFromLog: createdFromLog ?? false,
     sessionType,
     userId,
   }).returning();

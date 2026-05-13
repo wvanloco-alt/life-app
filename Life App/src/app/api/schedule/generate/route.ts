@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
 
     if (regenerate) {
       const focusGoalIds = new Set(goalIds);
-      scopeActivities = scopeActivities.filter((a) => !(a.goalId && focusGoalIds.has(a.goalId) && !a.isLogEntry && !a.isCompleted));
+      scopeActivities = scopeActivities.filter((a) => !(a.goalId && focusGoalIds.has(a.goalId) && !a.createdFromLog && !a.isCompleted));
     }
 
     const [schedYear, schedMonth] = monthFirstDay.split("-").map(Number);

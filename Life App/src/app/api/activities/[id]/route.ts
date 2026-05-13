@@ -29,7 +29,7 @@ export async function PATCH(
   if (body.startTime !== undefined) updates.startTime = body.startTime;
   if (body.endTime !== undefined) updates.endTime = body.endTime;
   if (body.isCompleted !== undefined) updates.isCompleted = Boolean(body.isCompleted);
-  if (body.isLogEntry !== undefined) updates.isLogEntry = Boolean(body.isLogEntry);
+  if (body.createdFromLog !== undefined) updates.createdFromLog = Boolean(body.createdFromLog);
   if (body.notes !== undefined) updates.notes = body.notes?.trim() || null;
   if (body.roleId !== undefined) updates.roleId = body.roleId;
   if (body.goalId !== undefined) updates.goalId = body.goalId;

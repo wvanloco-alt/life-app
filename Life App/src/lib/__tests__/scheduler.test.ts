@@ -180,7 +180,7 @@ describe("generateSchedule", () => {
         startTime: "06:00",
         endTime: "08:30",
         isCompleted: false,
-        isLogEntry: false,
+        createdFromLog: false,
         notes: null,
         carryForwardFrom: null,
         sessionType: "training",

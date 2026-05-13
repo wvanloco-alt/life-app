@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
       } else {
         const activityTypeRows = await db.select({ name: activityTypes.name }).from(activityTypes).where(eq(activityTypes.id, activityTypeId));
         const activityTypeName = activityTypeRows[0]?.name ?? "Activity";
-        const [newActivity] = await db.insert(activities).values({ title: activityTypeName, goalId, roleId, activityDate: date, startTime: "00:00", endTime: "00:01", isCompleted: true, isLogEntry: true, quadrant: "Q2", userId }).returning({ id: activities.id });
+        const [newActivity] = await db.insert(activities).values({ title: activityTypeName, goalId, roleId, activityDate: date, startTime: "00:00", endTime: "00:01", isCompleted: true, createdFromLog: true, quadrant: "Q2", userId }).returning({ id: activities.id });
         if (newActivity) activityToLink = { id: newActivity.id };
       }
 
