@@ -160,7 +160,7 @@ export function DayColumn({
       roleColor: a.roleColor ?? null,
       quadrant: a.quadrant,
       isCompleted: a.isCompleted,
-      isLogEntry: a.isLogEntry,
+      createdFromLog: a.createdFromLog,
       activity: a,
     })),
   ].sort((a, b) => a.startTime.localeCompare(b.startTime));
@@ -216,7 +216,7 @@ export function DayColumn({
 
           const activity = item.activity!;
 
-          if (activity.isLogEntry) {
+          if (activity.createdFromLog) {
             return (
               <div
                 key={item.id}

@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
       const toDelete = await db.select({ id: activities.id }).from(activities).where(
         and(
           inArray(activities.goalId, focusGoalIds),
-          eq(activities.isLogEntry, false),
+          eq(activities.createdFromLog, false),
           eq(activities.isCompleted, false),
           gte(activities.activityDate, dateRange.start),
           lte(activities.activityDate, dateRange.end),

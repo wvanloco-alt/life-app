@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
       and(
         gte(activities.activityDate, start),
         lte(activities.activityDate, end),
-        eq(activities.isLogEntry, false),
+        eq(activities.createdFromLog, false),
         eq(activities.isCompleted, false),
         eq(activities.userId, userId)
       )
