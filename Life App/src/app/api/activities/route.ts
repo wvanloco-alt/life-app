@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { activities, roles } from "@/db/schema";
+import { activities, activityLogs, roles } from "@/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 
@@ -37,11 +37,26 @@ export async function GET(request: NextRequest) {
     updatedAt: activities.updatedAt,
     roleName: roles.name,
     roleColor: roles.color,
+    // T006b: the schedule-to-log bridge's idempotency guarantee means each
+    // activity has at most one linked log, so a direct LEFT JOIN is safe.
+    linkedLogId: activityLogs.id,
   };
+
+  // The userId predicate on the activityLogs join prevents leaking foreign
+  // log ids when an activity row is shared across the join surface.
+  const joinPredicate = and(
+    eq(activityLogs.activityId, activities.id),
+    eq(activityLogs.userId, userId)
+  );
 
   let result;
   if (date) {
-    result = await db.select(selectedCols).from(activities).leftJoin(roles, eq(activities.roleId, roles.id)).where(and(eq(activities.activityDate, date), eq(activities.userId, userId)));
+    result = await db
+      .select(selectedCols)
+      .from(activities)
+      .leftJoin(roles, eq(activities.roleId, roles.id))
+      .leftJoin(activityLogs, joinPredicate)
+      .where(and(eq(activities.activityDate, date), eq(activities.userId, userId)));
   } else {
     const dates: string[] = [];
     const start = new Date(weekStart!);
@@ -50,7 +65,12 @@ export async function GET(request: NextRequest) {
       d.setDate(d.getDate() + i);
       dates.push(d.toISOString().split("T")[0]);
     }
-    result = await db.select(selectedCols).from(activities).leftJoin(roles, eq(activities.roleId, roles.id)).where(and(inArray(activities.activityDate, dates), eq(activities.userId, userId)));
+    result = await db
+      .select(selectedCols)
+      .from(activities)
+      .leftJoin(roles, eq(activities.roleId, roles.id))
+      .leftJoin(activityLogs, joinPredicate)
+      .where(and(inArray(activities.activityDate, dates), eq(activities.userId, userId)));
   }
 
   return NextResponse.json(result);
@@ -103,5 +123,7 @@ export async function POST(request: NextRequest) {
     userId,
   }).returning();
 
-  return NextResponse.json(created, { status: 201 });
+  // POST returns a brand-new activity, so no log is linked yet. Surface the
+  // shape clients receive from GET so client-side state stays consistent.
+  return NextResponse.json({ ...created, linkedLogId: null }, { status: 201 });
 }

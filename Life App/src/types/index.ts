@@ -84,6 +84,13 @@ export interface Activity {
   updatedAt: string;
   roleName?: string;
   roleColor?: string;
+  /**
+   * Populated by GET /api/activities via LEFT JOIN on activity_logs.
+   * Non-null when this activity is the source of (or linked target for)
+   * a logged workout. Drives the client-side un-check/delete prompts.
+   * Endpoints that do not enrich (PATCH/POST returning(...)) may omit it.
+   */
+  linkedLogId?: number | null;
 }
 
 export interface RecurringActivity {
