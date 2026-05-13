@@ -21,6 +21,10 @@ import { SchedulePreview } from "./schedule-preview";
 import { RecurringManager } from "./recurring-manager";
 import { FocusPicker } from "./focus-picker";
 import { SchedulerSettingsDialog } from "./scheduler-settings-dialog";
+import {
+  LinkedLogActionDialog,
+  type BridgedLogAction,
+} from "@/components/activities/linked-log-action-dialog";
 import { getWeekStartDate, getWeekDates } from "@/lib/dates";
 import {
   getSessionTypeCardClasses,
@@ -73,6 +77,14 @@ export function WeeklyPlanView() {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const [draggingActivity, setDraggingActivity] = useState<Activity | null>(null);
+
+  // Un-check prompt state. Populated when the user clicks the checkbox to
+  // un-check an activity that has a linked log; the dialog asks whether to
+  // delete or unlink the log before the PATCH fires.
+  const [pendingUncheck, setPendingUncheck] = useState<{
+    id: number;
+    title: string;
+  } | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -227,11 +239,18 @@ export function WeeklyPlanView() {
     fetchMonthActivities();
   }
 
-  async function handleToggleActivity(id: number, isCompleted: boolean) {
+  async function persistToggle(
+    id: number,
+    isCompleted: boolean,
+    bridgedLogAction?: BridgedLogAction
+  ) {
     await fetch(`/api/activities/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isCompleted }),
+      body: JSON.stringify({
+        isCompleted,
+        ...(bridgedLogAction != null && { bridgedLogAction }),
+      }),
     });
     setActivities((prev) =>
       prev.map((a) => (a.id === id ? { ...a, isCompleted } : a))
@@ -239,6 +258,25 @@ export function WeeklyPlanView() {
     setMonthActivities((prev) =>
       prev.map((a) => (a.id === id ? { ...a, isCompleted } : a))
     );
+  }
+
+  function handleToggleActivity(id: number, isCompleted: boolean) {
+    // Un-check direction + a linked log → prompt before PATCHing. The
+    // checkbox itself stays in its current state because we have not
+    // touched local state yet; if the user cancels the dialog nothing
+    // changes. monthActivities is the authoritative source for the
+    // calendar but daily/weekly state may diverge briefly, so we fall
+    // through to activities as a backup.
+    if (!isCompleted) {
+      const activity =
+        monthActivities.find((a) => a.id === id) ??
+        activities.find((a) => a.id === id);
+      if (activity?.linkedLogId != null) {
+        setPendingUncheck({ id, title: activity.title });
+        return;
+      }
+    }
+    void persistToggle(id, isCompleted);
   }
 
   function handleDragStart(event: DragStartEvent) {
@@ -636,6 +674,19 @@ export function WeeklyPlanView() {
       <SchedulerSettingsDialog
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
+      />
+
+      <LinkedLogActionDialog
+        open={pendingUncheck !== null}
+        onClose={() => setPendingUncheck(null)}
+        onConfirm={(action) => {
+          if (pendingUncheck) {
+            void persistToggle(pendingUncheck.id, false, action);
+          }
+          setPendingUncheck(null);
+        }}
+        mode="uncheck"
+        activityTitle={pendingUncheck?.title}
       />
     </div>
   );
