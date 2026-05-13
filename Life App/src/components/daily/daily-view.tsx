@@ -36,6 +36,10 @@ import {
 } from "@/lib/session-type-styles";
 import { cn } from "@/lib/utils";
 import { ActivityForm } from "@/components/monthly-plan/activity-form";
+import {
+  LinkedLogActionDialog,
+  type BridgedLogAction,
+} from "@/components/activities/linked-log-action-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import type {
   Activity,
@@ -277,6 +281,14 @@ export function DailyView() {
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [defaultStartTime, setDefaultStartTime] = useState("");
 
+  // Un-check prompt state. Populated when the user un-checks a scheduled
+  // activity that has a linked log; the dialog asks whether to delete or
+  // unlink the log before the PATCH fires.
+  const [pendingUncheck, setPendingUncheck] = useState<{
+    id: number;
+    title: string;
+  } | null>(null);
+
   const dateStr = toISODate(currentDate);
   const todayFlag = isToday(currentDate);
 
@@ -319,11 +331,18 @@ export function DailyView() {
     fetchData();
   }, [fetchData]);
 
-  async function handleToggle(id: number, isCompleted: boolean) {
+  async function persistToggle(
+    id: number,
+    isCompleted: boolean,
+    bridgedLogAction?: BridgedLogAction
+  ) {
     await fetch(`/api/activities/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isCompleted }),
+      body: JSON.stringify({
+        isCompleted,
+        ...(bridgedLogAction != null && { bridgedLogAction }),
+      }),
     });
     setActivities((prev) =>
       prev.map((a) => (a.id === id ? { ...a, isCompleted } : a))
@@ -331,6 +350,28 @@ export function DailyView() {
     setCarryForward((prev) =>
       prev.map((a) => (a.id === id ? { ...a, isCompleted } : a))
     );
+    // When the un-check or check-off bridge mutated activity_logs the
+    // server-side tracker shifted; reload so the Completed Activities
+    // panel below the schedule reflects the new state.
+    if (
+      bridgedLogAction != null ||
+      isCompleted === true
+    ) {
+      await fetchData();
+    }
+  }
+
+  function handleToggle(id: number, isCompleted: boolean) {
+    if (!isCompleted) {
+      const activity =
+        activities.find((a) => a.id === id) ??
+        carryForward.find((a) => a.id === id);
+      if (activity?.linkedLogId != null) {
+        setPendingUncheck({ id, title: activity.title });
+        return;
+      }
+    }
+    void persistToggle(id, isCompleted);
   }
 
   async function handleReschedule(activityId: number) {
@@ -745,6 +786,19 @@ export function DailyView() {
         defaultDate={dateStr}
         defaultActivityTypeId={logDialogActivity?.activityTypeId}
         defaultActivityId={logDialogActivity?.activityId}
+      />
+
+      <LinkedLogActionDialog
+        open={pendingUncheck !== null}
+        onClose={() => setPendingUncheck(null)}
+        onConfirm={(action) => {
+          if (pendingUncheck) {
+            void persistToggle(pendingUncheck.id, false, action);
+          }
+          setPendingUncheck(null);
+        }}
+        mode="uncheck"
+        activityTitle={pendingUncheck?.title}
       />
     </div>
   );
