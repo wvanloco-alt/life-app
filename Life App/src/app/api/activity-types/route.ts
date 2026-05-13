@@ -49,10 +49,20 @@ export async function POST(request: NextRequest) {
   const userId = session.user.id;
 
   const body = await request.json();
-  const { name, type, icon, isTracked, defaultCalories, defaultSteps, metricsConfig, variants, gradeSystem } = body;
+  const { name, type, icon, isTracked, defaultCalories, defaultSteps, defaultDurationMinutes, metricsConfig, variants, gradeSystem } = body;
 
   if (!name || typeof name !== "string" || name.trim().length === 0) {
     return NextResponse.json({ error: "Name is required" }, { status: 400 });
+  }
+
+  // defaultDurationMinutes is optional on POST and falls back to the schema's
+  // 60-minute default. When provided, it must be a positive integer.
+  let resolvedDuration: number | undefined = undefined;
+  if (defaultDurationMinutes !== undefined && defaultDurationMinutes !== null) {
+    if (!Number.isInteger(defaultDurationMinutes) || defaultDurationMinutes <= 0) {
+      return NextResponse.json({ error: "defaultDurationMinutes must be a positive integer" }, { status: 400 });
+    }
+    resolvedDuration = defaultDurationMinutes;
   }
 
   const [created] = await db.insert(activityTypes).values({
@@ -62,6 +72,7 @@ export async function POST(request: NextRequest) {
     isTracked: isTracked ?? false,
     defaultCalories: defaultCalories ?? null,
     defaultSteps: defaultSteps ?? null,
+    ...(resolvedDuration !== undefined && { defaultDurationMinutes: resolvedDuration }),
     metricsConfig: JSON.stringify(metricsConfig ?? []),
     variants: variants ? JSON.stringify(variants) : null,
     gradeSystem: gradeSystem ?? null,
