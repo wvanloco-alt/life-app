@@ -1,6 +1,6 @@
 # Tasks: Life App
 
-> Last updated: 2026-03-21. Tracks completed work across all features.
+> Last updated: 2026-05-13. Tracks completed work across all features.
 
 ---
 
@@ -437,6 +437,38 @@
 
 ---
 
+## Training vs Supplemental Split — Phase 7 unit tests (2026-05-12)
+
+**Spec**: `Life App/feature requests/training-supplemental-split/spec.md`
+
+- [x] T031 — Unit tests for `src/lib/training/split.ts` covering `defaultSplit`, `isValidSplit`, `weeklySessionTargets`, `allocateSplitTotals` (boundary, sum, and invalid-input cases). PR #2.
+- [x] T032 — Scheduler tests covering split allocation across goals (training-then-supplemental order per ISO week, preferred-day bias from dual day arrays, layered note assembly with `description` fallback). PR #3.
+
+**Manual tasks owned by the user** (per feature `tasks.md`): T033 integration walkthrough, T034 regression sweep.
+
+---
+
+## Activities Refactoring V1 — Phases 1–6 (2026-05-13)
+
+**Spec**: `Life App/feature requests/activities-refactoring/spec.md`
+
+Bridges the long-standing disconnect between scheduled `activities` and logged `activity_logs` without merging the two tables. Six small additive PRs against `master`, all merged.
+
+- [x] **Phase 1 — Schema and renaming** (PR #4): Renamed `activities.is_log_entry` → `created_from_log` (idempotent `PRAGMA`-guarded `ALTER TABLE RENAME COLUMN` in `apply-schema.js`). Added `activity_types.default_duration_minutes` (NOT NULL DEFAULT 60). Updated Drizzle schema, `Activity` / `ActivityType` TypeScript types, and grep-and-replaced all `isLogEntry` call sites across API routes, scheduler, scheduler tests, and the day-column UI.
+- [x] **Phase 2 — Server bridges** (PR #5): Extracted bridge logic into a pure, Drizzle-typed module `src/lib/activities-bridge.ts` with `applyCheckOffBridge`, `applyUnCheckBridge`, `applyDeleteBridge`, `parseBridgedLogAction`. Wired into `PATCH /api/activities/[id]` (check-off inserts a log idempotently using `default_duration_minutes`; un-check applies `bridgedLogAction` `delete` / `unlink` unconditionally) and `DELETE /api/activities/[id]` (returns `409 { linkedLogId }` when a linked log exists and no action is supplied, otherwise honors `?bridgedLogAction=`). `GET /api/activities` LEFT-JOINs `activity_logs` (user-scoped) to project the derived `linkedLogId` field; POST returns `linkedLogId: null` for shape parity. 23 unit tests in `src/lib/__tests__/activities-bridge.test.ts` covering insert, idempotency, unlink, delete, user-scope isolation, and the `bridgedLogAction` parser.
+- [x] **Phase 3 — Calendar un-check dialog** (PR #6): New `src/components/activities/linked-log-action-dialog.tsx` (dual `mode: "uncheck" | "delete"` component, stacked option buttons + cancel). Wired un-check handler in `weekly-plan-view.tsx` and `daily-view.tsx` so the client opens the dialog purely off the `linkedLogId` it already has from GET (optimistic flow, no extra fetch). `daily-view.tsx` re-fetches `activityLogs` after a bridged un-check so workout history reflects the user's choice immediately.
+- [x] **Phase 4 — WorkoutLog goal picker** (PR #7): Added an "(optional) Goal" select to the manual Log Activity tab (`src/components/activities/workout-log.tsx`), populated from `GET /api/goals?status=active`, hidden when the user has no active goals. The selected `goalId` is sent verbatim on `POST /api/activity-logs`.
+- [x] **Phase 5 — Calendar Schedule Activity gate removal + role auto-fill** (PR #8): Removed the role-based goal filter in `src/components/monthly-plan/activity-form.tsx` so the goal picker is no longer hidden when the role select is empty. Picking a goal now auto-fills the role select with the goal's first linked role when role is currently unset, removing a common silent UX dead-end.
+- [x] **Phase 6 — Activity-type editor default duration** (PR #9): Added a "Default Duration (minutes)" number input (always visible, helper text explaining the bridge use) to `src/components/activities/sport-form.tsx` with client-side positive-integer validation. Wired `defaultDurationMinutes` through `POST` and `PATCH /api/activity-types`.
+
+**Verification across all phases**: `npx tsc --noEmit` clean, 228 passing tests with no regressions, `npm run lint` baseline (41 errors / 12 warnings, all pre-existing) unchanged.
+
+**Manual tasks owned by the user** (per feature `tasks.md`): T018 climbing-happy-path integration walkthrough, T019 regression sweep (tennis/running existing plans, generic activity without type, `goal_tallies` untouched).
+
+**Deferred**: A V2 "table unification" candidate (collapsing `activities` and `activity_logs` into one schema) was considered and deferred — the surgical V1 bridge model preserves the existing semantic split (scheduled time blocks vs logged workouts) and was sufficient for every user-visible disconnect we identified.
+
+---
+
 ## Scheduler & Goal Form Fixes (completed)
 
 - [x] Training plan availability extended to standalone goals (was yearly-only). Updated condition in `goal-form-standalone.tsx` and save payload.
@@ -477,3 +509,5 @@
 | 2026-03-20 | Running Training Periodization V1 | Running periodization engine (3-phase beginner, 4-phase intermediate/advanced), 5 goal distance modifiers, 6 physical limitation modifiers, three-layered phase descriptions, RunningTrainingPlanDialog, detectSport() updated, phase colors, 0 schema changes |
 | 2026-03-21 | Scheduler & Goal Form Fixes | Training plans extended to standalone goals, activityTypeId propagation fix (scheduler → apply route), auto-seeding defaults (roles, activity types, spending categories), default goal horizon changed to "Yearly" |
 | 2026-05-11 | Training vs Supplemental Session Split (V1, partial) | Schema + climbing layer columns + split-aware scheduler + apply `session_type` + climbing training-plan dialog (split / preferred days / edit). ROADMAP, `data-model.md`, `api-routes.md` updated. Phases 5–7 pending — see `feature requests/training-supplemental-split/tasks.md`. |
+| 2026-05-12 | Training vs Supplemental Split — Phase 7 unit tests | T031 split-helper tests and T032 scheduler tests (training-then-supplemental ordering, dual preferred-day bias, layered note fallback). Manual T033 / T034 deferred to the user. |
+| 2026-05-13 | Activities Refactoring V1 | Renamed `activities.is_log_entry` → `created_from_log`; added `activity_types.default_duration_minutes`. New schedule-to-log bridge in `activities-bridge.ts` wired into `PATCH /api/activities/:id` (check-off inserts an idempotent log; un-check honors `bridgedLogAction`) and `DELETE /api/activities/:id` (409 + `linkedLogId` when a linked log exists and no `bridgedLogAction` is supplied). `GET /api/activities` projects derived `linkedLogId`. New `LinkedLogActionDialog` drives optimistic un-check / delete prompts. WorkoutLog goal picker, calendar Schedule Activity goal-picker gate removal with role auto-fill, and activity-type editor default-duration input. Six PRs (#4–#9) on master. |

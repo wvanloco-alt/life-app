@@ -1,6 +1,6 @@
 # API Routes Contract: Life App
 
-> Last updated: 2026-05-11. Reflects current API surface including Feature 1, Feature 2 (Activities), Feature 3 (Budget), v2 Overhaul, Goals V2 (goal hierarchy, tallies, pace tracking), Scheduler Rules (blackout dates, session patterns, activity type propagation), **training vs supplemental split (climbing phases + scheduler + apply)**, schedule regeneration/reset, and UI Design Overhaul (cascade delete, activity summary extension). Onboarding Wizard removed.
+> Last updated: 2026-05-13. Reflects current API surface including Feature 1, Feature 2 (Activities), Feature 3 (Budget), v2 Overhaul, Goals V2 (goal hierarchy, tallies, pace tracking), Scheduler Rules (blackout dates, session patterns, activity type propagation), **training vs supplemental split (climbing phases + scheduler + apply)**, **Activities Refactoring V1** (`isLogEntry` → `createdFromLog`, schedule-to-log bridge on activity check-off, `bridgedLogAction` on un-check / delete, `linkedLogId` on activity GET, `defaultDurationMinutes` on activity types, explicit `goalId` from WorkoutLog), schedule regeneration/reset, and UI Design Overhaul (cascade delete, activity summary extension). Onboarding Wizard removed.
 
 All API routes use Next.js Route Handlers. Base URL: `http://localhost:3000/api`
 
@@ -27,6 +27,7 @@ Returns all activity types.
     "isTracked": true,
     "defaultCalories": null,
     "defaultSteps": null,
+    "defaultDurationMinutes": 60,
     "metricsConfig": [
       { "key": "distance_km", "label": "Distance (km)", "type": "number" },
       { "key": "pace", "label": "Pace (min/km)", "type": "text" }
@@ -37,6 +38,8 @@ Returns all activity types.
   }
 ]
 ```
+
+`defaultDurationMinutes` (Activities Refactoring V1) is the value the schedule-to-log bridge uses for `durationMinutes` when auto-inserting an activity log on check-off of a scheduled activity of this type.
 
 ### POST /api/activity-types
 
@@ -51,16 +54,19 @@ Create a new activity type.
   "isTracked": true,
   "defaultCalories": null,
   "defaultSteps": null,
+  "defaultDurationMinutes": 30,
   "metricsConfig": [],
   "variants": null
 }
 ```
 
+`defaultDurationMinutes` is optional on create; it must be a positive integer when provided and defaults to `60` if omitted. Activities Refactoring V1.
+
 **Response** `201`: The created activity type object.
 
 ### PATCH /api/activity-types/:id
 
-Update an activity type. Accepts any subset of fields.
+Update an activity type. Accepts any subset of fields. When `defaultDurationMinutes` is provided it must be a positive integer.
 
 ### DELETE /api/activity-types/:id
 
@@ -104,7 +110,9 @@ Returns activity logs with joined `activityTypeName`, `activityTypeIcon`. Accept
 
 ### POST /api/activity-logs
 
-Log a new activity. When `goalId` is provided, auto-creates or updates a calendar activity (marks existing uncompleted activity as completed, or creates new one with `isLogEntry=true`). **v2**: After creating the log, auto-completes any matching scheduled activity (same `activityTypeId`, same date, not yet completed).
+Log a new activity. When `goalId` is provided, auto-creates or updates a calendar activity (marks existing uncompleted activity as completed, or creates new one with `createdFromLog=true`; field renamed from `isLogEntry` in Activities Refactoring V1). **v2**: After creating the log, auto-completes any matching scheduled activity (same `activityTypeId`, same date, not yet completed).
+
+**Activities Refactoring V1**: The in-app WorkoutLog tab now exposes an "(optional) Goal" picker populated from `GET /api/goals?status=active`. The selected `goalId` is sent verbatim on this POST, replacing the previous behavior where logs were never linked to a goal. Logs created elsewhere (calendar check-off via the schedule-to-log bridge) continue to inherit `goalId` from the source activity.
 
 **Request body**:
 ```json
@@ -508,7 +516,7 @@ Get activities. Requires one of:
 - `?date=YYYY-MM-DD` — single day
 - `?weekStart=YYYY-MM-DD` — full week (7 days from Monday)
 
-Response includes joined `roleName`, `roleColor`, `isLogEntry` (true when created from an activity log), and **`sessionType`** (`training` \| `supplemental`).
+Response includes joined `roleName`, `roleColor`, `createdFromLog` (true when created from an activity log; renamed from `isLogEntry` in Activities Refactoring V1), **`sessionType`** (`training` \| `supplemental`), and **`linkedLogId`** (`number \| null`). `linkedLogId` is derived via a user-scoped `LEFT JOIN` on `activity_logs.activity_id` and is non-null when the activity is bidirectionally linked to a logged workout. The schedule-to-log bridge's idempotency guarantee (at most one log per activity) keeps the join safe for the activity row's lifetime; the client uses `linkedLogId` to decide whether to prompt the user before un-checking or deleting (Activities Refactoring V1).
 
 ### POST /api/activities
 
@@ -525,22 +533,37 @@ Create an activity.
   "roleId": 2,
   "goalId": 1,
   "notes": "Easy pace",
-  "isLogEntry": false,
+  "createdFromLog": false,
   "sessionType": "training"
 }
 ```
 
-`isLogEntry` is optional (default false). Set to `true` when the activity was created from logging via `/api/activity-logs`.
+`createdFromLog` is optional (default false). Set to `true` when the activity was created from logging via `/api/activity-logs`. The log-to-activity bridge in `POST /api/activity-logs` sets this flag automatically.
+
+The response shape matches `GET /api/activities`; for a freshly-created activity `linkedLogId` is always `null`.
 
 `sessionType` is optional on create (default `training`). Must be `training` or `supplemental` when provided.
 
 ### PATCH /api/activities/:id
 
-Update an activity (reschedule, complete, add notes, etc.). Optional **`sessionType`**: `training` \| `supplemental` — used when editing session type from the activity form; omitted fields are unchanged (e.g. drag-reschedule sends only `activityDate`).
+Update an activity (reschedule, complete, add notes, etc.). Omitted fields are unchanged (e.g. drag-reschedule sends only `activityDate`).
+
+**Schedule-to-log bridges** (Activities Refactoring V1) — fire when the PATCH transitions `isCompleted`:
+
+- **Check-off transition** (`isCompleted` flips `false → true`): if the activity has an `activityTypeId`, the handler idempotently inserts a row into `activity_logs` with `activityId` set to this activity, `activityTypeId` and `goalId` copied from the activity, `durationMinutes` from `activity_types.default_duration_minutes` (default `60` when missing), and `date` set to `activityDate`. The insert is skipped if a matching log already exists, if `activityTypeId` is null, or if the referenced activity type is not visible to the user (defensive FK check). The transition is detected using the same boolean coercion that the update uses, so client payloads with non-boolean truthy values (`1`, `"true"`) behave consistently.
+- **Un-check transition** (`isCompleted` flips `true → false`): the body must include **`bridgedLogAction`** when a linked log exists. Allowed values: `"delete"` (removes the linked log) or `"unlink"` (clears `activity_logs.activity_id` and `activity_logs.goal_id` on the linked log so the workout history is preserved but no longer counts toward the goal). Missing or unrecognized `bridgedLogAction` is treated as no-op for forward compatibility. The client (`LinkedLogActionDialog`) determines whether to surface the prompt based on the `linkedLogId` it already has from GET — optimistic flow, no extra round-trip.
+
+Optional **`sessionType`**: `training` \| `supplemental` — used when editing session type from the activity form.
 
 ### DELETE /api/activities/:id
 
 Delete an activity.
+
+**Bridged delete** (Activities Refactoring V1): when the activity has a linked activity log, the handler requires a query parameter **`?bridgedLogAction=delete|unlink`** describing what to do with the linked log first.
+
+- `?bridgedLogAction=delete` — deletes the linked log, then deletes the activity.
+- `?bridgedLogAction=unlink` — clears the log's `activity_id` and `goal_id` (preserving the workout history) before deleting the activity.
+- If the activity has a linked log and the parameter is missing or unrecognized, the handler responds **`409 Conflict`** with `{ "linkedLogId": <number> }`; the client uses this to open the `LinkedLogActionDialog` and retry with the chosen action. Activities with no linked log delete cleanly with no parameter required.
 
 ---
 

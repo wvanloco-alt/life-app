@@ -1,6 +1,6 @@
 # Data Model: Life App
 
-> Last updated: 2026-05-11. Reflects current schema including Feature 1 (Calendar Management), Feature 2 (Fitness Tracking → Activities), Feature 3 (Budget Management), v2 Overhaul, Goals V2, Scheduler Rules, Training Periodization, **Training vs Supplemental Session Split (V1, partial)**, UI Refinements, and **Friend Release** (users table, user_id on all data tables, per-user data isolation).
+> Last updated: 2026-05-13. Reflects current schema including Feature 1 (Calendar Management), Feature 2 (Fitness Tracking → Activities), Feature 3 (Budget Management), v2 Overhaul, Goals V2, Scheduler Rules, Training Periodization, **Training vs Supplemental Session Split (V1, partial)**, **Activities Refactoring V1** (`activities.is_log_entry` → `created_from_log`, `activity_types.default_duration_minutes`, schedule-to-log bridge, derived `linkedLogId` on activity GET), UI Refinements, and **Friend Release** (users table, user_id on all data tables, per-user data isolation).
 
 ## Multi-User Architecture (Friend Release)
 
@@ -184,7 +184,7 @@ erDiagram
         string startTime
         string endTime
         boolean isCompleted
-        boolean isLogEntry
+        boolean createdFromLog
         string notes
         string carryForwardFrom
         string sessionType
@@ -213,6 +213,7 @@ erDiagram
         boolean isTracked
         int defaultCalories
         int defaultSteps
+        int defaultDurationMinutes
         json metricsConfig
         json variants
         string gradeSystem
@@ -401,12 +402,18 @@ A scheduled time block on the calendar, optionally linked to a goal, role, and/o
 | startTime | TEXT | NOT NULL | HH:MM format |
 | endTime | TEXT | NOT NULL | HH:MM format, must be > startTime |
 | isCompleted | INTEGER | NOT NULL, default 0 | 0 = not done, 1 = done |
-| isLogEntry | INTEGER | NOT NULL, default 0 | 1 = auto-created from activity log (displayed with "logged" badge, no time slot) |
+| createdFromLog | INTEGER | NOT NULL, default 0 | 1 = auto-created from an activity log (displayed with "logged" badge, no time slot). Renamed from `is_log_entry` in Activities Refactoring V1 — the new name describes provenance rather than implying the row is itself a log. |
 | notes | TEXT | nullable | Free-form notes |
 | carryForwardFrom | TEXT | nullable, ISO date | Original date if carried forward |
 | sessionType | TEXT | NOT NULL, default `'training'` | Scheduler / user: `'training'` (sport-focused session) or `'supplemental'` (gym supplemental). Supplemental still uses the goal’s `activityTypeId` for goal progress. |
 | createdAt | TEXT | NOT NULL, ISO 8601 | When created |
 | updatedAt | TEXT | NOT NULL, ISO 8601 | Last modification time |
+
+**Derived fields on the GET response (not stored on the table)**:
+
+| Field | Source | Description |
+|-------|--------|-------------|
+| `linkedLogId` | `LEFT JOIN activity_logs ON activity_logs.activity_id = activities.id AND activity_logs.user_id = ?` | `number \| null`. Non-null when this activity is bidirectionally linked to a logged workout (either by the log-to-activity bridge in `POST /api/activity-logs` or the schedule-to-log bridge introduced in Activities Refactoring V1). Drives client-side un-check / delete prompts in the calendar. The schedule-to-log bridge's idempotency guarantee (at most one log per activity) makes the direct LEFT JOIN safe. |
 
 ---
 
@@ -458,6 +465,7 @@ Defines an activity type the user does (e.g., Running, Tennis, Reading, Meditati
 | isTracked | INTEGER | NOT NULL, default 0 | 1 = user wears a tracker, calories/steps come from device |
 | defaultCalories | INTEGER | nullable | Auto-fill for untracked activities |
 | defaultSteps | INTEGER | nullable | Auto-fill for untracked activities |
+| defaultDurationMinutes | INTEGER | NOT NULL, default 60 | Used by the schedule-to-log bridge as the `durationMinutes` for an auto-created activity log when a scheduled activity is checked off. Edited via the activity-type editor. Activities Refactoring V1. |
 | metricsConfig | TEXT | NOT NULL, default '[]' | JSON array of `MetricField` objects defining type-specific log fields |
 | variants | TEXT | nullable | JSON array of `ActivityVariant` objects (e.g., singles/doubles for tennis) |
 | gradeSystem | TEXT | nullable | Grade system identifier (e.g., 'french' for climbing) |
