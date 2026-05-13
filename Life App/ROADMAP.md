@@ -1,6 +1,6 @@
 ﻿# Life App -- Feature Roadmap
 
-> Last updated: 2026-05-11.
+> Last updated: 2026-05-13.
 
 ## Product Vision
 
@@ -381,9 +381,36 @@ The refactor introduces three new shared UI primitives (icon registry, `LucideIc
 - **Calendar visual treatment** (Phase 5): Shared helper `src/lib/session-type-styles.ts`. Supplemental sessions render with muted background + Supplemental badge across `day-column.tsx`, `weekly-plan-view.tsx` (incl. `DragOverlay`), `schedule-preview.tsx`, and `daily-view.tsx`. Drag-and-drop preserves the visual treatment.
 - **Activity edit form** (Phase 6): `ActivityForm` shows a **Session type** select (Training / Supplemental) when the linked goal has a training plan; hidden otherwise. Backed by `PATCH /api/activities/:id` with optional `sessionType`.
 
-**Follow-up (see `tasks.md`)**: Phase 7 automated test matrix (T031-T034); tennis/running parity deferred by spec.
+**Follow-up (see `tasks.md`)**: Phase 7 automated test matrix (T031-T034); tennis/running parity deferred by spec. T031 (split helpers) and T032 (scheduler) shipped 2026-05-12; T033 / T034 are manual user tasks.
 
 **Dependencies**: Climbing phase content upgrade (three-layer source content), Feature 1 (scheduler / apply).
+
+---
+
+### Activities Refactoring V1
+
+**Spec / working docs**: `Life App/feature requests/activities-refactoring/` (`scope.md`, `spec.md`, `plan.md`, `tasks.md`)
+**Status**: Built (complete, six PRs merged 2026-05-13)
+
+**What it does**: Bridges the long-standing disconnect between scheduled `activities` (calendar slots) and logged `activity_logs` (workout history) without merging the two tables. Checking off a scheduled activity now auto-inserts a corresponding log row (idempotently, using a per-type default duration). Un-checking or deleting a scheduled activity that has a linked log prompts the user once — keep the log untouched, unlink it from the activity but preserve the workout history, or delete it outright — and the client makes that decision optimistically off a `linkedLogId` it already received with the activity GET, so there is no extra round-trip. Manual log entries from the Activity tracker gain an optional goal picker, and the calendar's Schedule Activity dialog no longer hides the goal picker behind a role gate. Activity types gain a `defaultDurationMinutes` field that the bridge uses on check-off.
+
+**What has been built**:
+- **Schema**: `activities.is_log_entry` → `created_from_log` (idempotent `PRAGMA`-guarded rename in `apply-schema.js`). New `activity_types.default_duration_minutes INTEGER NOT NULL DEFAULT 60`. Drizzle schema + TypeScript types updated; full grep-and-replace across the codebase.
+- **Bridge module**: `src/lib/activities-bridge.ts` exposes `applyCheckOffBridge`, `applyUnCheckBridge`, `applyDeleteBridge`, `parseBridgedLogAction`. Pure functions over a Drizzle DB handle so they are unit-testable on in-memory SQLite (23 tests in `src/lib/__tests__/activities-bridge.test.ts`).
+- **API**: `PATCH /api/activities/:id` triggers the bridge on `isCompleted` transitions using the same boolean coercion as the update (handles `1`, `"true"`, etc.). `DELETE /api/activities/:id` returns `409 { linkedLogId }` when a linked log exists and no `bridgedLogAction` is supplied; otherwise it honors `?bridgedLogAction=delete|unlink`. `GET /api/activities` LEFT-JOINs `activity_logs` (user-scoped) to project `linkedLogId`. `POST` returns `linkedLogId: null` for shape parity. `POST /api/activity-types` and `PATCH /api/activity-types/:id` validate `defaultDurationMinutes` as a positive integer (server default 60). `POST /api/activity-logs` was already `goalId`-aware; documenting that the WorkoutLog UI now sets it explicitly.
+- **UI**: New `LinkedLogActionDialog` (`mode: "uncheck" | "delete"`) wired into `weekly-plan-view.tsx` and `daily-view.tsx` — optimistic flow off `linkedLogId`. WorkoutLog tab grew an "(optional) Goal" picker. Calendar's `ActivityForm` no longer hides the goal picker behind a role filter; picking a goal now auto-fills the role select with the goal's first linked role when role is unset. Activity-type editor (`sport-form.tsx`) grew a "Default Duration (minutes)" input with client-side positive-integer validation.
+
+**Forward-only**: The bridge fires from check-off forward. Historical scheduled activities that were already ticked off before this release are not retroactively populated into `activity_logs`. Users who relied on the previous "untick to re-tick" workaround to inflate counters will see honest progress now — covered explicitly in the user-facing release notes.
+
+**Schema changes**: `activities.is_log_entry` → `created_from_log`; new `activity_types.default_duration_minutes` column. No new tables, no data loss.
+
+**Routes modified**: `GET / POST / PATCH / DELETE /api/activities`; `GET / POST / PATCH /api/activity-types`; `POST /api/activity-logs` (documentation only — goal picker now feeds it from the WorkoutLog UI).
+
+**Files changed**: `apply-schema.js`, `src/db/schema.ts`, `src/types/index.ts`, `src/lib/activities-bridge.ts` (new), `src/lib/__tests__/activities-bridge.test.ts` (new), `src/app/api/activities/route.ts`, `src/app/api/activities/[id]/route.ts`, `src/app/api/activity-logs/route.ts`, `src/app/api/activity-types/route.ts`, `src/app/api/activity-types/[id]/route.ts`, `src/app/api/schedule/{apply,generate,reset}/route.ts`, `src/components/activities/linked-log-action-dialog.tsx` (new), `src/components/activities/workout-log.tsx`, `src/components/activities/sport-form.tsx`, `src/components/monthly-plan/{weekly-plan-view,day-column,activity-form}.tsx`, `src/components/daily/daily-view.tsx`, `src/lib/__tests__/scheduler.test.ts`.
+
+**Follow-up — V2 "table unification" (deferred)**: A larger refactor that collapses `activities` and `activity_logs` into a single time-block table was scoped and deferred. The surgical V1 bridge model preserves the existing semantic split between scheduled time blocks and logged workouts (which still makes sense for non-trackable activities like Reading or Meditation), and resolved every user-visible disconnect we identified. Revisit only if a future feature has a requirement V1 cannot serve.
+
+**Dependencies**: Feature 1 (calendar / activities), Feature 2 (activity logs / activity types), Goals V2 (goal picker source data).
 
 ---
 
