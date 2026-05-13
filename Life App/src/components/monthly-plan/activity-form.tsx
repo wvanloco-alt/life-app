@@ -174,10 +174,6 @@ export function ActivityForm({
     });
   }
 
-  const filteredGoals = roleId !== "none"
-    ? goals.filter((g) => g.roles.some((r) => r.id === parseInt(roleId)))
-    : goals;
-
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-[640px] max-h-[90vh] overflow-y-auto">
@@ -247,8 +243,10 @@ export function ActivityForm({
             <Select
               value={roleId}
               onValueChange={(v) => {
+                // Changing the role no longer clears the goal. Phase 5
+                // (activities-refactoring) removed that side effect; goal
+                // selection is independent of role selection.
                 setRoleId(v);
-                setGoalId("none");
                 setSessionType("training");
               }}
             >
@@ -294,14 +292,28 @@ export function ActivityForm({
             </div>
           )}
 
-          {filteredGoals.length > 0 && (
+          {goals.length > 0 && (
             <div className="space-y-2">
               <Label>Linked Goal (optional)</Label>
               <Select
                 value={goalId}
                 onValueChange={(v) => {
                   setGoalId(v);
-                  if (v === "none") setSessionType("training");
+                  if (v === "none") {
+                    setSessionType("training");
+                    return;
+                  }
+                  // Phase 5 role auto-fill: when the user picks a goal
+                  // while no role is selected, pre-fill the role with
+                  // the goal's first linked role. Manual role changes
+                  // afterwards are preserved (we only auto-fill from
+                  // "none").
+                  if (roleId === "none") {
+                    const goal = goals.find((g) => g.id === parseInt(v));
+                    if (goal && goal.roles.length > 0) {
+                      setRoleId(goal.roles[0].id.toString());
+                    }
+                  }
                 }}
               >
                 <SelectTrigger>
@@ -309,7 +321,7 @@ export function ActivityForm({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">No linked goal</SelectItem>
-                  {filteredGoals.map((g) => (
+                  {goals.map((g) => (
                     <SelectItem key={g.id} value={g.id.toString()}>
                       {g.title}
                     </SelectItem>
