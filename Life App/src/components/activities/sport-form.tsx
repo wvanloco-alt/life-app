@@ -43,6 +43,12 @@ export function ActivityTypeForm({ open, onClose, onSave, activityType }: Activi
   const [defaultSteps, setDefaultSteps] = useState(
     activityType?.defaultSteps?.toString() ?? ""
   );
+  // Default duration is required (non-null in the schema with a 60 default).
+  // The bridge in Phase 2 uses this value when auto-creating an activity_logs
+  // row from a checked-off scheduled session, so the editor surfaces it here.
+  const [defaultDurationMinutes, setDefaultDurationMinutes] = useState(
+    activityType?.defaultDurationMinutes?.toString() ?? "60"
+  );
   const [metricsConfig, setMetricsConfig] = useState<MetricField[]>(
     activityType?.metricsConfig ?? []
   );
@@ -60,6 +66,15 @@ export function ActivityTypeForm({ open, onClose, onSave, activityType }: Activi
       setError("Name is required");
       return;
     }
+    const durationParsed = parseInt(defaultDurationMinutes);
+    if (
+      !Number.isInteger(durationParsed) ||
+      durationParsed <= 0 ||
+      defaultDurationMinutes.includes(".")
+    ) {
+      setError("Default duration must be a positive whole number of minutes");
+      return;
+    }
     setError("");
     onSave({
       name: name.trim(),
@@ -68,6 +83,7 @@ export function ActivityTypeForm({ open, onClose, onSave, activityType }: Activi
       isTracked,
       defaultCalories: defaultCalories ? parseInt(defaultCalories) : null,
       defaultSteps: defaultSteps ? parseInt(defaultSteps) : null,
+      defaultDurationMinutes: durationParsed,
       metricsConfig,
       variants: variants.length > 0 ? variants : null,
       gradeSystem: gradeSystem || null,
@@ -134,6 +150,9 @@ export function ActivityTypeForm({ open, onClose, onSave, activityType }: Activi
       setIsTracked(activityType?.isTracked ?? false);
       setDefaultCalories(activityType?.defaultCalories?.toString() ?? "");
       setDefaultSteps(activityType?.defaultSteps?.toString() ?? "");
+      setDefaultDurationMinutes(
+        activityType?.defaultDurationMinutes?.toString() ?? "60"
+      );
       setMetricsConfig(activityType?.metricsConfig ?? []);
       setVariants(activityType?.variants ?? []);
       setGradeSystem(activityType?.gradeSystem ?? "");
@@ -215,6 +234,21 @@ export function ActivityTypeForm({ open, onClose, onSave, activityType }: Activi
               </p>
             </div>
           </label>
+
+          <div className="space-y-1">
+            <Label className="text-xs">Default Duration (minutes)</Label>
+            <Input
+              type="number"
+              min={1}
+              step={1}
+              value={defaultDurationMinutes}
+              onChange={(e) => setDefaultDurationMinutes(e.target.value)}
+              placeholder="e.g., 60"
+            />
+            <p className="text-xs text-muted-foreground">
+              Used when a scheduled session is checked off to auto-log a workout.
+            </p>
+          </div>
 
           {!isTracked && (
             <div className="grid grid-cols-2 gap-3">

@@ -22,6 +22,12 @@ export async function PATCH(
   if (body.isTracked !== undefined) updates.isTracked = body.isTracked;
   if (body.defaultCalories !== undefined) updates.defaultCalories = body.defaultCalories;
   if (body.defaultSteps !== undefined) updates.defaultSteps = body.defaultSteps;
+  if (body.defaultDurationMinutes !== undefined) {
+    if (!Number.isInteger(body.defaultDurationMinutes) || body.defaultDurationMinutes <= 0) {
+      return NextResponse.json({ error: "defaultDurationMinutes must be a positive integer" }, { status: 400 });
+    }
+    updates.defaultDurationMinutes = body.defaultDurationMinutes;
+  }
   if (body.metricsConfig !== undefined) updates.metricsConfig = JSON.stringify(body.metricsConfig);
   if (body.variants !== undefined) updates.variants = body.variants ? JSON.stringify(body.variants) : null;
   if (body.gradeSystem !== undefined) updates.gradeSystem = body.gradeSystem;
