@@ -30,12 +30,13 @@ import { Plus, Trash2, MoreVertical, Clock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { getGradesForSystem } from "@/lib/grades";
-import type { ActivityType, ActivityLog } from "@/types";
+import type { ActivityType, ActivityLog, Goal } from "@/types";
 import { LucideIcon } from "@/components/ui/lucide-icon";
 
 export function WorkoutLog() {
   const [activityTypesList, setActivityTypesList] = useState<ActivityType[]>([]);
   const [recentLogs, setRecentLogs] = useState<ActivityLog[]>([]);
+  const [activeGoals, setActiveGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [selectedSportId, setSelectedSportId] = useState<string>("");
@@ -47,6 +48,8 @@ export function WorkoutLog() {
   const [variant, setVariant] = useState("");
   const [metrics, setMetrics] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState("");
+  // "none" represents an unset linked goal; resolved to `null` on submit.
+  const [goalId, setGoalId] = useState<string>("none");
   const [saving, setSaving] = useState(false);
 
   const selectedActivityType = activityTypesList.find(
@@ -55,16 +58,23 @@ export function WorkoutLog() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const [typesRes, logsRes] = await Promise.all([
+    const [typesRes, logsRes, goalsRes] = await Promise.all([
       fetch("/api/activity-types"),
       fetch("/api/activity-logs?limit=20"),
+      fetch("/api/goals?status=active"),
     ]);
-    const [typesData, logsData] = await Promise.all([
+    const [typesData, logsData, goalsData] = await Promise.all([
       typesRes.json(),
       logsRes.json(),
+      goalsRes.json(),
     ]);
     setActivityTypesList(typesData);
     setRecentLogs(logsData);
+    // Defensive: ignore goals already marked completed even if status is
+    // still "active". Matches the daily/weekly views' implicit assumption.
+    setActiveGoals(
+      (goalsData as Goal[]).filter((g) => !g.isCompleted)
+    );
     setLoading(false);
   }, []);
 
@@ -132,6 +142,7 @@ export function WorkoutLog() {
         variant: variant || null,
         metrics: parsedMetrics,
         notes,
+        goalId: goalId !== "none" ? parseInt(goalId) : null,
       }),
     });
 
@@ -139,6 +150,7 @@ export function WorkoutLog() {
     setMinutes("0");
     setNotes("");
     setMetrics({});
+    setGoalId("none");
     setSaving(false);
     await fetchData();
   }
@@ -304,6 +316,25 @@ export function WorkoutLog() {
 
           {selectedActivityType && (
             <>
+              {activeGoals.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Linked Goal (optional)</Label>
+                  <Select value={goalId} onValueChange={setGoalId}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No linked goal</SelectItem>
+                      {activeGoals.map((g) => (
+                        <SelectItem key={g.id} value={g.id.toString()}>
+                          {g.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label>Date</Label>
                 <Input
