@@ -267,6 +267,7 @@ export function ActivitiesDashboard() {
                 {m.history.length > 1 ? (
                   <ResponsiveContainer width="100%" height={60}>
                     <LineChart data={m.history}>
+                      <XAxis dataKey="date" hide />
                       <Line
                         type="monotone"
                         dataKey="value"
@@ -276,9 +277,10 @@ export function ActivitiesDashboard() {
                       />
                       <Tooltip
                         formatter={(v: number | undefined) => [`${v ?? 0} ${m.unit}`, bodyMetricLabels[key]]}
-                        labelFormatter={(label) =>
-                          format(new Date(String(label) + "T00:00:00"), "MMM d")
-                        }
+                        labelFormatter={(label) => {
+                          const d = new Date(String(label) + "T00:00:00");
+                          return Number.isNaN(d.getTime()) ? "" : format(d, "MMM d");
+                        }}
                         contentStyle={{ fontSize: 12 }}
                       />
                     </LineChart>
