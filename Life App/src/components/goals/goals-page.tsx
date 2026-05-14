@@ -17,7 +17,6 @@ import {
   MoreVertical,
   Pencil,
   Archive,
-  Trash2,
   ArchiveRestore,
   Calendar,
   Target,
@@ -269,11 +268,6 @@ export function GoalsPage() {
     await fetchData();
   }
 
-  async function handleDelete(id: number) {
-    await fetch(`/api/goals/${id}`, { method: "DELETE" });
-    await fetchData();
-  }
-
   async function handleToggleComplete(goal: Goal) {
     const newCompleted = !goal.isCompleted;
     await fetch(`/api/goals/${goal.id}`, {
@@ -413,7 +407,6 @@ export function GoalsPage() {
                     trainingPlan={trainingPlansMap[g.id] ?? null}
                     onEdit={() => { setEditingGoal(g); setFormOpen(true); }}
                     onArchive={() => handleArchive(g)}
-                    onDelete={() => handleDelete(g.id)}
                     onLogTally={() => setTallyGoal(g)}
                     onCreateTrainingPlan={detectSport(g) ? () => openTrainingPlanCreator(g) : undefined}
                     onEditTrainingSplit={
@@ -450,7 +443,6 @@ export function GoalsPage() {
                     goal={g}
                     progress={progressMap[g.id] ?? null}
                     onEdit={() => { setEditingGoal(g); setFormOpen(true); }}
-                    onDelete={() => handleDelete(g.id)}
                     onLogTally={() => setTallyGoal(g)}
                   />
                 ))}
@@ -472,7 +464,6 @@ export function GoalsPage() {
                     goal={g}
                     progress={progressMap[g.id] ?? null}
                     onEdit={() => { setEditingGoal(g); setFormOpen(true); }}
-                    onDelete={() => handleDelete(g.id)}
                     onLogTally={() => setTallyGoal(g)}
                   />
                 ))}
@@ -562,9 +553,6 @@ export function GoalsPage() {
                               ) : (
                                 <><Archive className="mr-2 h-4 w-4" /> Archive</>
                               )}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDelete(goal.id)} className="text-red-600">
-                              <Trash2 className="mr-2 h-4 w-4" /> Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -700,9 +688,6 @@ export function GoalsPage() {
                             ) : (
                               <><Archive className="mr-2 h-4 w-4" /> Archive</>
                             )}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDelete(goal.id)} className="text-red-600">
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
