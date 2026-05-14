@@ -205,6 +205,7 @@ export function SportsPage() {
       )}
 
       <ActivityTypeForm
+        key={editingActivityType?.id ?? "new"}
         open={formOpen}
         onClose={() => { setFormOpen(false); setEditingActivityType(null); }}
         onSave={handleSave}
