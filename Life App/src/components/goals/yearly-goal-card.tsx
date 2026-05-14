@@ -14,7 +14,6 @@ import {
   MoreVertical,
   Pencil,
   Archive,
-  Trash2,
   ChevronDown,
   ChevronUp,
   Plus,
@@ -34,7 +33,6 @@ interface YearlyGoalCardProps {
   trainingPlan?: TrainingPlan | null;
   onEdit: () => void;
   onArchive: () => void;
-  onDelete: () => void;
   onLogTally: () => void;
   onCreateTrainingPlan?: () => void;
   onTrainingPlanChanged?: () => void;
@@ -85,7 +83,6 @@ export function YearlyGoalCard({
   trainingPlan,
   onEdit,
   onArchive,
-  onDelete,
   onLogTally,
   onCreateTrainingPlan,
   onTrainingPlanChanged,
@@ -144,9 +141,6 @@ export function YearlyGoalCard({
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={onArchive}>
                     <Archive className="mr-2 h-4 w-4" /> Archive
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={onDelete} className="text-red-600">
-                    <Trash2 className="mr-2 h-4 w-4" /> Delete
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

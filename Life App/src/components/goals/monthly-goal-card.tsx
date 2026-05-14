@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreVertical, Pencil, Trash2, Plus } from "lucide-react";
+import { MoreVertical, Pencil, Plus } from "lucide-react";
 import { RoleBadge } from "@/components/roles/role-badge";
 import { format } from "date-fns";
 import type { Goal, GoalProgress } from "@/types";
@@ -18,7 +18,6 @@ interface MonthlyGoalCardProps {
   goal: Goal;
   progress: GoalProgress | null;
   onEdit: () => void;
-  onDelete: () => void;
   onLogTally: () => void;
 }
 
@@ -26,7 +25,6 @@ export function MonthlyGoalCard({
   goal,
   progress,
   onEdit,
-  onDelete,
   onLogTally,
 }: MonthlyGoalCardProps) {
   const current = progress?.current ?? 0;
@@ -91,9 +89,6 @@ export function MonthlyGoalCard({
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={onEdit}>
                   <Pencil className="mr-2 h-4 w-4" /> Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={onDelete} className="text-red-600">
-                  <Trash2 className="mr-2 h-4 w-4" /> Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
