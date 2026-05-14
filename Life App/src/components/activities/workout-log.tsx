@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -55,6 +55,31 @@ export function WorkoutLog() {
   const selectedActivityType = activityTypesList.find(
     (s) => s.id === parseInt(selectedSportId)
   );
+
+  // FR-1.1: filter the linked-goal picker by the currently-selected activity
+  // type. Keyed on the primitive `selectedSportId` (not the derived
+  // `selectedActivityType` object) so the memo stays deterministic even if
+  // `activityTypesList` is refetched.
+  const filteredGoals = useMemo(() => {
+    const sportIdNum = parseInt(selectedSportId, 10);
+    if (Number.isNaN(sportIdNum)) return activeGoals;
+    return activeGoals.filter((g) => g.activityTypeId === sportIdNum);
+  }, [activeGoals, selectedSportId]);
+
+  // FR-1.4 / FR-1.5: when the user changes activity type and the currently
+  // selected goal no longer matches the new type, silently reset goalId to
+  // "none". Done in the Select's onValueChange callback rather than an
+  // effect so we don't add a new react-hooks/set-state-in-effect warning.
+  const handleActivityTypeChange = (newSportId: string) => {
+    setSelectedSportId(newSportId);
+    if (goalId === "none") return;
+    const newSportIdNum = parseInt(newSportId, 10);
+    if (Number.isNaN(newSportIdNum)) return;
+    const currentGoal = activeGoals.find((g) => g.id.toString() === goalId);
+    if (currentGoal && currentGoal.activityTypeId !== newSportIdNum) {
+      setGoalId("none");
+    }
+  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -300,7 +325,7 @@ export function WorkoutLog() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>Activity Type</Label>
-            <Select value={selectedSportId} onValueChange={setSelectedSportId}>
+            <Select value={selectedSportId} onValueChange={handleActivityTypeChange}>
               <SelectTrigger>
                 <SelectValue placeholder="Pick an activity type..." />
               </SelectTrigger>
@@ -316,7 +341,7 @@ export function WorkoutLog() {
 
           {selectedActivityType && (
             <>
-              {activeGoals.length > 0 && (
+              {filteredGoals.length > 0 && (
                 <div className="space-y-2">
                   <Label>Linked Goal (optional)</Label>
                   <Select value={goalId} onValueChange={setGoalId}>
@@ -325,7 +350,7 @@ export function WorkoutLog() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">No linked goal</SelectItem>
-                      {activeGoals.map((g) => (
+                      {filteredGoals.map((g) => (
                         <SelectItem key={g.id} value={g.id.toString()}>
                           {g.title}
                         </SelectItem>
