@@ -9,7 +9,7 @@
 
 ## 1. Strategy
 
-Single coherent refactor across schema, types, defaults, API, UI, and scheduler. The 15 functional requirements in `spec.md` are tightly coupled: you cannot drop the schema column without also removing the Drizzle field, the TypeScript field, the scheduler reads, the defaults, the API field, and the UI input. Doing any one piece in isolation breaks `tsc`.
+Single coherent refactor across schema, types, defaults, API, UI, and scheduler. The 16 functional requirements in `spec.md` are tightly coupled: you cannot drop the schema column without also removing the Drizzle field, the TypeScript field, the scheduler reads, the defaults, the API field, and the UI input. Doing any one piece in isolation breaks `tsc`. FR-016 (the server-side `sessionsPerWeek` clamp on the goals route) is the one piece that is logically independent, but it ships in the same PR because the safety-net rationale is the same.
 
 This is therefore one PR, one branch, one commit set. Unlike `activities-refactoring` which had six genuinely independent phases, there is no useful split here.
 
@@ -25,7 +25,7 @@ The implementation walks the dependency graph from outside in:
 
 Each step leaves the codebase in a tsc-clean state. Step 5 in particular needs the type changes from step 2 to have already happened, or the form's `useState<number>` initializers will type-fail.
 
-No new abstractions. No "while we're here" cleanups. The scope is the 15 FRs, period.
+No new abstractions. No "while we're here" cleanups. The scope is the 16 FRs, period.
 
 ---
 
@@ -134,34 +134,67 @@ Each subsection is the developer's working notes for that step: files, ordered e
 
 1. POST handler: remove `maxWeeklyOccurrences` and `minRestDays` from the body destructuring (if explicit) and from the `db.insert(roles).values(...)` payload. If the handler passes the body through directly, remove the field validations.
 2. PATCH handler: same treatment as POST. Confirm the response shape (`db.update(roles).set(...).returning()` or follow-up select) no longer projects the two columns.
-3. GET (list and single): confirm neither route's SELECT projection includes the two columns. If they use a wildcard select, no edit is needed (the schema change in 4.2 already drops them from the projection); if they list columns, drop the two.
+3. GET (list and single): the GET in `route.ts` explicitly projects each column in its `db.select({...})` (verified at master, lines 19-25). Remove the `maxWeeklyOccurrences: roles.maxWeeklyOccurrences` and `minRestDays: roles.minRestDays` lines from that projection. Apply the equivalent removal to `[id]/route.ts` if it has an explicit projection; if it uses a wildcard or `getTableColumns` helper, the schema change in 4.2 already handles it.
 
 **Local verification**:
 
 - More tsc errors resolved.
 - Spot-check: hit `/api/roles` in dev, confirm the response no longer carries the two fields.
 
-### 4.5 UI: role form (FR-010)
+### 4.4a Goals API: server-side `sessionsPerWeek` clamp (FR-016)
 
-**File**: `src/components/roles/role-form.tsx`
+**Files**:
+
+- `src/app/api/goals/route.ts` (POST)
+- `src/app/api/goals/[id]/route.ts` (PATCH)
+
+**Rationale**: With role-level caps gone, `goal.sessionsPerWeek` plus `enforceWeeklySpread` is the only goal-level weekly cap. The client form enforces `min={1} max={7}`, but a direct API call or future buggy client must not be able to write an out-of-range value. The clamp closes that gap.
 
 **Edits**:
 
-1. Remove the form state hooks for `maxWeeklyOccurrences` and `minRestDays` (the `useState<number>(...)` calls and any related `useEffect` initializers from props).
-2. Remove the whole "Scheduling Rules" section: the section heading, both `<Input type="number">` rows, their `<Label>` elements, and any helper text under them.
-3. Remove any references in `handleSubmit` to the two fields in the POST or PATCH body.
-4. Leave the work-role toggle (`isWorkRole`) and its handler completely untouched. It is the one piece of "Scheduling Rules" adjacent state that stays.
+1. `route.ts` POST: locate the body parse (currently around line 96: `sessionsPerWeek: Number(body.sessionsPerWeek ?? 3)`). Wrap the conversion in a clamp helper:
+
+   ```ts
+   const rawSpw = Number(body.sessionsPerWeek ?? 3);
+   const sessionsPerWeek = Number.isFinite(rawSpw)
+     ? Math.min(7, Math.max(1, Math.round(rawSpw)))
+     : 3;
+   ```
+
+   `NaN`, `undefined`, and any non-finite input fall back to the existing default of 3. Negatives, zero, and floats round and clamp to `[1, 7]`. Pass `sessionsPerWeek` to the insert payload.
+2. `[id]/route.ts` PATCH: locate the body destructure. If `body.sessionsPerWeek` is provided, apply the same clamp before adding it to the update payload. If `body.sessionsPerWeek` is undefined or missing, do not include it in the update payload (PATCH semantics: missing means "no change").
+3. No schema change. The column type is `integer` already; nothing else moves.
+
+**Local verification**:
+
+- Manual: hit POST `/api/goals` in dev with `sessionsPerWeek = 100`. Confirm the persisted row carries `7`, not `100`.
+- Unit test (added in step 4.7): POST with `sessionsPerWeek = 100` writes `7`; POST with `sessionsPerWeek = 0` writes `1`; POST with no body field writes `3` (the existing default).
+
+### 4.5 UI: role form (FR-010)
+
+**Files**:
+
+- `src/components/roles/role-form.tsx`
+- `src/components/roles/role-list.tsx`
+
+**Edits**:
+
+1. `role-form.tsx`: remove the form state hooks for `maxWeeklyOccurrences` and `minRestDays` (the `useState<number>(...)` calls and any related `useEffect` initializers from props).
+2. `role-form.tsx`: remove the whole "Scheduling Rules" section: the section heading, both `<Input type="number">` rows, their `<Label>` elements, and any helper text under them.
+3. `role-form.tsx`: remove any references in `handleSubmit` to the two fields in the POST or PATCH body.
+4. `role-form.tsx`: leave the work-role toggle (`isWorkRole`) and its handler completely untouched. It is the one piece of "Scheduling Rules" adjacent state that stays.
+5. `role-list.tsx`: in the local `handleSave` data parameter type (verified at master, lines 46-53), remove `maxWeeklyOccurrences: number;` and `minRestDays: number;` so the parameter type matches the new shape the form passes. No other change in this file.
 
 **Local verification**:
 
 - tsc clean.
-- `npx eslint src/components/roles/role-form.tsx` on a per-file diff vs master. Should report no new errors or warnings.
+- `npx eslint src/components/roles/role-form.tsx src/components/roles/role-list.tsx` on a per-file diff vs master. Should report no new errors or warnings.
 
 ### 4.6 Scheduler (FR-011, FR-012, FR-013)
 
 **File**: `src/lib/scheduler.ts`
 
-This is the biggest single edit in the feature. Order matters because the change touches a function signature that threads through five helpers.
+This is the biggest single edit in the feature. Order matters because the change touches a function signature that threads through four helpers plus `violatesRestConstraints` itself, five function signatures total.
 
 **Edits**:
 
@@ -170,7 +203,7 @@ This is the biggest single edit in the feature. Order matters because the change
 3. Remove the `violatesRestConstraints` function definition (lines around 245-281 per scope).
 4. Remove the `roleDaySessions` map construction in `generateSchedule` (lines around 478-492 per scope).
 5. Remove the write-back to `roleDaySessions` in `commitSession` (lines around 981-984 per scope).
-6. Remove the `roleDaySessions` parameter from every helper that received it. The scope notes "five helpers"; confirm exact count and update each signature and each internal call.
+6. Remove the `roleDaySessions` parameter from every helper that received it. Verified at master, the parameter appears on five function signatures total (lines 248, 571, 661, 754, 917); line 248 is `violatesRestConstraints` itself, so four helpers receive it. Update each signature and each internal call.
 7. Remove `rolesById` from helper signatures only if it is no longer used after removing `violatesRestConstraints`. If `rolesById` has other consumers (e.g., role color lookups, work-role checks), leave it in.
 8. After the function deletion, sweep for unused imports or unused local variables that the removed code path introduced.
 
@@ -187,12 +220,13 @@ This is the biggest single edit in the feature. Order matters because the change
 
 If any of these three guardrails is missing or broken after the removal, file a follow-up task. The scope says no explicit role cap is needed because these three together prevent runaway placement; that assertion needs to be true after the change.
 
-### 4.7 Tests (Edge Cases in spec)
+### 4.7 Tests (Edge Cases in spec, FR-016 verification)
 
 **Files**:
 
 - `src/lib/__tests__/scheduler.test.ts`
 - `src/components/roles/__tests__/role-form.test.tsx`
+- A new or existing test for the goals route (see step 3 below for placement).
 
 **Edits**:
 
@@ -204,10 +238,13 @@ If any of these three guardrails is missing or broken after the removal, file a 
 2. `role-form.test.tsx`:
    - Remove the test that renders or asserts on the `Max Weekly Occurrences` and `Min Rest Days` inputs.
    - Leave the work-role toggle test as-is.
+3. Goals API clamp test (FR-016, SC-009):
+   - If a goals route test file exists (e.g., `src/app/api/goals/__tests__/route.test.ts`), add the case there. If not, add a focused unit test that invokes the POST handler directly against an in-memory SQLite, asserts that POSTing `sessionsPerWeek = 100` writes `7`, `sessionsPerWeek = 0` writes `1`, and an absent field writes `3` (the existing default).
+   - One PATCH equivalent: PATCH with `sessionsPerWeek = 100` writes `7`; PATCH with no `sessionsPerWeek` leaves the prior value untouched.
 
 **Local verification**:
 
-- `npm run test -- --run` should now pass green with the two new tests added and zero pre-existing tests failing.
+- `npm run test -- --run` should now pass green with the three new tests added (SC-001, consecutive-day, FR-016 clamp) and zero pre-existing tests failing.
 
 ### 4.8 Final sweep
 
@@ -253,15 +290,16 @@ This is acceptable because the destructive behavior was explicitly accepted at s
 Linear sequence, one developer, one branch:
 
 1. **Migration** (4.1). Verify locally on a copy of the Railway DB. Commit.
-2. **Schema and types** (4.2). Expect intentional tsc errors at this checkpoint; do not commit until step 6 lands.
+2. **Schema and types** (4.2). Expect intentional tsc errors at this checkpoint; do not commit until step 7 lands.
 3. **Defaults and seed** (4.3). Some tsc errors resolve.
-4. **API surface** (4.4). More tsc errors resolve.
-5. **UI** (4.5). More tsc errors resolve.
-6. **Scheduler** (4.6). Remaining tsc errors resolve. Run the scheduler safety-net audit. Commit if doing per-area commits; otherwise stage and continue.
-7. **Tests** (4.7). Add the two new tests; sweep existing assertions. Tests should now pass green.
-8. **Final sweep** (4.8). Grep for dangling references. Stage everything. Commit.
-9. **All gates** (section 2). Run tsc, tests, lint per-file, apply-schema.js idempotency.
-10. **PR** (section 3). Push, open PR against `wvanloco-alt:master`.
+4. **API surface for roles** (4.4). More tsc errors resolve.
+5. **API clamp for goals** (4.4a). FR-016 server-side clamp on `sessionsPerWeek`. Independent of the roles changes; can land in the same per-area commit or its own.
+6. **UI** (4.5). More tsc errors resolve.
+7. **Scheduler** (4.6). Remaining tsc errors resolve. Run the scheduler safety-net audit. Commit if doing per-area commits; otherwise stage and continue.
+8. **Tests** (4.7). Add the three new tests (SC-001 scheduler, consecutive-day scheduler, FR-016 clamp); sweep existing assertions. Tests should now pass green.
+9. **Final sweep** (4.8). Grep for dangling references. Stage everything. Commit.
+10. **All gates** (section 2). Run tsc, tests, lint per-file, apply-schema.js idempotency.
+11. **PR** (section 3). Push, open PR against `wvanloco-alt:master`.
 
 The user verifies manually per spec.md Acceptance Scenarios after merge. No production-deploy verification task is added beyond the manual smoke checklist; the feature is back-end behavior plus form-field removal, both verifiable in a single dev session.
 
@@ -271,13 +309,13 @@ The user verifies manually per spec.md Acceptance Scenarios after merge. No prod
 
 The feature is done when:
 
-- All 15 functional requirements are met and visible in the diff.
-- All eight success criteria pass (SC-001 through SC-008).
+- All 16 functional requirements are met and visible in the diff.
+- All nine success criteria pass (SC-001 through SC-009).
 - The PR is merged into `wvanloco-alt:master`.
 - The user has verified the three User Stories' acceptance scenarios in a manual smoke pass.
 - The Railway production DB has been migrated, confirmed by a one-time SQL probe after deploy: `PRAGMA table_info(roles);` shows neither `max_weekly_occurrences` nor `min_rest_days`.
 - The user has communicated the destructive migration to any friends in the invited group who may have used non-default values.
 
-The branch is then deleted (local and remote). Master tasks log and ROADMAP receive a one-line entry if and when the developer judges them worth updating in the same PR.
+The branch is then deleted (local and remote).
 
-Documentation sync to `specs/master/` is left to in-PR developer judgment, consistent with the small-changes-batch-1 precedent. A one-line architecture changelog row in `specs/master/tasks.md` is appropriate; the data-model and api-routes contracts both warrant an entry noting the two-column removal.
+Documentation sync to `specs/master/` ships as an explicit task in the same PR (see `tasks.md`, T015a). At minimum: a one-line row in `specs/master/tasks.md` (architecture changelog), a note in `specs/master/data-model.md` that the `roles` table dropped two columns, and a note in `specs/master/contracts/api-routes.md` that goals POST/PATCH now clamp `sessionsPerWeek` to `[1, 7]` server-side. Depth beyond that is per-PR developer judgment.
