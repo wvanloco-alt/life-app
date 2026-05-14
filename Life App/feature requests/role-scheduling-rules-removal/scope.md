@@ -2,8 +2,10 @@
 
 **Feature ID:** `role-scheduling-rules-removal`
 **Priority:** Medium — workaround exists (set all role maxes to 7), but feature is duplicative junk
-**Status:** Scoping
-**Last updated:** 2026-05-11
+**Status:** Scope confirmed — moving to spec
+**Last updated:** 2026-05-14
+
+**Constitutional note**: The previous blocker — "one feature at a time" while `training-supplemental-split` and `activities-refactoring` were in flight — is now lifted. `training-supplemental-split` Phase 7 unit tests shipped 2026-05-12 (PRs #2, #3). `activities-refactoring` shipped end-to-end 2026-05-13 (PRs #4–#9) plus the docs sync 2026-05-14 (PR #10). The runway is clear; this feature is now the next slot.
 
 ---
 
@@ -76,27 +78,14 @@ Remove role-level scheduling rules entirely. Goals become the single source of t
 | Question | Decision |
 |---|---|
 | Keep the work-role toggle? | **Yes.** Different concern from scheduling rules; earns its place. |
-| Drop columns from the schema, or leave them dormant? | **Drop the columns.** SQLite supports `ALTER TABLE DROP COLUMN` since 3.35 (we're on a current better-sqlite3, no version concern). Drop via `apply-schema.js`. |
+| Drop columns from the schema, or leave them dormant? | **Drop the columns.** Confirmed 2026-05-14. SQLite has supported `ALTER TABLE DROP COLUMN` since 3.35; better-sqlite3 ships a current build. Drop both columns idempotently in `apply-schema.js` (guarded by a `PRAGMA table_info` check, matching the `is_log_entry` rename pattern from activities-refactoring Phase 1). |
 | Migrate existing custom values to a new home (e.g., a `goal_rest_days` column)? | **No.** Existing values get wiped. If a user actually used non-default values and notices, they re-create the constraint at the goal level once that feature exists. We're not building that feature in V1. |
-| Reset role defaults in `DEFAULT_ROLES`? | **Yes — by removing the fields entirely.** The Athlete role's default of `4 / 1 day` (the one that caused today's bug) ceases to exist. |
+| Reset role defaults in `DEFAULT_ROLES`? | **Yes — by removing the fields entirely.** The Athlete role's default of `4 / 1 day` (the one that caused the original bug) ceases to exist. |
 | Tell friends in advance? | **No automated notice.** User communicates manually with the small invited group. |
-
----
-
-## Decisions to Make Before Spec
-
-These need explicit answers before `spec.md` is drafted. The scope doc above is the user's first-pass position; the spec round is where these get pinned.
-
-1. **`ALTER TABLE DROP COLUMN` in `apply-schema.js`.** SQLite supports it, but it's irreversible. Worth confirming once-more that we want to drop, not just stop reading. Alternatives:
-   - Drop columns. Clean schema. No way back without a re-migration.
-   - Leave columns, stop reading them in code. Future cleanup work, but reversible.
-   - Drop columns from the Drizzle schema only; let `apply-schema.js` leave them in the DB indefinitely (dead columns). Half-measure, probably not worth it.
-
-2. **The `roleDaySessions` map.** It's built specifically to feed `violatesRestConstraints()`. If we remove the function, the map's construction (in `generateSchedule()` and elsewhere) can also go. Confirm whether anything else reads it.
-
-3. **Test coverage after removal.** What tests do we need to write to prove the scheduler correctly honors `goal.sessionsPerWeek` without the role-level cap shadowing it? Spec should enumerate them.
-
-4. **`apply-schema.js` migration ordering.** If we drop role columns AND the training-supplemental-split migration is still in flight, the order matters. Confirm the previous feature's migrations are fully applied before this one's run.
+| `roleDaySessions` map — does anything else read it? | **No.** Confirmed 2026-05-14 by grepping `scheduler.ts`. Every read is in service of `violatesRestConstraints`; every write (`commitSession` lines 981-984) only matters because of those reads. The entire map — construction at lines 478-492, parameter threading through five helpers, write-back in `commitSession` — comes out with the function. Clean cut. |
+| Need an explicit "max 7 per role per ISO week" safety net after removal? | **No.** `goal.sessionsPerWeek` is constrained to 1-7 at the goal-form layer, `schedulerSettings.maxActivitiesPerDay` caps the daily total, and `enforceWeeklySpread` is the per-goal weekly cap. No edge case identified that would let the scheduler runaway-place without these existing guardrails. Confirmed 2026-05-14. |
+| Test coverage after removal — what proves the scheduler honors `goal.sessionsPerWeek` without the role cap shadowing it? | **Enumerate in spec.md.** Working position: at minimum, (a) a regression test that asserts a goal with `sessionsPerWeek = 7` and no other constraints actually schedules 7 sessions/week (the literal bug the prior scope diagnosed), (b) a test that confirms two activities for the same role on consecutive days is now allowed (no min-rest enforcement), and (c) sweep `scheduler.test.ts` for any test that previously *required* role caps to pass — those need their assertions adjusted. Final list pinned in `spec.md` → acceptance criteria. |
+| `apply-schema.js` migration ordering | **Non-issue.** The training-supplemental-split and activities-refactoring migrations are both fully shipped and idempotent — they run as no-ops on subsequent boots. This feature's `ALTER TABLE DROP COLUMN` statements append to the existing ordered list and run cleanly. |
 
 ---
 
@@ -134,8 +123,10 @@ Explicit non-changes, listed so future maintainers know it was deliberate:
 
 ## Next Steps
 
-1. User confirms scope, especially the four "Decisions to Make Before Spec" items above.
-2. Move to formal spec (`spec.md`) with user stories and acceptance criteria.
+All scope-level questions are pinned. Ready to move to `spec.md`.
+
+1. ~~User confirms scope, especially the four "Decisions to Make Before Spec" items above.~~ Done 2026-05-14.
+2. **Draft `spec.md`** — user stories, acceptance criteria (including the test enumeration deferred above), and the explicit "before/after" behavioral contract for the scheduler.
 3. Plan (`plan.md`).
 4. Tasks (`tasks.md`).
 5. Implement.
@@ -144,7 +135,7 @@ Explicit non-changes, listed so future maintainers know it was deliberate:
 
 ## Notes for the reviewer
 
-- All code references in this doc are verified against the current codebase at the time of writing (2026-05-11). No hallucinated paths.
-- The `defaults.ts` Athlete entry of `maxWeeklyOccurrences: 4, minRestDays: 1` is the literal cause of today's 3-sessions/week bug — verified by reading `src/lib/defaults.ts:3` and `src/lib/scheduler.ts:245-281`.
-- The previous feature (`training-supplemental-split`) is still in Phase 6/7. Per the project's "one feature at a time" constitution, that feature should ideally close out before this one begins implementation. User acknowledged the trade-off; flagging it again here so the spec phase doesn't lose track.
+- All code references in this doc were verified against the codebase at the time of original writing (2026-05-11) and re-confirmed against `master` on 2026-05-14 (`roleDaySessions` audit, scheduler line numbers, `defaults.ts` entries — all still accurate).
+- The `defaults.ts` Athlete entry of `maxWeeklyOccurrences: 4, minRestDays: 1` is the literal cause of the original 3-sessions/week bug — verified by reading `src/lib/defaults.ts:3` and `src/lib/scheduler.ts:245-281`.
+- ~~The previous feature (`training-supplemental-split`) is still in Phase 6/7.~~ Both blocking features (`training-supplemental-split`, `activities-refactoring`) have fully shipped. Constitutional runway is clear.
 - The subagent diagnosis file at `Life App/feature requests/training-supplemental-split/scheduler-bug-review.md` is incorrect and pending cleanup (separate from this feature).
