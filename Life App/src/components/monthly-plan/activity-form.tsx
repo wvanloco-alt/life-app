@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useLayoutEffect } from "react";
+import { useState, useEffect, useLayoutEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -80,6 +80,32 @@ export function ActivityForm({
 
   const timeSlots = generateTimeSlots();
   const isEditing = !!activity;
+
+  // FR-1.1 / FR-1.3: filter the linked-goal picker by the currently-selected
+  // activity type. When `activityTypeId` is "none", fall back to the full
+  // `goals` list (the calendar form allows scheduling without a type).
+  const filteredGoals = useMemo(() => {
+    if (activityTypeId === "none") return goals;
+    const typeIdNum = parseInt(activityTypeId, 10);
+    if (Number.isNaN(typeIdNum)) return goals;
+    return goals.filter((g) => g.activityTypeId === typeIdNum);
+  }, [goals, activityTypeId]);
+
+  // FR-1.4 / FR-1.5: when the user changes activity type and the currently
+  // selected goal no longer matches the new type, silently reset goalId to
+  // "none". Done in the Select's onValueChange callback rather than an
+  // effect so we don't add a new react-hooks/set-state-in-effect warning.
+  const handleActivityTypeChange = (newTypeId: string) => {
+    setActivityTypeId(newTypeId);
+    if (newTypeId === "none") return;
+    if (goalId === "none") return;
+    const newTypeIdNum = parseInt(newTypeId, 10);
+    if (Number.isNaN(newTypeIdNum)) return;
+    const currentGoal = goals.find((g) => g.id.toString() === goalId);
+    if (currentGoal && currentGoal.activityTypeId !== newTypeIdNum) {
+      setGoalId("none");
+    }
+  };
 
   useLayoutEffect(() => {
     if (open) {
@@ -273,7 +299,7 @@ export function ActivityForm({
           {activityTypes.length > 0 && (
             <div className="space-y-2">
               <Label>Activity Type (optional)</Label>
-              <Select value={activityTypeId} onValueChange={setActivityTypeId}>
+              <Select value={activityTypeId} onValueChange={handleActivityTypeChange}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -292,7 +318,7 @@ export function ActivityForm({
             </div>
           )}
 
-          {goals.length > 0 && (
+          {filteredGoals.length > 0 && (
             <div className="space-y-2">
               <Label>Linked Goal (optional)</Label>
               <Select
@@ -321,7 +347,7 @@ export function ActivityForm({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">No linked goal</SelectItem>
-                  {goals.map((g) => (
+                  {filteredGoals.map((g) => (
                     <SelectItem key={g.id} value={g.id.toString()}>
                       {g.title}
                     </SelectItem>
