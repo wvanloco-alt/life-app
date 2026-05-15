@@ -455,3 +455,49 @@ export interface LevelAssessment {
   explanation: string;
 }
 
+// ─── Habits ─────────────────────────────────────────────
+
+export interface Habit {
+  id: number;
+  userId: string;
+  identity: string;
+  name: string;
+  cue: string | null;
+  minimumVersion: string | null;
+  color: string;
+  displayOrder: number;
+  isArchived: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HabitLog {
+  id: number;
+  userId: string;
+  habitId: number;
+  date: string;
+  createdAt: string;
+}
+
+/**
+ * Wire shape returned by GET /api/habits.
+ *
+ * The server returns raw log dates only: deduplicated ISO YYYY-MM-DD strings,
+ * sorted ascending, capped at the last 30 days. The client (HabitList) derives
+ * the 14-day strip view-model and the current/best streaks locally using its
+ * own "today" (per spec FR-005, FR-014). The server never decides what "today"
+ * is.
+ */
+export interface HabitWithRecentLogs extends Habit {
+  recentLogDates: string[];
+}
+
+/** Form payload for POST /api/habits (and the body of PATCH for the same fields). */
+export interface HabitDraft {
+  identity: string;
+  name: string;
+  cue: string | null;
+  minimumVersion: string | null;
+  color: string;
+}
+
