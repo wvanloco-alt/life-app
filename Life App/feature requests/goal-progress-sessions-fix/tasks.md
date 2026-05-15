@@ -64,15 +64,27 @@ Tag conventions:
 
 ---
 
+## T005a, edit the children-route branch (FR-001 spirit, added 2026-05-15)
+
+- Origin: surfaced by the T003 audit. The plan's section 4.5 final sweep was supposed to confirm "the only consumer of the field that gates behavior on `!= null` is the progress route." The audit (executed before any code edit) found the same gate at `src/app/api/goals/[id]/children/route.ts:43` for the children-progress endpoint that feeds the per-month child cards under a yearly parent goal. Same bug, same shape of fix, same feature surface. Scope extension reasoned and documented here before code is touched.
+- Action: In `src/app/api/goals/[id]/children/route.ts` lines 43-57, remove the outer `if (child.activityTypeId != null && child.targetMetric != null)` wrapper. The contents of the `if` block become unconditional. The inline metric switch at lines 49-55 must handle `targetMetric === null` by defaulting to the `"count"` path. The simplest reshape: extract `const metric = child.targetMetric ?? "count"` first, then run the existing switch. Indentation reflows by one level.
+- Files: `src/app/api/goals/[id]/children/route.ts`.
+- Acceptance: the children branch queries `activity_logs` unconditionally; null `targetMetric` defaults to the count path. tsc clean. Manual read-through confirms only this block changed in the file. The pre-existing `goalTallies` query at lines 59-60 is unchanged.
+- Blocked-by: T005.
+
+---
+
 ## T006 [GATES], run verification gates
 
 - Action: Run each gate from `plan.md` Section 2 in order:
   1. `npx tsc --noEmit`.
   2. `npm run test -- --run`.
-  3. `npx eslint "src/app/api/goals/[id]/progress/route.ts"`.
+  3. Per-file lint for each modified file:
+     - `npx eslint "src/app/api/goals/[id]/progress/route.ts"`
+     - `npx eslint "src/app/api/goals/[id]/children/route.ts"` (added after T005a)
 - Files: none (verification only).
-- Acceptance: tsc clean; tests all green at the same count as master (no regressions, no new tests required); eslint shows no new errors or warnings for the modified file.
-- Blocked-by: T005.
+- Acceptance: tsc clean; tests all green at the same count as master (no regressions, no new tests required); eslint shows no new errors or warnings for either modified file versus master.
+- Blocked-by: T005a.
 
 ---
 
@@ -85,6 +97,7 @@ Tag conventions:
   - PR body MUST:
     - Link to `scope.md` and `spec.md` in the diff.
     - State that the user's existing goal 30 will jump from 0 to 2 sessions on deploy (this is the intended fix, not a side effect).
+    - Call out the audit-driven scope extension: `children/route.ts` was added during T003 because it carried the same bug shape. Three code edits total, not two.
     - Note no tests added; manual smoke checklist linked.
     - Mention the form cleanup deferred to a follow-up small-change item.
 - Files: none (git operations).
@@ -99,6 +112,7 @@ Tag conventions:
   - SC-001: open the user's "no drinking alcohol" yearly goal (goal 30). Confirm the progress card shows 2 sessions, not 0. Confirm the percentage updates correspondingly.
   - SC-002: create a new activity-tracker log for that goal. Reload the goal page. Confirm the progress count incremented by 1.
   - SC-003: pick one other goal that was already showing correct progress before this fix (a yearly goal with `targetMetric = "duration"` or `"grade"` is the strongest test). Note the current value before the merge, then re-check after. Confirm the value is unchanged.
+  - SC-001 child-card check (added per T005a): if goal 30 has monthly child goals, expand the parent to view them. Each child's progress card should reflect any activity-tracker logs linked to that child's `goalId` (or show 0 if no logs are linked). If a previously-working child shows a number change, surface immediately; that would be a regression.
 - Files: none (production walkthrough).
 - Acceptance: all three success criteria pass on the deployed app. If SC-003 shows a number change for a previously-working goal, surface immediately; that would be a regression.
 - Blocked-by: T007 is merged AND Railway has confirmed a successful deploy.
@@ -107,7 +121,7 @@ Tag conventions:
 
 ## Cross-task notes
 
-- This is one PR with two trivial code edits. T003 (audit) is the only place where an unexpected finding could expand the scope. If T003 surfaces a hidden consumer, treat the audit result as a new constraint and re-plan; do not proceed to T004 blindly.
+- This is one PR. After the T003 audit surfaced `children/route.ts` as a same-shape consumer, scope grew from two code edits to three. T005a was added on 2026-05-15 to cover the third edit. The git history preserves the pre-audit task plan in commit 3ea47ba; the post-audit extension lands in a separate docs commit so the reasoning is reviewable.
 - T008 SC-003 is the regression check. The fix is meant to be invisible to goals that were already working. If a previously-working goal's number changes after deploy, the diagnosis was incomplete and the fix needs revisiting.
 - Form cleanup is intentionally NOT in this task list. It belongs in a follow-up `small-changes-batch-2` or a dedicated small item.
 
