@@ -1,6 +1,6 @@
 # Data Model: Life App
 
-> Last updated: 2026-05-13. Reflects current schema including Feature 1 (Calendar Management), Feature 2 (Fitness Tracking → Activities), Feature 3 (Budget Management), v2 Overhaul, Goals V2, Scheduler Rules, Training Periodization, **Training vs Supplemental Session Split (V1, partial)**, **Activities Refactoring V1** (`activities.is_log_entry` → `created_from_log`, `activity_types.default_duration_minutes`, schedule-to-log bridge, derived `linkedLogId` on activity GET), UI Refinements, and **Friend Release** (users table, user_id on all data tables, per-user data isolation).
+> Last updated: 2026-05-15. Reflects current schema including Feature 1 (Calendar Management), Feature 2 (Fitness Tracking → Activities), Feature 3 (Budget Management), v2 Overhaul, Goals V2, Scheduler Rules, Training Periodization, **Training vs Supplemental Session Split (V1, partial)**, **Activities Refactoring V1** (`activities.is_log_entry` → `created_from_log`, `activity_types.default_duration_minutes`, schedule-to-log bridge, derived `linkedLogId` on activity GET), UI Refinements, **Friend Release** (users table, user_id on all data tables, per-user data isolation), **Role Scheduling Rules Removal** (dropped `max_weekly_occurrences` and `min_rest_days` from `roles`, added `[1, 7]` clamp on `goals.sessions_per_week`), and **Habit Tracking Phase 1** (`habits`, `habit_logs` tables with unique index).
 
 ## Multi-User Architecture (Friend Release)
 
@@ -30,6 +30,29 @@ erDiagram
     Goal ||--o| TrainingPlan : "has training plan"
     TrainingPlan ||--o{ TrainingPhase : "divided into"
     SchedulerSettings ||--o{ SchedulerBlackoutDate : "manages"
+    Habit ||--o{ HabitLog : "logged via"
+
+    Habit {
+        int id PK
+        string userId FK
+        string identity
+        string name
+        string cue
+        string minimumVersion
+        string color
+        int displayOrder
+        boolean isArchived
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    HabitLog {
+        int id PK
+        string userId FK
+        int habitId FK
+        string date
+        datetime createdAt
+    }
 
     User {
         string id PK
@@ -588,6 +611,47 @@ An ordered phase within a training plan cycle. Phases have date ranges, statuses
 
 ---
 
+### Habit
+
+A daily behaviour the user is building (or breaking). Framed via *Atomic Habits* identity language: the `identity` field captures the person the user is becoming ("I am a person who…"), not the outcome.
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| id | INTEGER | PK, auto-increment | Unique identifier |
+| userId | TEXT | NOT NULL, FK -> users.id | Owner |
+| identity | TEXT | NOT NULL, max 200 chars | Identity statement: "I am a person who…" |
+| name | TEXT | NOT NULL, max 50 chars | Short display label for the habit |
+| cue | TEXT | nullable, max 200 chars | Implementation-intention prompt: "When X, I will…" |
+| minimumVersion | TEXT | nullable, max 200 chars | Two-minute rule minimum: "At the very least, I will…" |
+| color | TEXT | NOT NULL | Hex color code for the 14-day strip |
+| displayOrder | INTEGER | NOT NULL, default 0 | User-controlled sort position |
+| isArchived | INTEGER | NOT NULL, default 0 | 0 = active, 1 = archived |
+| createdAt | TEXT | NOT NULL | `datetime('now')` UTC |
+| updatedAt | TEXT | NOT NULL | `datetime('now')` UTC, updated on every PATCH |
+
+---
+
+### HabitLog
+
+One completion record per habit per calendar day. The unique index enforces "at most one log per habit per day" at the database level, making `POST /api/habit-logs` safely idempotent.
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| id | INTEGER | PK, auto-increment | Unique identifier |
+| userId | TEXT | NOT NULL, FK -> users.id | Owner (same user as the parent habit) |
+| habitId | INTEGER | NOT NULL, FK -> habits.id ON DELETE CASCADE | Parent habit. Deleting the habit cascades to all logs. |
+| date | TEXT | NOT NULL, ISO YYYY-MM-DD | The calendar date the habit was completed |
+| createdAt | TEXT | NOT NULL | `datetime('now')` UTC |
+
+**Unique index**: `habit_logs_habit_date_unique` on `(habit_id, date)` — ensures at most one log per habit per day.
+
+**Key design decisions**:
+- `date` stores the client's local calendar date as an ISO string (e.g., `"2026-05-15"`). The server never computes "today"; the client sends its local date on `POST /api/habit-logs` and on `GET /api/habits` the server returns raw `recentLogDates` for the client to interpret.
+- Streaks (`currentStreak`, `bestStreak`) are computed entirely client-side via the `computeStreaks(dates, today)` helper (`src/lib/habit-streaks.ts`). The server does not store or calculate streaks.
+- `GET /api/habits` returns `recentLogDates: string[]` per habit — deduplicated ISO dates from the last 30 days, sorted ascending. The 30-day cap is sufficient for a 14-day strip plus streak history.
+
+---
+
 ## Type Renames (Unified Activity Integration)
 
 | Old Name | New Name |
@@ -624,5 +688,7 @@ An ordered phase within a training plan cycle. Phases have date ranges, statuses
 | goalSessionPatterns | ~5-30 | Repeating session intensity cycles per goal |
 | trainingPlans | ~2-5 | Periodization plans for sport goals (climbing, tennis, running) |
 | trainingPhases | ~10-30 | Ordered phases within training plan cycles |
+| habits | ~5-20 | Daily habits with identity framing |
+| habitLogs | ~1000-3000 | One completion entry per habit per day |
 
 Single user, local SQLite. Total: a few thousand rows per year.

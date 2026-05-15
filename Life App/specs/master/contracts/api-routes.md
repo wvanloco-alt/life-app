@@ -1,6 +1,6 @@
 # API Routes Contract: Life App
 
-> Last updated: 2026-05-13. Reflects current API surface including Feature 1, Feature 2 (Activities), Feature 3 (Budget), v2 Overhaul, Goals V2 (goal hierarchy, tallies, pace tracking), Scheduler Rules (blackout dates, session patterns, activity type propagation), **training vs supplemental split (climbing phases + scheduler + apply)**, **Activities Refactoring V1** (`isLogEntry` → `createdFromLog`, schedule-to-log bridge on activity check-off, `bridgedLogAction` on un-check / delete, `linkedLogId` on activity GET, `defaultDurationMinutes` on activity types, explicit `goalId` from WorkoutLog), schedule regeneration/reset, and UI Design Overhaul (cascade delete, activity summary extension). Onboarding Wizard removed.
+> Last updated: 2026-05-15. Reflects current API surface including Feature 1, Feature 2 (Activities), Feature 3 (Budget), v2 Overhaul, Goals V2 (goal hierarchy, tallies, pace tracking), Scheduler Rules (blackout dates, session patterns, activity type propagation), **training vs supplemental split (climbing phases + scheduler + apply)**, **Activities Refactoring V1** (`isLogEntry` → `createdFromLog`, schedule-to-log bridge on activity check-off, `bridgedLogAction` on un-check / delete, `linkedLogId` on activity GET, `defaultDurationMinutes` on activity types, explicit `goalId` from WorkoutLog), schedule regeneration/reset, UI Design Overhaul (cascade delete, activity summary extension), **Role Scheduling Rules Removal** (dropped scheduling fields from roles, `sessionsPerWeek` server-side clamp `[1, 7]`), and **Habit Tracking Phase 1** (`/api/habits`, `/api/habit-logs`). Onboarding Wizard removed.
 
 All API routes use Next.js Route Handlers. Base URL: `http://localhost:3000/api`
 
@@ -438,6 +438,126 @@ Reorder all roles.
 ```json
 { "order": [3, 1, 4, 2, 5] }
 ```
+
+---
+
+## Habits
+
+Habits represent daily behaviours the user is building, framed using *Atomic Habits* identity language. Phase 1 (foundation) is merged; the UI ships in Phase 2.
+
+### GET /api/habits
+
+Returns active habits for the authenticated user (`is_archived = 0`), ordered by `displayOrder` ascending. Each habit includes `recentLogDates`: deduplicated ISO `YYYY-MM-DD` strings from the last 30 days (sorted ascending). The server does **not** compute streaks — the client calls `computeStreaks(recentLogDates, today)` locally.
+
+Add `?archived=true` to return archived habits instead (same shape).
+
+**Response** `200`:
+```json
+[
+  {
+    "id": 1,
+    "userId": "abc123",
+    "identity": "I am a person who moves their body every day",
+    "name": "Morning run",
+    "cue": "After I wake up and brew coffee",
+    "minimumVersion": "Put on running shoes and walk to the end of the street",
+    "color": "#10B981",
+    "displayOrder": 0,
+    "isArchived": false,
+    "createdAt": "2026-05-15 08:00:00",
+    "updatedAt": "2026-05-15 08:00:00",
+    "recentLogDates": ["2026-05-13", "2026-05-14", "2026-05-15"]
+  }
+]
+```
+
+### POST /api/habits
+
+Create a new habit. `displayOrder` is server-computed (`max + 1` across all habits for the user).
+
+**Request body**:
+```json
+{
+  "identity": "I am a person who moves their body every day",
+  "name": "Morning run",
+  "cue": "After I wake up and brew coffee",
+  "minimumVersion": "Put on running shoes and walk to the end of the street",
+  "color": "#10B981"
+}
+```
+
+| Field | Required | Constraints |
+|-------|----------|-------------|
+| `identity` | Yes | 1-200 chars |
+| `name` | Yes | 1-50 chars |
+| `cue` | No | 0-200 chars, nullable |
+| `minimumVersion` | No | 0-200 chars, nullable |
+| `color` | Yes | Valid hex `#RRGGBB` |
+
+**Response** `201`: The created habit object (without `recentLogDates` — use `GET /api/habits` for the full wire shape).
+
+### PATCH /api/habits/:id
+
+Partial update. Accepts any subset of `identity`, `name`, `cue`, `minimumVersion`, `color`, `isArchived`, `displayOrder`. Same per-field validation as POST. Returns `404` if the habit does not exist for the authenticated user (never `403` — do not reveal existence to other users).
+
+**Response** `200`: The updated habit row.
+
+### DELETE /api/habits/:id
+
+Hard-deletes the habit. The foreign-key cascade in `apply-schema.js` removes all associated `habit_logs` rows automatically. Returns `404` for unknown or cross-user IDs.
+
+**Response** `204`: No content.
+
+### PUT /api/habits/reorder
+
+Reorder active habits. Validates the entire array before writing — if any ID is unknown, archived, or not owned by the user, the request is rejected with `400` and zero rows are updated.
+
+**Request body**:
+```json
+{ "order": [3, 1, 4, 2] }
+```
+
+**Response** `204`: No content.
+
+---
+
+## Habit Logs
+
+One completion record per habit per calendar day. Both endpoints are idempotent so the client can call them optimistically without checking existing state first.
+
+### POST /api/habit-logs
+
+Log a habit as done for a given date. **Idempotent**: if the `(habitId, date)` pair already exists, the server returns `201` with the existing row rather than `409`. The unique index on `habit_logs (habit_id, date)` is the authoritative enforcement mechanism — concurrent requests are safe.
+
+**Request body**:
+```json
+{
+  "habitId": 1,
+  "date": "2026-05-15"
+}
+```
+
+`date` must be a valid ISO `YYYY-MM-DD` calendar date (validated by round-trip check, not just regex). The client is responsible for sending its local calendar date — the server never infers "today".
+
+**Response** `201`: The created (or already-existing) `habit_logs` row.
+**Response** `400`: Missing or invalid `habitId` / `date`.
+**Response** `404`: `habitId` does not belong to the authenticated user.
+
+### DELETE /api/habit-logs
+
+Un-log a habit for a given date. **Idempotent**: always returns `204`, even if no row matched. The client does not need to confirm the row existed before calling this.
+
+**Request body**:
+```json
+{
+  "habitId": 1,
+  "date": "2026-05-15"
+}
+```
+
+**Response** `204`: No content (whether a row was deleted or not).
+**Response** `400`: Missing or invalid `habitId` / `date`.
+**Response** `404`: `habitId` does not belong to the authenticated user.
 
 ---
 
