@@ -311,7 +311,7 @@ export function HabitList() {
   }
 
   return (
-    <div className="flex flex-col animate-fade-up">
+    <div className="px-6 py-8 flex flex-col animate-fade-up">
       {/* ── Actions bar ── */}
       <div className="flex items-center justify-end gap-2 pb-2">
         {reorderError && (
@@ -435,22 +435,22 @@ export function HabitList() {
 
 function HabitListSkeleton() {
   return (
-    <div className="flex flex-col">
+    <div className="px-6 py-8 flex flex-col">
       <div className="flex justify-end pb-2">
         <Skeleton className="h-8 w-28" />
       </div>
       <div className="divide-y divide-border/40">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="flex items-start gap-10 py-7">
-            <div className="w-52 shrink-0 flex flex-col gap-2 pt-1">
-              <div className="flex items-center gap-2.5">
+          <div key={i} className="flex items-start gap-12 py-8">
+            <div className="w-60 shrink-0 flex flex-col gap-2.5 pt-1">
+              <div className="flex items-center gap-3">
                 <Skeleton className="w-3 h-3 rounded-full shrink-0" />
-                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-5 w-36" />
               </div>
-              <Skeleton className="h-3 w-20 ml-[22px]" />
-              <Skeleton className="h-3 w-14 ml-[22px] mt-1" />
+              <Skeleton className="h-3.5 w-24 ml-6" />
+              <Skeleton className="h-3.5 w-16 ml-6 mt-2" />
             </div>
-            <div className="flex-1 flex flex-col gap-1.5">
+            <div className="flex-1 flex flex-col gap-2">
               <div className="flex gap-2 pl-10">
                 {Array.from({ length: 7 }).map((_, j) => (
                   <Skeleton key={j} className="w-11 h-4 rounded" />
@@ -458,7 +458,7 @@ function HabitListSkeleton() {
               </div>
               {[0, 1, 2].map((r) => (
                 <div key={r} className="flex items-center gap-2">
-                  <Skeleton className="w-8 h-3 rounded" />
+                  <Skeleton className="w-8 h-3.5 rounded" />
                   {Array.from({ length: 7 }).map((_, j) => (
                     <Skeleton key={j} className="w-11 h-11 rounded-lg" />
                   ))}
