@@ -18,8 +18,6 @@ async function seedDefaultRoles(userId: string) {
       color: role.color,
       displayOrder: i,
       isWorkRole: role.isWorkRole,
-      maxWeeklyOccurrences: role.maxWeeklyOccurrences,
-      minRestDays: role.minRestDays,
       userId,
     });
   }
@@ -86,8 +84,6 @@ export async function POST(request: NextRequest) {
       color: roleColor,
       displayOrder: maxOrder + 1,
       isWorkRole: Boolean(body.isWorkRole ?? false),
-      maxWeeklyOccurrences: Number(body.maxWeeklyOccurrences ?? 7),
-      minRestDays: Number(body.minRestDays ?? 0),
       userId,
     })
     .returning();

@@ -32,8 +32,6 @@ export const roles = sqliteTable("roles", {
   displayOrder: integer("display_order").notNull().default(0),
   isArchived: integer("is_archived", { mode: "boolean" }).notNull().default(false),
   isWorkRole: integer("is_work_role", { mode: "boolean" }).notNull().default(false),
-  maxWeeklyOccurrences: integer("max_weekly_occurrences").notNull().default(7),
-  minRestDays: integer("min_rest_days").notNull().default(0),
   userId: text("user_id").notNull().default(""),
   createdAt: timestamp(),
   updatedAt: updatedAt(),

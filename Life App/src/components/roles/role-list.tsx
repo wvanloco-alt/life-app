@@ -48,8 +48,6 @@ export function RoleList() {
     description: string;
     color: string;
     isWorkRole: boolean;
-    maxWeeklyOccurrences: number;
-    minRestDays: number;
   }) {
     if (editingRole) {
       await fetch(`/api/roles/${editingRole.id}`, {

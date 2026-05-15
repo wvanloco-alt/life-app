@@ -4,6 +4,7 @@ import { goals, goalRoles, roles, activityTypes } from "@/db/schema";
 import { eq, and, isNull, type SQL } from "drizzle-orm";
 import { deriveQuadrant } from "@/lib/quadrants";
 import { auth } from "@/lib/auth";
+import { clampSessionsPerWeek, DEFAULT_SESSIONS_PER_WEEK } from "@/lib/goal-validation";
 
 async function attachRoles(goalIds: number[]) {
   if (goalIds.length === 0) return new Map<number, { id: number; name: string; color: string }[]>();
@@ -89,11 +90,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Month is required for monthly goals" }, { status: 400 });
   }
 
+  // FR-016: server-side clamp to [1, 7]. See clampSessionsPerWeek for the
+  // full rationale and edge-case behaviour.
+  const sessionsPerWeek = clampSessionsPerWeek(body.sessionsPerWeek) ?? DEFAULT_SESSIONS_PER_WEEK;
+
   const [created] = await db.insert(goals).values({
     title: title.trim(),
     description: description?.trim() || null,
     targetDate: targetDate || null,
-    sessionsPerWeek: Number(body.sessionsPerWeek ?? 3),
+    sessionsPerWeek,
     status: "active",
     activityTypeId: activityTypeId ?? null,
     targetMetric: targetMetric ?? null,

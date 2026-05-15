@@ -20,8 +20,6 @@ export async function seedUserDefaults(userId: string): Promise<void> {
       color: role.color,
       displayOrder: i,
       isWorkRole: role.isWorkRole,
-      maxWeeklyOccurrences: role.maxWeeklyOccurrences,
-      minRestDays: role.minRestDays,
       userId,
     });
   }

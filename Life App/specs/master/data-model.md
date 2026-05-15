@@ -49,8 +49,6 @@ erDiagram
         int displayOrder
         boolean isArchived
         boolean isWorkRole
-        int maxWeeklyOccurrences
-        int minRestDays
         datetime createdAt
         datetime updatedAt
     }
@@ -276,8 +274,6 @@ Represents a life area defined by the user (e.g., "Professional", "Athlete", "Pa
 | displayOrder | INTEGER | NOT NULL, default 0 | User-defined ordering for display |
 | isArchived | INTEGER | NOT NULL, default 0 | 0 = active, 1 = archived |
 | isWorkRole | INTEGER | NOT NULL, default 0 | 1 = activities scheduled during work hours (9-5 weekdays) |
-| maxWeeklyOccurrences | INTEGER | NOT NULL, default 7 | Max times per week this role's goals can be scheduled (e.g., 4 for athletics) |
-| minRestDays | INTEGER | NOT NULL, default 0 | Min gap days between sessions (e.g., 1 = skip a day between athletic sessions) |
 | createdAt | TEXT | NOT NULL, ISO 8601 | When the role was created |
 | updatedAt | TEXT | NOT NULL, ISO 8601 | Last modification time |
 

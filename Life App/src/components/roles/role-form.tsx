@@ -25,8 +25,6 @@ interface RoleFormProps {
     description: string;
     color: string;
     isWorkRole: boolean;
-    maxWeeklyOccurrences: number;
-    minRestDays: number;
   }) => void;
   role?: Role | null;
 }
@@ -36,12 +34,6 @@ export function RoleForm({ open, onClose, onSave, role }: RoleFormProps) {
   const [description, setDescription] = useState(role?.description ?? "");
   const [color, setColor] = useState(role?.color ?? "#3B82F6");
   const [isWorkRole, setIsWorkRole] = useState(role?.isWorkRole ?? false);
-  const [maxWeeklyOccurrences, setMaxWeeklyOccurrences] = useState(
-    String(role?.maxWeeklyOccurrences ?? 7)
-  );
-  const [minRestDays, setMinRestDays] = useState(
-    String(role?.minRestDays ?? 0)
-  );
   const [error, setError] = useState("");
 
   const palette = getRolePalette();
@@ -63,8 +55,6 @@ export function RoleForm({ open, onClose, onSave, role }: RoleFormProps) {
       description: description.trim(),
       color,
       isWorkRole,
-      maxWeeklyOccurrences: parseInt(maxWeeklyOccurrences) || 7,
-      minRestDays: parseInt(minRestDays) || 0,
     });
   }
 
@@ -75,8 +65,6 @@ export function RoleForm({ open, onClose, onSave, role }: RoleFormProps) {
       setDescription(role?.description ?? "");
       setColor(role?.color ?? "#3B82F6");
       setIsWorkRole(role?.isWorkRole ?? false);
-      setMaxWeeklyOccurrences(String(role?.maxWeeklyOccurrences ?? 7));
-      setMinRestDays(String(role?.minRestDays ?? 0));
       onClose();
     }
   }
@@ -149,35 +137,6 @@ export function RoleForm({ open, onClose, onSave, role }: RoleFormProps) {
                 <span className="text-sm">Work / professional role</span>
                 <p className="text-xs text-muted-foreground">
                   Activities scheduled during work hours (9-5 on weekdays)
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs">Max times per week</Label>
-                <Input
-                  type="number"
-                  value={maxWeeklyOccurrences}
-                  onChange={(e) => setMaxWeeklyOccurrences(e.target.value)}
-                  min={1}
-                  max={7}
-                />
-                <p className="text-xs text-muted-foreground">
-                  e.g., 3 for athletics
-                </p>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Min rest days between</Label>
-                <Input
-                  type="number"
-                  value={minRestDays}
-                  onChange={(e) => setMinRestDays(e.target.value)}
-                  min={0}
-                  max={6}
-                />
-                <p className="text-xs text-muted-foreground">
-                  e.g., 1 = skip a day
                 </p>
               </div>
             </div>

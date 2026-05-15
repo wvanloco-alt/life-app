@@ -16,8 +16,6 @@ export interface Role {
   displayOrder: number;
   isArchived: boolean;
   isWorkRole: boolean;
-  maxWeeklyOccurrences: number;
-  minRestDays: number;
   createdAt: string;
   updatedAt: string;
 }
