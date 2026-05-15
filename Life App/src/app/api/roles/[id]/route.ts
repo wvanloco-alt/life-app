@@ -41,8 +41,6 @@ export async function PATCH(
   if (body.isArchived !== undefined) updates.isArchived = Boolean(body.isArchived);
   if (body.displayOrder !== undefined) updates.displayOrder = Number(body.displayOrder);
   if (body.isWorkRole !== undefined) updates.isWorkRole = Boolean(body.isWorkRole);
-  if (body.maxWeeklyOccurrences !== undefined) updates.maxWeeklyOccurrences = Number(body.maxWeeklyOccurrences);
-  if (body.minRestDays !== undefined) updates.minRestDays = Number(body.minRestDays);
   updates.updatedAt = new Date().toISOString();
 
   const [updated] = await db
