@@ -8,6 +8,7 @@ import {
   Activity,
   Wallet,
   Mountain,
+  Repeat,
   Settings,
   LogOut,
   Users,
@@ -48,6 +49,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       { title: "Activities", href: "/activities", icon: Activity },
       { title: "Budget", href: "/budget", icon: Wallet },
       { title: "Goals", href: "/goals", icon: Mountain },
+      { title: "Habits", href: "/habits", icon: Repeat },
     ],
   },
 ];
