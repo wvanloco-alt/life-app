@@ -71,13 +71,13 @@ export function HabitCalendar({
 
   return (
     <TooltipProvider delayDuration={120}>
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-2">
         {/* Day-of-week header row */}
-        <div className="flex gap-2 pl-10">
+        <div className="flex gap-2 pl-12">
           {DAY_LABELS.map((lbl) => (
             <div
               key={lbl}
-              className="w-11 text-center text-[11px] font-medium text-muted-foreground/50 select-none"
+              className="w-11 text-center text-xs font-medium text-muted-foreground/60 select-none"
             >
               {lbl}
             </div>
@@ -88,7 +88,7 @@ export function HabitCalendar({
         {weeks.map(({ label, dates }) => (
           <div key={label} className="flex items-center gap-2">
             {/* Week label */}
-            <div className="w-8 shrink-0 text-[10px] font-medium text-muted-foreground/40 text-right leading-none select-none">
+            <div className="w-10 shrink-0 text-xs font-medium text-muted-foreground/50 text-right leading-none select-none">
               {label}
             </div>
 
