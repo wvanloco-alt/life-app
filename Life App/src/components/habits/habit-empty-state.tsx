@@ -24,31 +24,39 @@ const PRINCIPLES = [
 
 export function HabitEmptyState({ onQuick, onWalkthrough }: HabitEmptyStateProps) {
   return (
-    <div className="flex flex-col animate-fade-in">
-      {/* Editorial blocks */}
-      <div className="flex flex-col gap-12 max-w-lg">
-        {PRINCIPLES.map((p, i) => (
-          <section key={i} className="stagger-item">
-            <h2 className="font-display text-xl font-semibold mb-3 leading-snug">
-              {p.heading}
-            </h2>
-            <p className="text-[15px] text-muted-foreground leading-7">{p.body}</p>
-          </section>
-        ))}
-      </div>
+    <div className="flex flex-col items-center justify-center min-h-[70vh] animate-fade-in px-4">
+      {/* Page title — centered, owns this space */}
+      <h1 className="font-display text-3xl font-semibold tracking-tight mb-2 text-center">
+        Habits
+      </h1>
+      <p className="text-sm text-muted-foreground mb-10 text-center max-w-xs leading-relaxed">
+        Small, consistent actions shape who you are.
+      </p>
 
-      {/* CTAs */}
-      <div className="flex flex-col items-start gap-3 mt-12">
-        <Button onClick={onWalkthrough} size="default">
-          Walk me through my first habit
+      {/* Primary CTAs */}
+      <div className="flex flex-col items-center gap-3 mb-16">
+        <Button size="default" onClick={onWalkthrough} className="min-w-[200px]">
+          Walk me through it
         </Button>
         <button
           type="button"
           onClick={onQuick}
           className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
-          or skip the walkthrough
+          Add a habit
         </button>
+      </div>
+
+      {/* Editorial principles — quieter, below the fold */}
+      <div className="flex flex-col gap-10 max-w-md w-full">
+        {PRINCIPLES.map((p, i) => (
+          <section key={i} className="stagger-item">
+            <h2 className="font-display text-base font-semibold mb-2 leading-snug">
+              {p.heading}
+            </h2>
+            <p className="text-sm text-muted-foreground leading-relaxed">{p.body}</p>
+          </section>
+        ))}
       </div>
     </div>
   );
