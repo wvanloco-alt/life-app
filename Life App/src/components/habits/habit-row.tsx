@@ -10,14 +10,8 @@ import { computeStreaks } from "@/lib/habit-streaks";
 import type { HabitWithRecentLogs } from "@/types";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import {
-  ArchiveRestore,
-  GripVertical,
-  MoreVertical,
-  Pencil,
-  Trash2,
-} from "lucide-react";
-import { HabitStrip } from "./habit-strip";
+import { ArchiveRestore, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { HabitCalendar } from "./habit-calendar";
 
 interface HabitRowProps {
   habit: HabitWithRecentLogs;
@@ -44,19 +38,11 @@ export function HabitRow({
   onDelete,
   onArchiveToggle,
 }: HabitRowProps) {
-  const { current: currentStreak, best: bestStreak } = computeStreaks(
-    logDates,
-    today,
-  );
+  const { current: currentStreak, best: bestStreak } = computeStreaks(logDates, today);
 
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: habit.id });
+  const { setNodeRef, transform, transition, isDragging } = useSortable({
+    id: habit.id,
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -69,26 +55,12 @@ export function HabitRow({
     <div
       ref={setNodeRef}
       style={style}
-      className={`py-5 stagger-item bg-background ${
+      className={`flex flex-col gap-3 rounded-xl border border-border/50 bg-card p-4 stagger-item ${
         habit.isArchived ? "opacity-60" : ""
       }`}
     >
-      {/* ── Top row: drag · color · identity/name · streak · edit · more ── */}
-      <div className="flex items-start gap-2.5">
-        {/* Drag handle */}
-        {!habit.isArchived && (
-          <button
-            type="button"
-            className="cursor-grab text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors shrink-0 mt-0.5 touch-none"
-            aria-label="Drag to reorder"
-            {...attributes}
-            {...listeners}
-          >
-            <GripVertical className="w-4 h-4" />
-          </button>
-        )}
-        {habit.isArchived && <div className="w-4 shrink-0" />}
-
+      {/* ── Card header ── */}
+      <div className="flex items-start gap-2">
         {/* Color dot */}
         <div
           className="w-2.5 h-2.5 rounded-full shrink-0 mt-1"
@@ -99,27 +71,25 @@ export function HabitRow({
         {/* Identity + name */}
         <div className="flex-1 min-w-0">
           <p
-            className={`font-display text-[15px] font-semibold leading-snug truncate ${
+            className={`font-display text-[14px] font-semibold leading-snug ${
               habit.isArchived ? "line-through" : ""
             }`}
           >
             {habit.identity || habit.name}
           </p>
           {habit.identity && (
-            <p className="text-xs text-muted-foreground leading-snug truncate mt-0.5">
+            <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
               {habit.name}
             </p>
           )}
         </div>
 
-        {/* Streak (active only) */}
+        {/* Streak */}
         {!habit.isArchived && (
-          <div className="shrink-0 text-right min-w-[48px]">
+          <div className="shrink-0 text-right">
             <p className="text-sm font-mono font-semibold tabular-nums leading-none">
               {currentStreak}
-              <span className="text-[10px] text-muted-foreground font-sans font-normal ml-0.5">
-                d
-              </span>
+              <span className="text-[10px] text-muted-foreground font-sans font-normal ml-0.5">d</span>
             </p>
             {bestStreak > currentStreak && bestStreak > 0 && (
               <p className="text-[10px] text-muted-foreground mt-0.5 leading-none">
@@ -129,25 +99,25 @@ export function HabitRow({
           </div>
         )}
 
-        {/* Edit button — always visible for active habits */}
+        {/* Edit — always visible for active habits */}
         {!habit.isArchived && (
           <button
             type="button"
             onClick={onEdit}
             aria-label="Edit habit"
-            className="shrink-0 p-1 rounded text-muted-foreground/50 hover:text-foreground hover:bg-muted/60 transition-colors"
+            className="shrink-0 p-1 rounded text-muted-foreground/40 hover:text-foreground hover:bg-muted/60 transition-colors"
           >
             <Pencil className="w-3.5 h-3.5" />
           </button>
         )}
 
-        {/* Kebab — archive + delete only */}
+        {/* Kebab */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
               aria-label="More options"
-              className="shrink-0 p-1 rounded text-muted-foreground/40 hover:text-foreground hover:bg-muted/60 transition-colors"
+              className="shrink-0 p-1 rounded text-muted-foreground/30 hover:text-foreground hover:bg-muted/60 transition-colors"
             >
               <MoreVertical className="w-3.5 h-3.5" />
             </button>
@@ -168,20 +138,27 @@ export function HabitRow({
         </DropdownMenu>
       </div>
 
-      {/* ── Calendar grid (active habits only) ── */}
+      {/* ── 3-week calendar ── */}
       {!habit.isArchived && (
-        <div className="mt-3 pl-[26px]">
-          <HabitStrip
+        <>
+          <HabitCalendar
             recentLogDates={logDates}
             habitColor={habit.color}
             habitCreatedAt={habit.createdAt}
             today={today}
             inFlightDates={inFlightDates}
-            affirmation={affirmation}
-            error={error}
             onToggle={(date) => onToggle(habit.id, date)}
           />
-        </div>
+          {/* Inline feedback */}
+          {affirmation && (
+            <p className="text-[11px] text-muted-foreground animate-fade-in leading-snug -mt-1">
+              {affirmation}
+            </p>
+          )}
+          {!affirmation && error && (
+            <p className="text-[11px] text-destructive leading-snug -mt-1">{error}</p>
+          )}
+        </>
       )}
     </div>
   );
