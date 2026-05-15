@@ -135,19 +135,17 @@ export async function GET(
     const metricLabel = goal.targetUnit
       ?? (metric === "count" ? "sessions" : metric === "duration" ? "minutes" : metric ?? "units");
 
-    if (goal.activityTypeId != null && metric != null) {
-      const logs = await db
-        .select({ durationMinutes: activityLogs.durationMinutes, metrics: activityLogs.metrics })
-        .from(activityLogs)
-        .where(
-          and(
-            inArray(activityLogs.goalId, allGoalIds),
-            gte(activityLogs.date, from),
-            lte(activityLogs.date, to)
-          )
-        );
-      current += sumMetricFromLogs(logs, metric);
-    }
+    const logs = await db
+      .select({ durationMinutes: activityLogs.durationMinutes, metrics: activityLogs.metrics })
+      .from(activityLogs)
+      .where(
+        and(
+          inArray(activityLogs.goalId, allGoalIds),
+          gte(activityLogs.date, from),
+          lte(activityLogs.date, to)
+        )
+      );
+    current += sumMetricFromLogs(logs, metric ?? "count");
 
     const tallies = await db
       .select({ count: goalTallies.count })
@@ -189,19 +187,17 @@ export async function GET(
       ?? (metric === "count" ? "sessions" : metric === "duration" ? "minutes" : metric ?? "units");
     let current = 0;
 
-    if (goal.activityTypeId != null && metric != null) {
-      const logs = await db
-        .select({ durationMinutes: activityLogs.durationMinutes, metrics: activityLogs.metrics })
-        .from(activityLogs)
-        .where(
-          and(
-            eq(activityLogs.goalId, goalId),
-            gte(activityLogs.date, from),
-            lte(activityLogs.date, to)
-          )
-        );
-      current += sumMetricFromLogs(logs, metric);
-    }
+    const logs = await db
+      .select({ durationMinutes: activityLogs.durationMinutes, metrics: activityLogs.metrics })
+      .from(activityLogs)
+      .where(
+        and(
+          eq(activityLogs.goalId, goalId),
+          gte(activityLogs.date, from),
+          lte(activityLogs.date, to)
+        )
+      );
+    current += sumMetricFromLogs(logs, metric ?? "count");
 
     const tallies = await db
       .select({ count: goalTallies.count })
