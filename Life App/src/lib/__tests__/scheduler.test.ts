@@ -10,8 +10,6 @@ function makeRole(overrides: Partial<Role> & { id: number; name: string }): Role
     displayOrder: 0,
     isArchived: false,
     isWorkRole: false,
-    maxWeeklyOccurrences: 7,
-    minRestDays: 0,
     createdAt: "",
     updatedAt: "",
     ...overrides,
@@ -107,32 +105,6 @@ describe("generateSchedule", () => {
     expect(uniqueDates.size).toBe(3);
   });
 
-  it("respects rest day constraints", () => {
-    const role = makeRole({
-      id: 1,
-      name: "Athlete",
-      minRestDays: 1,
-    });
-    const goal = makeGoal({
-      id: 1,
-      title: "Heavy Lifting",
-      sessionsPerWeek: 4,
-      roles: [{ id: 1, name: "Athlete", color: "#EF4444" }],
-    });
-
-    const result = generateSchedule(
-      [goal], [], [], [role], weekStart, defaultSettings, "week"
-    );
-
-    const dates = result.activities.map((a) => a.activityDate).sort();
-    for (let i = 1; i < dates.length; i++) {
-      const prev = new Date(dates[i - 1] + "T00:00:00");
-      const curr = new Date(dates[i] + "T00:00:00");
-      const diffDays = (curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24);
-      expect(diffDays).toBeGreaterThanOrEqual(2);
-    }
-  });
-
   it("places work-role goals during work hours on weekdays", () => {
     const role = makeRole({ id: 1, name: "Professional", isWorkRole: true });
     const goal = makeGoal({
@@ -206,13 +178,33 @@ describe("generateSchedule", () => {
     }
   });
 
-  it("warns when maxWeeklyOccurrences is restrictive", () => {
-    const role = makeRole({
+  // ─── role-scheduling-rules-removal: new permissive-placement coverage ────
+
+  it("places exactly 7 sessions across 7 unique days when sessionsPerWeek=7 (SC-001)", () => {
+    const role = makeRole({ id: 1, name: "Athlete" });
+    const goal = makeGoal({
       id: 1,
-      name: "Athlete",
-      maxWeeklyOccurrences: 2,
-      minRestDays: 2,
+      title: "Daily run",
+      sessionsPerWeek: 7,
+      roles: [{ id: 1, name: "Athlete", color: "#EF4444" }],
     });
+
+    const result = generateSchedule(
+      [goal], [], [], [role], weekStart, defaultSettings, "week"
+    );
+
+    expect(result.activities.length).toBe(7);
+    const uniqueDates = new Set(result.activities.map((a) => a.activityDate));
+    expect(uniqueDates.size).toBe(7);
+  });
+
+  it("allows consecutive-day placement when sessionsPerWeek=5 (Acceptance Scenario 1.3)", () => {
+    // Before this feature, an Athlete role with minRestDays=1 forced a 2-day
+    // gap between sessions. After removal, no role-level rest constraint
+    // fires; sessionsPerWeek=5 in a 7-day window must by pigeonhole produce
+    // at least one consecutive-day pair (the maximum independent set in a
+    // path graph of length 7 is 4).
+    const role = makeRole({ id: 1, name: "Athlete" });
     const goal = makeGoal({
       id: 1,
       title: "Run",
@@ -224,10 +216,20 @@ describe("generateSchedule", () => {
       [goal], [], [], [role], weekStart, defaultSettings, "week"
     );
 
-    // Primary placement respects maxWeeklyOccurrences, fallback may add more
-    // but if constraints are tight enough, warnings should appear
-    expect(result.activities.length).toBeGreaterThan(0);
-    expect(result.activities.length).toBeLessThanOrEqual(5);
+    expect(result.activities.length).toBe(5);
+
+    const dates = result.activities.map((a) => a.activityDate).sort();
+    let hasConsecutivePair = false;
+    for (let i = 1; i < dates.length; i++) {
+      const prev = new Date(dates[i - 1] + "T00:00:00").getTime();
+      const curr = new Date(dates[i] + "T00:00:00").getTime();
+      const diffDays = (curr - prev) / (1000 * 60 * 60 * 24);
+      if (diffDays === 1) {
+        hasConsecutivePair = true;
+        break;
+      }
+    }
+    expect(hasConsecutivePair).toBe(true);
   });
 
   it("generates for month scope with more sessions", () => {
