@@ -280,11 +280,15 @@ Create a new goal.
 `activityTypeId`, `targetMetric`, `targetValue`, `targetPeriod` are optional (for metric-based goals).
 `horizon`, `parentGoalId`, `month`, `targetUnit` are optional (Goals V2). Omit for backward-compatible standalone goals.
 
+`sessionsPerWeek` is clamped server-side to `[1, 7]`: integers outside the range are pulled in, fractional values are rounded then clamped, and non-numeric input falls back to the default of 3. The client form enforces the same bounds; the server clamp is the belt-and-braces for direct API callers.
+
 **Response** `201`: The created goal with derived quadrant and roles attached.
 
 ### PATCH /api/goals/:id
 
 Update a goal. Accepts: `title`, `description`, `targetDate`, `sessionsPerWeek`, `status`, `isCompleted`, `roleIds`, `activityTypeId`, `targetMetric`, `targetValue`, `targetPeriod`, `horizon`, `parentGoalId`, `month`, `targetUnit`.
+
+`sessionsPerWeek`, when provided, is clamped server-side to `[1, 7]` using the same rules as POST. Non-numeric or non-finite input is dropped (treated as "no change") rather than coerced.
 
 ### DELETE /api/goals/:id
 
@@ -400,8 +404,6 @@ Returns all active roles (add `?archived=true` to include archived).
     "displayOrder": 0,
     "isArchived": false,
     "isWorkRole": true,
-    "maxWeeklyOccurrences": 5,
-    "minRestDays": 0,
     "createdAt": "2026-03-04T12:00:00.000Z",
     "updatedAt": "2026-03-04T12:00:00.000Z"
   }
@@ -418,9 +420,7 @@ Create a new role.
   "name": "Athlete",
   "description": "Fitness and sports",
   "color": "#EF4444",
-  "isWorkRole": false,
-  "maxWeeklyOccurrences": 4,
-  "minRestDays": 1
+  "isWorkRole": false
 }
 ```
 
@@ -428,7 +428,7 @@ Create a new role.
 
 ### PATCH /api/roles/:id
 
-Update a role. Accepts any subset of: `name`, `description`, `color`, `displayOrder`, `isArchived`, `isWorkRole`, `maxWeeklyOccurrences`, `minRestDays`.
+Update a role. Accepts any subset of: `name`, `description`, `color`, `displayOrder`, `isArchived`, `isWorkRole`.
 
 ### PUT /api/roles/reorder
 
