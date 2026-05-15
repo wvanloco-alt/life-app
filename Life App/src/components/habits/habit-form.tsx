@@ -10,7 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import type { HabitDraft } from "@/types";
+import type { Habit, HabitDraft } from "@/types";
 import { useState } from "react";
 
 const PRESET_COLORS = [
@@ -68,8 +68,11 @@ type WalkthroughStep = (typeof WALKTHROUGH_STEPS)[number]["id"] | "review";
 interface HabitFormProps {
   open: boolean;
   mode: "quick" | "walkthrough";
+  /** When set, the form opens in edit mode (PATCH instead of POST). */
+  initial?: Habit;
   onClose: () => void;
   onCreated: (habit: { id: number; name: string }) => void;
+  onArchived?: (habitId: number) => void;
 }
 
 async function createHabit(draft: HabitDraft): Promise<{ id: number; name: string }> {
@@ -85,18 +88,62 @@ async function createHabit(draft: HabitDraft): Promise<{ id: number; name: strin
   return res.json();
 }
 
-export function HabitForm({ open, mode, onClose, onCreated }: HabitFormProps) {
-  const [draft, setDraft] = useState<Partial<HabitDraft>>({
-    color: PRESET_COLORS[0],
+async function updateHabit(id: number, draft: Partial<HabitDraft>): Promise<{ id: number; name: string }> {
+  const res = await fetch(`/api/habits/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(draft),
   });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as { error?: string }).error ?? "Failed to update habit");
+  }
+  return res.json();
+}
+
+async function archiveHabit(id: number): Promise<void> {
+  const res = await fetch(`/api/habits/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ isArchived: true }),
+  });
+  if (!res.ok) throw new Error("Failed to archive habit");
+}
+
+export function HabitForm({ open, mode, initial, onClose, onCreated, onArchived }: HabitFormProps) {
+  const isEditing = !!initial;
+
+  const [draft, setDraft] = useState<Partial<HabitDraft>>(() =>
+    initial
+      ? {
+          identity: initial.identity,
+          name: initial.name,
+          cue: initial.cue ?? undefined,
+          minimumVersion: initial.minimumVersion ?? undefined,
+          color: initial.color,
+        }
+      : { color: PRESET_COLORS[0] },
+  );
   const [walkthroughStep, setWalkthroughStep] = useState<WalkthroughStep>("identity");
   const [submitting, setSubmitting] = useState(false);
+  const [archiving, setArchiving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function reset() {
-    setDraft({ color: PRESET_COLORS[0] });
+    setDraft(
+      initial
+        ? {
+            identity: initial.identity,
+            name: initial.name,
+            cue: initial.cue ?? undefined,
+            minimumVersion: initial.minimumVersion ?? undefined,
+            color: initial.color,
+          }
+        : { color: PRESET_COLORS[0] },
+    );
     setWalkthroughStep("identity");
     setSubmitting(false);
+    setArchiving(false);
     setError(null);
   }
 
@@ -114,12 +161,28 @@ export function HabitForm({ open, mode, onClose, onCreated }: HabitFormProps) {
     setSubmitting(true);
     setError(null);
     try {
-      const result = await createHabit(draft as HabitDraft);
+      const result = isEditing
+        ? await updateHabit(initial!.id, draft as HabitDraft)
+        : await createHabit(draft as HabitDraft);
       reset();
       onCreated(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
       setSubmitting(false);
+    }
+  }
+
+  async function handleArchive() {
+    if (!initial) return;
+    setArchiving(true);
+    setError(null);
+    try {
+      await archiveHabit(initial.id);
+      reset();
+      onArchived?.(initial.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+      setArchiving(false);
     }
   }
 
@@ -134,7 +197,9 @@ export function HabitForm({ open, mode, onClose, onCreated }: HabitFormProps) {
       <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="font-display text-base">Add a habit</DialogTitle>
+            <DialogTitle className="font-display text-base">
+            {isEditing ? "Edit habit" : "Add a habit"}
+          </DialogTitle>
           </DialogHeader>
 
           <div className="flex flex-col gap-4 mt-1">
@@ -170,17 +235,32 @@ export function HabitForm({ open, mode, onClose, onCreated }: HabitFormProps) {
 
             {error && <p className="text-xs text-destructive">{error}</p>}
 
-            <div className="flex gap-2 justify-end">
-              <Button variant="ghost" size="sm" onClick={handleClose} disabled={submitting}>
-                Cancel
-              </Button>
-              <Button
-                size="sm"
-                onClick={submit}
-                disabled={!canSubmit || submitting}
-              >
-                {submitting ? "Saving…" : "Save habit"}
-              </Button>
+            <div className="flex gap-2 justify-between">
+              <div className="flex gap-2">
+                {isEditing && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleArchive}
+                    disabled={archiving || submitting}
+                    className="text-muted-foreground"
+                  >
+                    {archiving ? "Archiving…" : "Archive"}
+                  </Button>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={handleClose} disabled={submitting || archiving}>
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={submit}
+                  disabled={!canSubmit || submitting || archiving}
+                >
+                  {submitting ? "Saving…" : isEditing ? "Save changes" : "Save habit"}
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>
