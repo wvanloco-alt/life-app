@@ -1,7 +1,6 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { HabitWithRecentLogs } from "@/types";
 import {
@@ -312,34 +311,27 @@ export function HabitList() {
   }
 
   return (
-    <div className="grid grid-cols-[1fr_260px] gap-12 animate-fade-up items-start">
-      {/* ── Left column: habit list ── */}
-      <div className="flex flex-col min-w-0">
-        {/* Header */}
-        <div className="flex items-center justify-between pb-6">
-          <h1 className="font-display text-2xl font-semibold tracking-tight">Habits</h1>
-          <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => { setEditingHabit(null); setFormMode("walkthrough"); }}
-              className="text-muted-foreground text-xs"
-            >
-              Walk me through it
-            </Button>
-            <Button size="sm" onClick={() => { setEditingHabit(null); setFormMode("quick"); }}>
-              + Add habit
-            </Button>
-          </div>
-        </div>
-
-        {/* Reorder error */}
+    <div className="flex flex-col gap-6 animate-fade-up">
+      {/* ── Actions bar — no page title ── */}
+      <div className="flex items-center justify-end gap-2">
         {reorderError && (
-          <p className="text-xs text-destructive mb-3">{reorderError}</p>
+          <p className="text-xs text-destructive mr-auto">{reorderError}</p>
         )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => { setEditingHabit(null); setFormMode("walkthrough"); }}
+          className="text-muted-foreground text-xs"
+        >
+          Walk me through it
+        </Button>
+        <Button size="sm" onClick={() => { setEditingHabit(null); setFormMode("quick"); }}>
+          + Add habit
+        </Button>
+      </div>
 
-        {/* Active list */}
-        <DndContext
+      {/* ── Active habit card grid ── */}
+      <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
@@ -348,106 +340,91 @@ export function HabitList() {
           items={activeHabits.map((h) => h.id)}
           strategy={verticalListSortingStrategy}
         >
-          <div className="flex flex-col">
-            {activeHabits.map((habit, i) => (
-              <div key={habit.id}>
-                <HabitRow
-                  habit={habit}
-                  logDates={logDates[habit.id] ?? []}
-                  today={today}
-                  inFlightDates={
-                    new Set(
-                      [...inFlight]
-                        .filter((k) => k.startsWith(`${habit.id}:`))
-                        .map((k) => k.split(":").slice(1).join(":")),
-                    )
-                  }
-                  affirmation={affirmations[habit.id]}
-                  error={errors[habit.id]}
-                  onToggle={handleToggle}
-                  onEdit={() => handleEditOpen(habit)}
-                  onArchiveToggle={() => handleArchive(habit)}
-                  onDelete={() => setDeleteTarget(habit)}
-                />
-                {i < activeHabits.length - 1 && (
-                  <Separator className="opacity-40" />
-                )}
-              </div>
+          <div className="grid grid-cols-2 gap-4">
+            {activeHabits.map((habit) => (
+              <HabitRow
+                key={habit.id}
+                habit={habit}
+                logDates={logDates[habit.id] ?? []}
+                today={today}
+                inFlightDates={
+                  new Set(
+                    [...inFlight]
+                      .filter((k) => k.startsWith(`${habit.id}:`))
+                      .map((k) => k.split(":").slice(1).join(":")),
+                  )
+                }
+                affirmation={affirmations[habit.id]}
+                error={errors[habit.id]}
+                onToggle={handleToggle}
+                onEdit={() => handleEditOpen(habit)}
+                onArchiveToggle={() => handleArchive(habit)}
+                onDelete={() => setDeleteTarget(habit)}
+              />
             ))}
           </div>
         </SortableContext>
       </DndContext>
 
-        {/* Archive section */}
-        {archivedHabits.length > 0 && (
-          <div className="mt-8">
-            <button
-              type="button"
-              onClick={() => setShowArchived((v) => !v)}
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3"
-            >
-              {showArchived ? (
-                <ChevronDown className="w-3.5 h-3.5" />
-              ) : (
-                <ChevronRight className="w-3.5 h-3.5" />
-              )}
-              Show archived habits ({archivedHabits.length})
-            </button>
-
-            {showArchived && (
-              <div className="flex flex-col">
-                {archivedHabits.map((habit, i) => (
-                  <div key={habit.id}>
-                    <HabitRow
-                      habit={habit}
-                      logDates={logDates[habit.id] ?? []}
-                      today={today}
-                      inFlightDates={new Set()}
-                      onToggle={() => {}}
-                      onEdit={() => {}}
-                      onArchiveToggle={() => handleRestore(habit)}
-                      onDelete={() => setDeleteTarget(habit)}
-                    />
-                    {i < archivedHabits.length - 1 && (
-                      <Separator className="opacity-20" />
-                    )}
-                  </div>
-                ))}
-              </div>
+      {/* ── Archive section ── */}
+      {archivedHabits.length > 0 && (
+        <div className="mt-2">
+          <button
+            type="button"
+            onClick={() => setShowArchived((v) => !v)}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3"
+          >
+            {showArchived ? (
+              <ChevronDown className="w-3.5 h-3.5" />
+            ) : (
+              <ChevronRight className="w-3.5 h-3.5" />
             )}
-          </div>
-        )}
+            Show archived habits ({archivedHabits.length})
+          </button>
+          {showArchived && (
+            <div className="grid grid-cols-2 gap-4">
+              {archivedHabits.map((habit) => (
+                <HabitRow
+                  key={habit.id}
+                  habit={habit}
+                  logDates={logDates[habit.id] ?? []}
+                  today={today}
+                  inFlightDates={new Set()}
+                  onToggle={() => {}}
+                  onEdit={() => {}}
+                  onArchiveToggle={() => handleRestore(habit)}
+                  onDelete={() => setDeleteTarget(habit)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
-        {/* Forms */}
-        {formMode && (
-          <HabitForm
-            open
-            mode={formMode}
-            initial={editingHabit ?? undefined}
-            onClose={() => { setFormMode(null); setEditingHabit(null); }}
-            onCreated={handleFormCreatedOrUpdated}
-            onArchived={handleArchivedViaForm}
-          />
-        )}
+      {/* ── Principles — full-width 3-column row below the grid ── */}
+      <HabitPrinciples horizontal />
 
-        {/* Delete confirmation */}
-        {deleteTarget && (
-          <HabitDeleteDialog
-            open
-            habitName={deleteTarget.name}
-            onClose={() => setDeleteTarget(null)}
-            onConfirm={() => handleDelete(deleteTarget)}
-          />
-        )}
-      </div>
+      {/* Forms */}
+      {formMode && (
+        <HabitForm
+          open
+          mode={formMode}
+          initial={editingHabit ?? undefined}
+          onClose={() => { setFormMode(null); setEditingHabit(null); }}
+          onCreated={handleFormCreatedOrUpdated}
+          onArchived={handleArchivedViaForm}
+        />
+      )}
 
-      {/* ── Right column: principles sidebar ── */}
-      <aside className="pt-[52px] border-l border-border/50 pl-10">
-        <p className="text-[10px] uppercase tracking-widest text-muted-foreground/50 font-medium mb-5">
-          Principles
-        </p>
-        <HabitPrinciples compact />
-      </aside>
+      {/* Delete confirmation */}
+      {deleteTarget && (
+        <HabitDeleteDialog
+          open
+          habitName={deleteTarget.name}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={() => handleDelete(deleteTarget)}
+        />
+      )}
     </div>
   );
 }
@@ -456,26 +433,24 @@ export function HabitList() {
 
 function HabitListSkeleton() {
   return (
-    <div className="flex flex-col gap-0">
-      <div className="flex items-center justify-between pb-6">
-        <Skeleton className="h-7 w-24" />
+    <div className="flex flex-col gap-6">
+      <div className="flex justify-end">
         <Skeleton className="h-8 w-28" />
       </div>
-      {[1, 2, 3].map((i) => (
-        <div key={i}>
-          <div className="flex items-center gap-4 py-4">
-            <Skeleton className="w-4 h-4 rounded" />
-            <Skeleton className="w-2 h-2 rounded-full shrink-0" />
-            <div className="flex-1 flex flex-col gap-1">
-              <Skeleton className="h-3 w-24" />
-              <Skeleton className="h-4 w-40" />
+      <div className="grid grid-cols-2 gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="rounded-xl border border-border/50 p-4 flex flex-col gap-3">
+            <div className="flex items-start gap-2">
+              <Skeleton className="w-2.5 h-2.5 rounded-full mt-1 shrink-0" />
+              <div className="flex-1 flex flex-col gap-1.5">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-3 w-24" />
+              </div>
             </div>
-            <Skeleton className="h-5 w-[286px]" />
-            <Skeleton className="h-5 w-14" />
+            <Skeleton className="h-[88px] w-full rounded-md" />
           </div>
-          {i < 3 && <Separator className="opacity-40" />}
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }

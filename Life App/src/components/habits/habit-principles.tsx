@@ -1,13 +1,3 @@
-/**
- * The three house-voice habit principles.
- * Used in both the empty state (prominent) and the populated sidebar (quiet).
- */
-
-interface HabitPrinciplesProps {
-  /** When true, uses smaller quieter type suitable for a sidebar. */
-  compact?: boolean;
-}
-
 const PRINCIPLES = [
   {
     heading: "Start with who you are becoming.",
@@ -23,7 +13,32 @@ const PRINCIPLES = [
   },
 ];
 
-export function HabitPrinciples({ compact = false }: HabitPrinciplesProps) {
+interface HabitPrinciplesProps {
+  /** Compact single-column sidebar style */
+  compact?: boolean;
+  /** Full-width 3-column row */
+  horizontal?: boolean;
+}
+
+export function HabitPrinciples({
+  compact = false,
+  horizontal = false,
+}: HabitPrinciplesProps) {
+  if (horizontal) {
+    return (
+      <div className="grid grid-cols-3 gap-8 border-t border-border/40 pt-8">
+        {PRINCIPLES.map((p, i) => (
+          <section key={i}>
+            <h3 className="font-display text-[13px] font-semibold leading-snug mb-2 text-foreground/75">
+              {p.heading}
+            </h3>
+            <p className="text-[12px] text-muted-foreground leading-relaxed">{p.body}</p>
+          </section>
+        ))}
+      </div>
+    );
+  }
+
   if (compact) {
     return (
       <div className="flex flex-col gap-7">
