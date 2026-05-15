@@ -142,3 +142,21 @@ export function getDayOfWeek(date: Date | string): number {
   const day = d.getDay();
   return day === 0 ? 7 : day;
 }
+
+/**
+ * Convert an ISO date or ISO datetime string to the user-facing DD-MM-YYYY display format.
+ *
+ * Used by the Habits feature per spec FR-019. Storage and API wire format stay
+ * ISO `YYYY-MM-DD`; only the render boundary uses DD-MM-YYYY.
+ *
+ * Defensive: malformed input is returned unchanged so a render path never throws.
+ * The app-wide sweep of existing ISO display sites to use this helper is tracked
+ * as a separate follow-up feature (FR-020).
+ */
+export function formatDateForDisplay(iso: string): string {
+  if (typeof iso !== "string" || iso.length < 10) return iso;
+  const datePart = iso.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(datePart)) return iso;
+  const [y, m, d] = datePart.split("-");
+  return `${d}-${m}-${y}`;
+}

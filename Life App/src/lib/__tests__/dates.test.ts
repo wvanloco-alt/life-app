@@ -7,6 +7,7 @@ import {
   generateTimeSlots,
   isBeforeToday,
   getDayOfWeek,
+  formatDateForDisplay,
 } from "../dates";
 
 describe("formatTime", () => {
@@ -112,5 +113,31 @@ describe("getDayOfWeek", () => {
   it("returns 7 for Sunday", () => {
     // 2026-03-08 is a Sunday
     expect(getDayOfWeek("2026-03-08")).toBe(7);
+  });
+});
+
+describe("formatDateForDisplay", () => {
+  it("converts an ISO date to DD-MM-YYYY", () => {
+    expect(formatDateForDisplay("2026-05-15")).toBe("15-05-2026");
+  });
+
+  it("converts an ISO datetime with offset to DD-MM-YYYY (trims to date part)", () => {
+    expect(formatDateForDisplay("2026-12-31T23:59:00+02:00")).toBe("31-12-2026");
+  });
+
+  it("zero-pads single-digit month and day correctly", () => {
+    expect(formatDateForDisplay("2026-01-05")).toBe("05-01-2026");
+  });
+
+  it("returns malformed input unchanged (defensive, no throw)", () => {
+    expect(formatDateForDisplay("not-a-date")).toBe("not-a-date");
+  });
+
+  it("returns short input unchanged", () => {
+    expect(formatDateForDisplay("2026")).toBe("2026");
+  });
+
+  it("returns input unchanged when the date part is not ISO-shaped", () => {
+    expect(formatDateForDisplay("15-05-2026")).toBe("15-05-2026");
   });
 });
