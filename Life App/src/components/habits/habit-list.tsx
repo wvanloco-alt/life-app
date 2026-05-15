@@ -290,9 +290,29 @@ export function HabitList() {
     );
   }
 
+  // Empty state gets its own full-page layout — no header bar
+  if (activeHabits.length === 0 && archivedHabits.length === 0) {
+    return (
+      <>
+        <HabitEmptyState
+          onQuick={() => { setEditingHabit(null); setFormMode("quick"); }}
+          onWalkthrough={() => { setEditingHabit(null); setFormMode("walkthrough"); }}
+        />
+        {formMode && (
+          <HabitForm
+            open
+            mode={formMode}
+            onClose={() => { setFormMode(null); setEditingHabit(null); }}
+            onCreated={handleFormCreatedOrUpdated}
+          />
+        )}
+      </>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-0 animate-fade-up">
-      {/* Header */}
+      {/* Header — only shown when habits exist */}
       <div className="flex items-center justify-between pb-6">
         <h1 className="font-display text-2xl font-semibold tracking-tight">Habits</h1>
         <div className="flex gap-2">
@@ -316,51 +336,44 @@ export function HabitList() {
       )}
 
       {/* Active list */}
-      {activeHabits.length === 0 ? (
-        <HabitEmptyState
-          onQuick={() => { setEditingHabit(null); setFormMode("quick"); }}
-          onWalkthrough={() => { setEditingHabit(null); setFormMode("walkthrough"); }}
-        />
-      ) : (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={activeHabits.map((h) => h.id)}
+          strategy={verticalListSortingStrategy}
         >
-          <SortableContext
-            items={activeHabits.map((h) => h.id)}
-            strategy={verticalListSortingStrategy}
-          >
-            <div className="flex flex-col">
-              {activeHabits.map((habit, i) => (
-                <div key={habit.id}>
-                  <HabitRow
-                    habit={habit}
-                    logDates={logDates[habit.id] ?? []}
-                    today={today}
-                    inFlightDates={
-                      new Set(
-                        [...inFlight]
-                          .filter((k) => k.startsWith(`${habit.id}:`))
-                          .map((k) => k.split(":").slice(1).join(":")),
-                      )
-                    }
-                    affirmation={affirmations[habit.id]}
-                    error={errors[habit.id]}
-                    onToggle={handleToggle}
-                    onEdit={() => handleEditOpen(habit)}
-                    onArchiveToggle={() => handleArchive(habit)}
-                    onDelete={() => setDeleteTarget(habit)}
-                  />
-                  {i < activeHabits.length - 1 && (
-                    <Separator className="opacity-40" />
-                  )}
-                </div>
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
-      )}
+          <div className="flex flex-col">
+            {activeHabits.map((habit, i) => (
+              <div key={habit.id}>
+                <HabitRow
+                  habit={habit}
+                  logDates={logDates[habit.id] ?? []}
+                  today={today}
+                  inFlightDates={
+                    new Set(
+                      [...inFlight]
+                        .filter((k) => k.startsWith(`${habit.id}:`))
+                        .map((k) => k.split(":").slice(1).join(":")),
+                    )
+                  }
+                  affirmation={affirmations[habit.id]}
+                  error={errors[habit.id]}
+                  onToggle={handleToggle}
+                  onEdit={() => handleEditOpen(habit)}
+                  onArchiveToggle={() => handleArchive(habit)}
+                  onDelete={() => setDeleteTarget(habit)}
+                />
+                {i < activeHabits.length - 1 && (
+                  <Separator className="opacity-40" />
+                )}
+              </div>
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
 
       {/* Archive section */}
       {archivedHabits.length > 0 && (
