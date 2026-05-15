@@ -40,19 +40,17 @@ export async function GET(
         const from = format(startOfMonth(monthDate), "yyyy-MM-dd");
         const to = format(endOfMonth(monthDate), "yyyy-MM-dd");
 
-        if (child.activityTypeId != null && child.targetMetric != null) {
-          const logs = await db
-            .select({ durationMinutes: activityLogs.durationMinutes, metrics: activityLogs.metrics })
-            .from(activityLogs)
-            .where(and(eq(activityLogs.goalId, child.id), gte(activityLogs.date, from), lte(activityLogs.date, to)));
+        const logs = await db
+          .select({ durationMinutes: activityLogs.durationMinutes, metrics: activityLogs.metrics })
+          .from(activityLogs)
+          .where(and(eq(activityLogs.goalId, child.id), gte(activityLogs.date, from), lte(activityLogs.date, to)));
 
-          const metric = child.targetMetric;
-          if (metric === "count") current += logs.length;
-          else if (metric === "duration") current += logs.reduce((s, l) => s + l.durationMinutes, 0);
-          else {
-            for (const log of logs) {
-              try { const m = JSON.parse(log.metrics) as Record<string, unknown>; const val = m[metric]; if (typeof val === "number") current += val; } catch { /* ignore */ }
-            }
+        const metric = child.targetMetric ?? "count";
+        if (metric === "count") current += logs.length;
+        else if (metric === "duration") current += logs.reduce((s, l) => s + l.durationMinutes, 0);
+        else {
+          for (const log of logs) {
+            try { const m = JSON.parse(log.metrics) as Record<string, unknown>; const val = m[metric]; if (typeof val === "number") current += val; } catch { /* ignore */ }
           }
         }
 
