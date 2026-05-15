@@ -4,6 +4,7 @@ import { goals, goalRoles, roles } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { deriveQuadrant } from "@/lib/quadrants";
 import { auth } from "@/lib/auth";
+import { clampSessionsPerWeek } from "@/lib/goal-validation";
 
 export async function PATCH(
   request: NextRequest,
@@ -26,7 +27,12 @@ export async function PATCH(
   if (body.title !== undefined) updates.title = body.title.trim();
   if (body.description !== undefined) updates.description = body.description?.trim() || null;
   if (body.targetDate !== undefined) updates.targetDate = body.targetDate || null;
-  if (body.sessionsPerWeek !== undefined) updates.sessionsPerWeek = Number(body.sessionsPerWeek);
+  if (body.sessionsPerWeek !== undefined) {
+    // FR-016: server-side clamp to [1, 7]. On PATCH, non-finite input is
+    // dropped (treated as "no change"); see clampSessionsPerWeek for detail.
+    const clamped = clampSessionsPerWeek(body.sessionsPerWeek);
+    if (clamped !== null) updates.sessionsPerWeek = clamped;
+  }
   if (body.status !== undefined) updates.status = body.status;
   if (body.activityTypeId !== undefined) updates.activityTypeId = body.activityTypeId;
   if (body.targetMetric !== undefined) updates.targetMetric = body.targetMetric;
