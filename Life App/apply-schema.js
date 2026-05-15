@@ -45,8 +45,6 @@ const createStatements = [
     display_order INTEGER NOT NULL DEFAULT 0,
     is_archived INTEGER NOT NULL DEFAULT 0,
     is_work_role INTEGER NOT NULL DEFAULT 0,
-    max_weekly_occurrences INTEGER NOT NULL DEFAULT 7,
-    min_rest_days INTEGER NOT NULL DEFAULT 0,
     user_id TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -387,6 +385,37 @@ try {
   console.log("apply-schema: training_plans split backfill applied (idempotent).");
 } catch (e) {
   console.error("apply-schema: training_plans split backfill FAILED:", e.message);
+}
+
+// ─── 2c. Drop role-level scheduling columns (role-scheduling-rules-removal) ──
+// Removes roles.max_weekly_occurrences and roles.min_rest_days. These two
+// columns originally gated scheduler placement at the role level, but
+// goal.sessionsPerWeek and schedulerSettings.maxActivitiesPerDay now own that
+// concern at a more useful granularity. SQLite 3.35+ supports ALTER TABLE ...
+// DROP COLUMN; better-sqlite3 ships 3.43+. Guarded by PRAGMA table_info so
+// repeat runs are no-ops. Note: existing user values in these columns are
+// destroyed by the drop; this is intentional and accepted at scope time.
+
+try {
+  const rolesCols = db.prepare(`PRAGMA table_info(roles)`).all();
+  const hasMaxWeekly = rolesCols.some((c) => c.name === "max_weekly_occurrences");
+  const hasMinRest = rolesCols.some((c) => c.name === "min_rest_days");
+
+  if (hasMaxWeekly) {
+    db.exec(`ALTER TABLE roles DROP COLUMN max_weekly_occurrences`);
+    console.log("OK: ALTER TABLE roles DROP COLUMN max_weekly_occurrences");
+  } else {
+    console.log("SKIP: roles.max_weekly_occurrences already dropped");
+  }
+
+  if (hasMinRest) {
+    db.exec(`ALTER TABLE roles DROP COLUMN min_rest_days`);
+    console.log("OK: ALTER TABLE roles DROP COLUMN min_rest_days");
+  } else {
+    console.log("SKIP: roles.min_rest_days already dropped");
+  }
+} catch (e) {
+  console.error("ERROR dropping role-scheduling columns:", e.message);
 }
 
 // ─── 3. Seed new default spending categories for existing users ──────────────
