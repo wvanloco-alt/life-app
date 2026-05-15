@@ -370,3 +370,29 @@ export const trainingPhases = sqliteTable("training_phases", {
   updatedAt: updatedAt(),
 });
 
+// ─── Habits ─────────────────────────────────────────────
+
+export const habits = sqliteTable("habits", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: text("user_id").notNull().default(""),
+  identity: text("identity").notNull(),
+  name: text("name").notNull(),
+  cue: text("cue"),
+  minimumVersion: text("minimum_version"),
+  color: text("color").notNull(),
+  displayOrder: integer("display_order").notNull().default(0),
+  isArchived: integer("is_archived", { mode: "boolean" }).notNull().default(false),
+  createdAt: timestamp(),
+  updatedAt: updatedAt(),
+});
+
+export const habitLogs = sqliteTable("habit_logs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: text("user_id").notNull().default(""),
+  habitId: integer("habit_id")
+    .notNull()
+    .references(() => habits.id, { onDelete: "cascade" }),
+  date: text("date").notNull(),
+  createdAt: timestamp(),
+});
+
