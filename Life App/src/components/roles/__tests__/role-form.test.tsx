@@ -45,8 +45,6 @@ describe("RoleForm", () => {
         expect.objectContaining({
           name: "My Role",
           isWorkRole: false,
-          maxWeeklyOccurrences: 7,
-          minRestDays: 0,
         })
       );
     });
@@ -61,8 +59,6 @@ describe("RoleForm", () => {
       displayOrder: 0,
       isArchived: false,
       isWorkRole: false,
-      maxWeeklyOccurrences: 4,
-      minRestDays: 1,
       createdAt: "",
       updatedAt: "",
     };
