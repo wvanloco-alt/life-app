@@ -1,10 +1,10 @@
 export const DEFAULT_ROLES = [
-  { name: "Professional", description: "Career growth and work responsibilities", color: "#3B82F6", isWorkRole: true, maxWeeklyOccurrences: 5, minRestDays: 0 },
-  { name: "Athlete", description: "Physical fitness and athletic pursuits", color: "#EF4444", isWorkRole: false, maxWeeklyOccurrences: 4, minRestDays: 1 },
-  { name: "Partner", description: "Relationship with your significant other", color: "#EC4899", isWorkRole: false, maxWeeklyOccurrences: 7, minRestDays: 0 },
-  { name: "Learner", description: "Personal development and education", color: "#8B5CF6", isWorkRole: false, maxWeeklyOccurrences: 5, minRestDays: 0 },
-  { name: "Friend", description: "Social connections and community", color: "#F59E0B", isWorkRole: false, maxWeeklyOccurrences: 7, minRestDays: 0 },
-  { name: "Individual", description: "Self-care and hobbies", color: "#10B981", isWorkRole: false, maxWeeklyOccurrences: 7, minRestDays: 0 },
+  { name: "Professional", description: "Career growth and work responsibilities", color: "#3B82F6", isWorkRole: true },
+  { name: "Athlete", description: "Physical fitness and athletic pursuits", color: "#EF4444", isWorkRole: false },
+  { name: "Partner", description: "Relationship with your significant other", color: "#EC4899", isWorkRole: false },
+  { name: "Learner", description: "Personal development and education", color: "#8B5CF6", isWorkRole: false },
+  { name: "Friend", description: "Social connections and community", color: "#F59E0B", isWorkRole: false },
+  { name: "Individual", description: "Self-care and hobbies", color: "#10B981", isWorkRole: false },
 ] as const;
 
 export type DefaultRole = (typeof DEFAULT_ROLES)[number];
