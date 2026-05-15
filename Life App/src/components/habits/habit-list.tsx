@@ -4,8 +4,24 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { HabitWithRecentLogs } from "@/types";
-import { Repeat } from "lucide-react";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { ChevronDown, ChevronRight, Repeat } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { HabitDeleteDialog } from "./habit-delete-dialog";
 import { HabitForm } from "./habit-form";
 import { HabitRow } from "./habit-row";
 
@@ -24,56 +40,66 @@ function pickAffirmation(minimumVersion?: string | null): string {
   return AFFIRMATIONS[Math.floor(Math.random() * AFFIRMATIONS.length)];
 }
 
-/** Returns YYYY-MM-DD for the client's local today — never touches a server. */
 function getLocalToday(): string {
   return new Date().toLocaleDateString("sv-SE");
 }
 
 export function HabitList() {
-  const [habits, setHabits] = useState<HabitWithRecentLogs[]>([]);
+  const [activeHabits, setActiveHabits] = useState<HabitWithRecentLogs[]>([]);
+  const [archivedHabits, setArchivedHabits] = useState<HabitWithRecentLogs[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [today] = useState<string>(getLocalToday);
+  const [showArchived, setShowArchived] = useState(false);
 
-  // Per-habit log dates (source of truth for the strip)
   const [logDates, setLogDates] = useState<Record<number, string[]>>({});
-
-  // Per-cell in-flight keys: "habitId:date"
   const [inFlight, setInFlight] = useState<Set<string>>(new Set());
-
-  // Per-habit transient messages (affirmation or error)
   const [affirmations, setAffirmations] = useState<Record<number, string | null>>({});
   const [errors, setErrors] = useState<Record<number, string | null>>({});
+  const [reorderError, setReorderError] = useState<string | null>(null);
 
-  // Form state
   const [formMode, setFormMode] = useState<"quick" | "walkthrough" | null>(null);
+  const [editingHabit, setEditingHabit] = useState<HabitWithRecentLogs | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<HabitWithRecentLogs | null>(null);
+
+  // ── DnD sensors ─────────────────────────────────────────────────────────────
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    let cancelled = false;
+  const fetchHabits = useCallback(async () => {
+    try {
+      const [activeRes, archivedRes] = await Promise.all([
+        fetch("/api/habits"),
+        fetch("/api/habits?archived=true"),
+      ]);
+      if (!activeRes.ok) throw new Error();
+      const activeData: HabitWithRecentLogs[] = await activeRes.json();
+      const archivedData: HabitWithRecentLogs[] = archivedRes.ok
+        ? await archivedRes.json()
+        : [];
 
-    async function fetchHabits() {
-      try {
-        const res = await fetch("/api/habits");
-        if (!res.ok) throw new Error("Failed to load habits");
-        const data: HabitWithRecentLogs[] = await res.json();
-        if (cancelled) return;
-        setHabits(data);
-        // Bootstrap logDates from API response
-        const initial: Record<number, string[]> = {};
-        for (const h of data) initial[h.id] = h.recentLogDates;
-        setLogDates(initial);
-      } catch {
-        if (!cancelled) setFetchError("Could not load habits. Please refresh.");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+      setActiveHabits(activeData);
+      setArchivedHabits(archivedData);
+
+      const initial: Record<number, string[]> = {};
+      for (const h of [...activeData, ...archivedData]) initial[h.id] = h.recentLogDates;
+      setLogDates(initial);
+    } catch {
+      setFetchError("Could not load habits. Please refresh.");
+    } finally {
+      setLoading(false);
     }
-
-    fetchHabits();
-    return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    fetchHabits();
+  }, [fetchHabits]);
 
   // ── Toggle ─────────────────────────────────────────────────────────────────
 
@@ -85,7 +111,6 @@ export function HabitList() {
       const current = logDates[habitId] ?? [];
       const alreadyLogged = current.includes(date);
 
-      // Optimistic update
       setLogDates((prev) => {
         const dates = prev[habitId] ?? [];
         return {
@@ -98,9 +123,8 @@ export function HabitList() {
 
       setInFlight((prev) => new Set([...prev, key]));
 
-      // Inline affirmation when filling today's cell
       if (!alreadyLogged && date === today) {
-        const habit = habits.find((h) => h.id === habitId);
+        const habit = activeHabits.find((h) => h.id === habitId);
         const text = pickAffirmation(habit?.minimumVersion);
         setAffirmations((prev) => ({ ...prev, [habitId]: text }));
         setTimeout(() => {
@@ -114,10 +138,8 @@ export function HabitList() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ habitId, date }),
         });
-
         if (!res.ok) throw new Error();
       } catch {
-        // Revert optimistic update
         setLogDates((prev) => {
           const dates = prev[habitId] ?? [];
           return {
@@ -128,7 +150,10 @@ export function HabitList() {
           };
         });
         setAffirmations((prev) => ({ ...prev, [habitId]: null }));
-        setErrors((prev) => ({ ...prev, [habitId]: "Could not save. Tap to retry." }));
+        setErrors((prev) => ({
+          ...prev,
+          [habitId]: "Could not save. Tap to retry.",
+        }));
         setTimeout(() => {
           setErrors((prev) => ({ ...prev, [habitId]: null }));
         }, 5000);
@@ -140,25 +165,116 @@ export function HabitList() {
         });
       }
     },
-    [habits, inFlight, logDates, today],
+    [activeHabits, inFlight, logDates, today],
   );
 
-  // ── On habit created ───────────────────────────────────────────────────────
+  // ── Drag to reorder ────────────────────────────────────────────────────────
 
-  function handleCreated(created: { id: number; name: string }) {
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = activeHabits.findIndex((h) => h.id === active.id);
+    const newIndex = activeHabits.findIndex((h) => h.id === over.id);
+    const reordered = arrayMove(activeHabits, oldIndex, newIndex);
+
+    setActiveHabits(reordered);
+
+    try {
+      const res = await fetch("/api/habits/reorder", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order: reordered.map((h) => h.id) }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      setActiveHabits(activeHabits);
+      setReorderError("Could not save order. Please try again.");
+      setTimeout(() => setReorderError(null), 5000);
+    }
+  }
+
+  // ── Edit ───────────────────────────────────────────────────────────────────
+
+  function handleEditOpen(habit: HabitWithRecentLogs) {
+    setEditingHabit(habit);
+    setFormMode("quick");
+  }
+
+  function handleFormCreatedOrUpdated(result: { id: number; name: string }) {
+    void result;
     setFormMode(null);
-    // Refetch to get the full HabitWithRecentLogs shape
-    fetch("/api/habits")
-      .then((r) => r.json())
-      .then((data: HabitWithRecentLogs[]) => {
-        setHabits(data);
-        const updated: Record<number, string[]> = {};
-        for (const h of data) updated[h.id] = h.recentLogDates;
-        setLogDates(updated);
-      })
-      .catch(() => null);
+    setEditingHabit(null);
+    fetchHabits();
+  }
 
-    void created; // suppress unused warning — we refetch
+  // ── Archive ────────────────────────────────────────────────────────────────
+
+  async function handleArchive(habit: HabitWithRecentLogs) {
+    // Optimistic: remove from active, add to archived
+    setActiveHabits((prev) => prev.filter((h) => h.id !== habit.id));
+    setArchivedHabits((prev) => [{ ...habit, isArchived: true }, ...prev]);
+
+    try {
+      const res = await fetch(`/api/habits/${habit.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isArchived: true }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      setActiveHabits((prev) =>
+        [...prev, habit].sort((a, b) => a.displayOrder - b.displayOrder),
+      );
+      setArchivedHabits((prev) => prev.filter((h) => h.id !== habit.id));
+    }
+  }
+
+  // Called when the Archive button inside HabitForm is clicked
+  function handleArchivedViaForm(habitId: number) {
+    const habit = activeHabits.find((h) => h.id === habitId);
+    setFormMode(null);
+    setEditingHabit(null);
+    if (habit) handleArchive(habit);
+  }
+
+  // ── Restore ────────────────────────────────────────────────────────────────
+
+  async function handleRestore(habit: HabitWithRecentLogs) {
+    setArchivedHabits((prev) => prev.filter((h) => h.id !== habit.id));
+    setActiveHabits((prev) =>
+      [...prev, { ...habit, isArchived: false }].sort(
+        (a, b) => a.displayOrder - b.displayOrder,
+      ),
+    );
+
+    try {
+      const res = await fetch(`/api/habits/${habit.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isArchived: false }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      setActiveHabits((prev) => prev.filter((h) => h.id !== habit.id));
+      setArchivedHabits((prev) =>
+        [...prev, habit].sort((a, b) => a.displayOrder - b.displayOrder),
+      );
+    }
+  }
+
+  // ── Delete ─────────────────────────────────────────────────────────────────
+
+  async function handleDelete(habit: HabitWithRecentLogs) {
+    const res = await fetch(`/api/habits/${habit.id}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Delete failed");
+
+    if (habit.isArchived) {
+      setArchivedHabits((prev) => prev.filter((h) => h.id !== habit.id));
+    } else {
+      setActiveHabits((prev) => prev.filter((h) => h.id !== habit.id));
+    }
+    setDeleteTarget(null);
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -182,45 +298,106 @@ export function HabitList() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setFormMode("walkthrough")}
+            onClick={() => { setEditingHabit(null); setFormMode("walkthrough"); }}
             className="text-muted-foreground text-xs"
           >
             Walk me through it
           </Button>
-          <Button size="sm" onClick={() => setFormMode("quick")}>
+          <Button size="sm" onClick={() => { setEditingHabit(null); setFormMode("quick"); }}>
             + Add habit
           </Button>
         </div>
       </div>
 
-      {/* List or empty state */}
-      {habits.length === 0 ? (
+      {/* Reorder error */}
+      {reorderError && (
+        <p className="text-xs text-destructive mb-3">{reorderError}</p>
+      )}
+
+      {/* Active list */}
+      {activeHabits.length === 0 ? (
         <EmptyState
-          onQuick={() => setFormMode("quick")}
-          onWalkthrough={() => setFormMode("walkthrough")}
+          onQuick={() => { setEditingHabit(null); setFormMode("quick"); }}
+          onWalkthrough={() => { setEditingHabit(null); setFormMode("walkthrough"); }}
         />
       ) : (
-        <div className="flex flex-col">
-          {habits.map((habit, i) => (
-            <div key={habit.id}>
-              <HabitRow
-                habit={habit}
-                logDates={logDates[habit.id] ?? []}
-                today={today}
-                inFlightDates={
-                  new Set(
-                    [...inFlight]
-                      .filter((k) => k.startsWith(`${habit.id}:`))
-                      .map((k) => k.split(":").slice(1).join(":")),
-                  )
-                }
-                affirmation={affirmations[habit.id]}
-                error={errors[habit.id]}
-                onToggle={handleToggle}
-              />
-              {i < habits.length - 1 && <Separator className="opacity-40" />}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={activeHabits.map((h) => h.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="flex flex-col">
+              {activeHabits.map((habit, i) => (
+                <div key={habit.id}>
+                  <HabitRow
+                    habit={habit}
+                    logDates={logDates[habit.id] ?? []}
+                    today={today}
+                    inFlightDates={
+                      new Set(
+                        [...inFlight]
+                          .filter((k) => k.startsWith(`${habit.id}:`))
+                          .map((k) => k.split(":").slice(1).join(":")),
+                      )
+                    }
+                    affirmation={affirmations[habit.id]}
+                    error={errors[habit.id]}
+                    onToggle={handleToggle}
+                    onEdit={() => handleEditOpen(habit)}
+                    onArchiveToggle={() => handleArchive(habit)}
+                    onDelete={() => setDeleteTarget(habit)}
+                  />
+                  {i < activeHabits.length - 1 && (
+                    <Separator className="opacity-40" />
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
+          </SortableContext>
+        </DndContext>
+      )}
+
+      {/* Archive section */}
+      {archivedHabits.length > 0 && (
+        <div className="mt-8">
+          <button
+            type="button"
+            onClick={() => setShowArchived((v) => !v)}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3"
+          >
+            {showArchived ? (
+              <ChevronDown className="w-3.5 h-3.5" />
+            ) : (
+              <ChevronRight className="w-3.5 h-3.5" />
+            )}
+            Show archived habits ({archivedHabits.length})
+          </button>
+
+          {showArchived && (
+            <div className="flex flex-col">
+              {archivedHabits.map((habit, i) => (
+                <div key={habit.id}>
+                  <HabitRow
+                    habit={habit}
+                    logDates={logDates[habit.id] ?? []}
+                    today={today}
+                    inFlightDates={new Set()}
+                    onToggle={() => {}}
+                    onEdit={() => {}}
+                    onArchiveToggle={() => handleRestore(habit)}
+                    onDelete={() => setDeleteTarget(habit)}
+                  />
+                  {i < archivedHabits.length - 1 && (
+                    <Separator className="opacity-20" />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -229,8 +406,20 @@ export function HabitList() {
         <HabitForm
           open
           mode={formMode}
-          onClose={() => setFormMode(null)}
-          onCreated={handleCreated}
+          initial={editingHabit ?? undefined}
+          onClose={() => { setFormMode(null); setEditingHabit(null); }}
+          onCreated={handleFormCreatedOrUpdated}
+          onArchived={handleArchivedViaForm}
+        />
+      )}
+
+      {/* Delete confirmation */}
+      {deleteTarget && (
+        <HabitDeleteDialog
+          open
+          habitName={deleteTarget.name}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={() => handleDelete(deleteTarget)}
         />
       )}
     </div>
@@ -249,6 +438,7 @@ function HabitListSkeleton() {
       {[1, 2, 3].map((i) => (
         <div key={i}>
           <div className="flex items-center gap-4 py-4">
+            <Skeleton className="w-4 h-4 rounded" />
             <Skeleton className="w-2 h-2 rounded-full shrink-0" />
             <div className="flex-1 flex flex-col gap-1">
               <Skeleton className="h-3 w-24" />
