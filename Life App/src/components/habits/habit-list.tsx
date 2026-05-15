@@ -19,9 +19,10 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { ChevronDown, ChevronRight, Repeat } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { HabitDeleteDialog } from "./habit-delete-dialog";
+import { HabitEmptyState } from "./habit-empty-state";
 import { HabitForm } from "./habit-form";
 import { HabitRow } from "./habit-row";
 
@@ -316,7 +317,7 @@ export function HabitList() {
 
       {/* Active list */}
       {activeHabits.length === 0 ? (
-        <EmptyState
+        <HabitEmptyState
           onQuick={() => { setEditingHabit(null); setFormMode("quick"); }}
           onWalkthrough={() => { setEditingHabit(null); setFormMode("walkthrough"); }}
         />
@@ -454,37 +455,3 @@ function HabitListSkeleton() {
   );
 }
 
-// ─── Empty state ──────────────────────────────────────────────────────────────
-
-function EmptyState({
-  onQuick,
-  onWalkthrough,
-}: {
-  onQuick: () => void;
-  onWalkthrough: () => void;
-}) {
-  return (
-    <div className="flex flex-col items-center justify-center py-20 gap-6 text-center animate-fade-in">
-      <div className="w-12 h-12 rounded-full bg-muted/60 flex items-center justify-center">
-        <Repeat className="w-5 h-5 text-muted-foreground" strokeWidth={1.5} />
-      </div>
-      <div className="flex flex-col gap-1 max-w-xs">
-        <p className="font-display text-lg font-medium">No habits yet</p>
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          Small, consistent actions shape identity. Start with one thing you
-          want to be true about yourself.
-        </p>
-      </div>
-      <div className="flex flex-col gap-2 items-center">
-        <Button onClick={onWalkthrough}>Walk me through it</Button>
-        <button
-          type="button"
-          onClick={onQuick}
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-        >
-          I know what I want, just add it
-        </button>
-      </div>
-    </div>
-  );
-}
