@@ -242,44 +242,6 @@ function getWeekKey(dateStr: string): string {
   return formatDate(monday);
 }
 
-function violatesRestConstraints(
-  roleId: number,
-  date: string,
-  roleDaySessions: Map<number, Set<string>>,
-  rolesById: Map<number, Role>
-): boolean {
-  const role = rolesById.get(roleId);
-  if (!role) return false;
-
-  const usedDays = roleDaySessions.get(roleId) ?? new Set();
-
-  if (role.minRestDays > 0) {
-    const [y, m, d] = parseDateParts(date);
-    for (let offset = 1; offset <= role.minRestDays; offset++) {
-      const before = formatDate(new Date(y, m - 1, d - offset));
-      const after = formatDate(new Date(y, m - 1, d + offset));
-      if (usedDays.has(before) || usedDays.has(after)) {
-        return true;
-      }
-    }
-  }
-
-  if (role.maxWeeklyOccurrences < 7) {
-    const weekKey = getWeekKey(date);
-    let weekCount = 0;
-    for (const usedDate of usedDays) {
-      if (getWeekKey(usedDate) === weekKey) {
-        weekCount++;
-      }
-    }
-    if (weekCount >= role.maxWeeklyOccurrences) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
 function markOccupied(
   occupied: Map<string, { start: string; end: string }[]>,
   date: string,
@@ -799,14 +761,7 @@ function tryPlaceSession(
       continue;
     }
 
-    if (currentPattern) {
-      if (violatesPatternRest(dc.date, gs, currentPattern)) continue;
-    } else {
-      const violatesRest = roleIds.some((rid) =>
-        violatesRestConstraints(rid, dc.date, roleDaySessions, rolesById)
-      );
-      if (violatesRest) continue;
-    }
+    if (currentPattern && violatesPatternRest(dc.date, gs, currentPattern)) continue;
 
     let windows = getWindows(dc, gs);
 
@@ -855,14 +810,7 @@ function tryPlaceSession(
     if (countActivitiesOnDate(dc.date, occupied) >= settings.maxActivitiesPerDay) continue;
     if (gs.usedDays.has(dc.date)) continue;
 
-    if (currentPattern) {
-      if (violatesPatternRest(dc.date, gs, currentPattern)) continue;
-    } else {
-      const violatesRest = roleIds.some((rid) =>
-        violatesRestConstraints(rid, dc.date, roleDaySessions, rolesById)
-      );
-      if (violatesRest) continue;
-    }
+    if (currentPattern && violatesPatternRest(dc.date, gs, currentPattern)) continue;
 
     const slot = findSlotInWindows(
       dc.date,
