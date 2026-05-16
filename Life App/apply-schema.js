@@ -520,20 +520,41 @@ if (adminUsername && adminPassword) {
   console.log("apply-schema: ADMIN_USERNAME/ADMIN_PASSWORD not set, skipping bootstrap.");
 }
 
-// ─── 6. One-shot user data reset (set RESET_USER_DATA_USERNAME, redeploy once, then remove) ─
-const resetUsername = process.env.RESET_USER_DATA_USERNAME;
-if (resetUsername) {
-  const { resetUserDataByUsername } = require("./scripts/reset-user-data-lib.cjs");
-  console.log("apply-schema: RESET_USER_DATA_USERNAME is set, wiping data for:", resetUsername);
-  const outcome = resetUserDataByUsername(db, resetUsername, { confirm: true });
+// ─── 6. User data reset ───────────────────────────────────────────────────────
+// Option A: set RESET_USER_DATA_USERNAME on Railway, redeploy once, then remove the variable.
+// Option B: one-shot ops log entry (production only, runs once per database).
+
+const { resetUserDataByUsername } = require("./scripts/reset-user-data-lib.cjs");
+
+db.exec(`CREATE TABLE IF NOT EXISTS _ops_log (
+  key TEXT PRIMARY KEY NOT NULL,
+  ran_at TEXT NOT NULL DEFAULT (datetime('now'))
+)`);
+
+function runUserDataReset(username, reason) {
+  console.log(`apply-schema: user data reset (${reason}) for:`, username);
+  const outcome = resetUserDataByUsername(db, username, { confirm: true });
   if (!outcome.ok) {
     console.error("apply-schema: reset failed:", outcome.error);
-  } else {
-    console.log("apply-schema: reset deleted", outcome.total, "row(s) for", resetUsername);
-    for (const { label, n } of outcome.results) {
-      if (n > 0) console.log("  ", label + ":", n);
-    }
-    console.log("apply-schema: remove RESET_USER_DATA_USERNAME from Railway variables after this boot.");
+    return false;
+  }
+  console.log("apply-schema: reset deleted", outcome.total, "row(s) for", username);
+  for (const { label, n } of outcome.results) {
+    if (n > 0) console.log("  ", label + ":", n);
+  }
+  return true;
+}
+
+const resetUsername = process.env.RESET_USER_DATA_USERNAME;
+if (resetUsername) {
+  runUserDataReset(resetUsername, "RESET_USER_DATA_USERNAME");
+}
+
+const oneShotKey = "reset-user-data:wvanloco@gmail.com";
+const oneShotPending = !db.prepare("SELECT 1 FROM _ops_log WHERE key = ?").get(oneShotKey);
+if (oneShotPending && process.env.NODE_ENV === "production") {
+  if (runUserDataReset("wvanloco@gmail.com", "one-shot ops log")) {
+    db.prepare("INSERT INTO _ops_log (key) VALUES (?)").run(oneShotKey);
   }
 }
 
