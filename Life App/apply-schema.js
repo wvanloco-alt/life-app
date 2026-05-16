@@ -520,5 +520,22 @@ if (adminUsername && adminPassword) {
   console.log("apply-schema: ADMIN_USERNAME/ADMIN_PASSWORD not set, skipping bootstrap.");
 }
 
+// ─── 6. One-shot user data reset (set RESET_USER_DATA_USERNAME, redeploy once, then remove) ─
+const resetUsername = process.env.RESET_USER_DATA_USERNAME;
+if (resetUsername) {
+  const { resetUserDataByUsername } = require("./scripts/reset-user-data-lib.cjs");
+  console.log("apply-schema: RESET_USER_DATA_USERNAME is set, wiping data for:", resetUsername);
+  const outcome = resetUserDataByUsername(db, resetUsername, { confirm: true });
+  if (!outcome.ok) {
+    console.error("apply-schema: reset failed:", outcome.error);
+  } else {
+    console.log("apply-schema: reset deleted", outcome.total, "row(s) for", resetUsername);
+    for (const { label, n } of outcome.results) {
+      if (n > 0) console.log("  ", label + ":", n);
+    }
+    console.log("apply-schema: remove RESET_USER_DATA_USERNAME from Railway variables after this boot.");
+  }
+}
+
 db.close();
 console.log("\napply-schema: done.");

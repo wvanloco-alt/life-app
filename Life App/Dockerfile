@@ -33,6 +33,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/migrations ./migrations
 
 # Schema migration script (idempotent — safe to run on every boot)
 COPY --chown=nextjs:nodejs apply-schema.js ./apply-schema.js
+COPY --chown=nextjs:nodejs scripts ./scripts
 
 # Copy the compiled better-sqlite3 native addon
 COPY --from=deps /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
