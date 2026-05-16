@@ -51,6 +51,14 @@ export async function PATCH(
 
   const [updated] = await db.update(goals).set(updates).where(and(eq(goals.id, goalId), eq(goals.userId, userId))).returning();
 
+  // Cascade archive status to monthly children (archive or restore, not completion)
+  if (body.status === "archived" || body.status === "active") {
+    await db
+      .update(goals)
+      .set({ status: body.status, updatedAt: new Date().toISOString() })
+      .where(and(eq(goals.parentGoalId, goalId), eq(goals.userId, userId)));
+  }
+
   if (Array.isArray(body.roleIds)) {
     await db.delete(goalRoles).where(eq(goalRoles.goalId, goalId));
     for (const rid of body.roleIds) {
