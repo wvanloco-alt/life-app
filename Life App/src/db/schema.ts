@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real, type AnySQLiteColumn } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, uniqueIndex, type AnySQLiteColumn } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 
 const timestamp = () =>
@@ -395,4 +395,61 @@ export const habitLogs = sqliteTable("habit_logs", {
   date: text("date").notNull(),
   createdAt: timestamp(),
 });
+
+// ─── Library ─────────────────────────────────────────────
+// Content tables are intentionally global (no user_id).
+// Only library_bookmarks is per-user scoped.
+
+export const libraryTopics = sqliteTable("library_topics", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  slug: text("slug").notNull().unique(),
+  title: text("title").notNull(),
+  icon: text("icon").notNull(),
+  description: text("description"),
+  displayOrder: integer("display_order").notNull().default(0),
+  createdAt: timestamp(),
+  updatedAt: updatedAt(),
+});
+
+export const libraryCategories = sqliteTable("library_categories", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  topicId: integer("topic_id")
+    .notNull()
+    .references(() => libraryTopics.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  displayOrder: integer("display_order").notNull().default(0),
+  createdAt: timestamp(),
+  updatedAt: updatedAt(),
+});
+
+export const libraryItems = sqliteTable("library_items", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  categoryId: integer("category_id")
+    .notNull()
+    .references(() => libraryCategories.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  type: text("type", { enum: ["protocol", "exercise", "tip", "concept"] }).notNull(),
+  what: text("what").notNull(),
+  why: text("why").notNull(),
+  how: text("how").notNull(),
+  durationOrReps: text("duration_or_reps"),
+  displayOrder: integer("display_order").notNull().default(0),
+  createdAt: timestamp(),
+  updatedAt: updatedAt(),
+});
+
+export const libraryBookmarks = sqliteTable(
+  "library_bookmarks",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    itemId: integer("item_id")
+      .notNull()
+      .references(() => libraryItems.id, { onDelete: "cascade" }),
+    createdAt: timestamp(),
+  },
+  (t) => [uniqueIndex("library_bookmarks_user_item_unique").on(t.userId, t.itemId)]
+);
 
