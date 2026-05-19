@@ -1,6 +1,6 @@
 # API Routes Contract: Life App
 
-> Last updated: 2026-05-15. Reflects current API surface including Feature 1, Feature 2 (Activities), Feature 3 (Budget), v2 Overhaul, Goals V2 (goal hierarchy, tallies, pace tracking), Scheduler Rules (blackout dates, session patterns, activity type propagation), **training vs supplemental split (climbing phases + scheduler + apply)**, **Activities Refactoring V1** (`isLogEntry` → `createdFromLog`, schedule-to-log bridge on activity check-off, `bridgedLogAction` on un-check / delete, `linkedLogId` on activity GET, `defaultDurationMinutes` on activity types, explicit `goalId` from WorkoutLog), schedule regeneration/reset, UI Design Overhaul (cascade delete, activity summary extension), **Role Scheduling Rules Removal** (dropped scheduling fields from roles, `sessionsPerWeek` server-side clamp `[1, 7]`), and **Habit Tracking Phase 1** (`/api/habits`, `/api/habit-logs`). Onboarding Wizard removed.
+> Last updated: 2026-05-19. Reflects current API surface including Feature 1, Feature 2 (Activities), Feature 3 (Budget), v2 Overhaul, Goals V2 (goal hierarchy, tallies, pace tracking), Scheduler Rules (blackout dates, session patterns, activity type propagation), **training vs supplemental split (climbing phases + scheduler + apply)**, **Activities Refactoring V1** (`isLogEntry` → `createdFromLog`, schedule-to-log bridge on activity check-off, `bridgedLogAction` on un-check / delete, `linkedLogId` on activity GET, `defaultDurationMinutes` on activity types, explicit `goalId` from WorkoutLog), schedule regeneration/reset, UI Design Overhaul (cascade delete, activity summary extension), **Role Scheduling Rules Removal** (dropped scheduling fields from roles, `sessionsPerWeek` server-side clamp `[1, 7]`), **Habit Tracking Phase 1** (`/api/habits`, `/api/habit-logs`), and **Library Phase 1** (`/api/library/topics`, `/api/library/topics/[slug]`). Onboarding Wizard removed.
 
 All API routes use Next.js Route Handlers. Base URL: `http://localhost:3000/api`
 
@@ -1020,6 +1020,84 @@ Update a planned expense. Accepts any subset of fields.
 ### DELETE /api/planned-expenses/:id
 
 Delete a planned expense.
+
+---
+
+## Library
+
+Read-only reference content. Shared across all users (no per-user scoping on content tables). Bookmarks are per-user (Phase 3).
+
+### GET /api/library/topics
+
+Returns all library topics ordered by `display_order`.
+
+**Auth**: required (401 if no session).
+
+**Response** `200`:
+```json
+[
+  {
+    "id": 1,
+    "slug": "tennis",
+    "title": "Tennis",
+    "icon": "Swords",
+    "description": "Stroke mechanics, physical conditioning, mental game, and match tactics for the recreational player.",
+    "displayOrder": 0,
+    "createdAt": "2026-05-19T00:00:00.000Z",
+    "updatedAt": "2026-05-19T00:00:00.000Z"
+  }
+]
+```
+
+---
+
+### GET /api/library/topics/:slug
+
+Returns a single topic with its full nested category and item tree. Each item includes `isBookmarked` reflecting the current user's bookmark state.
+
+**Auth**: required (401 if no session).
+
+**Response** `200`:
+```json
+{
+  "id": 1,
+  "slug": "tennis",
+  "title": "Tennis",
+  "icon": "Swords",
+  "description": "...",
+  "displayOrder": 0,
+  "createdAt": "...",
+  "updatedAt": "...",
+  "categories": [
+    {
+      "id": 1,
+      "topicId": 1,
+      "title": "Stroke Mechanics",
+      "displayOrder": 0,
+      "createdAt": "...",
+      "updatedAt": "...",
+      "items": [
+        {
+          "id": 1,
+          "categoryId": 1,
+          "title": "The Kinetic Chain",
+          "type": "concept",
+          "what": "...",
+          "why": "...",
+          "how": "...",
+          "durationOrReps": null,
+          "displayOrder": 0,
+          "createdAt": "...",
+          "updatedAt": "...",
+          "isBookmarked": false
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Response** `404`: Topic with the given slug does not exist.
 
 ---
 

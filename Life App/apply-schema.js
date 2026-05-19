@@ -603,5 +603,22 @@ if (oneShotPending && process.env.NODE_ENV === "production") {
   }
 }
 
+// ─── 7. Seed library content ─────────────────────────────────────────────────
+// Idempotent — safe to call on every deploy. Only inserts rows that are absent.
+
+const { seedLibrary } = require("./scripts/seed-library-lib.cjs");
+try {
+  const { topicsAdded, categoriesAdded, itemsAdded } = seedLibrary(db);
+  if (topicsAdded === 0 && categoriesAdded === 0 && itemsAdded === 0) {
+    console.log("apply-schema: library seed — nothing to add, all content present.");
+  } else {
+    console.log(
+      `apply-schema: library seed — ${topicsAdded} topic(s), ${categoriesAdded} category(ies), ${itemsAdded} item(s) added.`
+    );
+  }
+} catch (err) {
+  console.error("apply-schema: library seed failed (non-fatal, will retry on next deploy):", err.message);
+}
+
 db.close();
 console.log("\napply-schema: done.");
