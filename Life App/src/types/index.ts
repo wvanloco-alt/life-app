@@ -501,3 +501,53 @@ export interface HabitDraft {
   color: string;
 }
 
+// ─── Library ─────────────────────────────────────────────────────────────────
+
+export type LibraryItemType = "protocol" | "exercise" | "tip" | "concept";
+
+export interface LibraryTopic {
+  id: number;
+  slug: string;
+  title: string;
+  icon: string;
+  description: string | null;
+  displayOrder: number;
+}
+
+export interface LibraryCategory {
+  id: number;
+  topicId: number;
+  title: string;
+  displayOrder: number;
+}
+
+export interface LibraryItem {
+  id: number;
+  categoryId: number;
+  title: string;
+  type: LibraryItemType;
+  what: string;
+  why: string;
+  how: string;
+  durationOrReps: string | null;
+  displayOrder: number;
+}
+
+export interface LibraryItemWithBookmark extends LibraryItem {
+  isBookmarked: boolean;
+}
+
+export interface LibraryCategoryWithItems extends LibraryCategory {
+  items: LibraryItemWithBookmark[];
+}
+
+export interface LibraryTopicWithCategories extends LibraryTopic {
+  categories: LibraryCategoryWithItems[];
+}
+
+export interface BookmarkedItem extends LibraryItem {
+  topicTitle: string;
+  topicSlug: string;
+  categoryTitle: string;
+}
+

@@ -335,6 +335,51 @@ const createStatements = [
   )`,
 
   `CREATE UNIQUE INDEX IF NOT EXISTS habit_logs_habit_date_unique ON habit_logs (habit_id, date)`,
+
+  // ─── Library ───────────────────────────────────────────────────────────────
+  // Content tables are global (no user_id). Only library_bookmarks is per-user.
+
+  `CREATE TABLE IF NOT EXISTS library_topics (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    slug TEXT NOT NULL UNIQUE,
+    title TEXT NOT NULL,
+    icon TEXT NOT NULL,
+    description TEXT,
+    display_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS library_categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    topic_id INTEGER NOT NULL REFERENCES library_topics(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    display_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS library_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    category_id INTEGER NOT NULL REFERENCES library_categories(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    type TEXT NOT NULL CHECK(type IN ('protocol','exercise','tip','concept')),
+    what TEXT NOT NULL,
+    why TEXT NOT NULL,
+    how TEXT NOT NULL,
+    duration_or_reps TEXT,
+    display_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS library_bookmarks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    item_id INTEGER NOT NULL REFERENCES library_items(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(user_id, item_id)
+  )`,
 ];
 
 for (const sql of createStatements) {
@@ -556,6 +601,23 @@ if (oneShotPending && process.env.NODE_ENV === "production") {
   if (runUserDataReset("wvanloco@gmail.com", "one-shot ops log")) {
     db.prepare("INSERT INTO _ops_log (key) VALUES (?)").run(oneShotKey);
   }
+}
+
+// ─── 7. Seed library content ─────────────────────────────────────────────────
+// Idempotent — safe to call on every deploy. Only inserts rows that are absent.
+
+const { seedLibrary } = require("./scripts/seed-library-lib.cjs");
+try {
+  const { topicsAdded, categoriesAdded, itemsAdded } = seedLibrary(db);
+  if (topicsAdded === 0 && categoriesAdded === 0 && itemsAdded === 0) {
+    console.log("apply-schema: library seed — nothing to add, all content present.");
+  } else {
+    console.log(
+      `apply-schema: library seed — ${topicsAdded} topic(s), ${categoriesAdded} category(ies), ${itemsAdded} item(s) added.`
+    );
+  }
+} catch (err) {
+  console.error("apply-schema: library seed failed (non-fatal, will retry on next deploy):", err.message);
 }
 
 db.close();
