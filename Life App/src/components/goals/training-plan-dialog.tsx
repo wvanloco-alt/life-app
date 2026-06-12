@@ -28,57 +28,14 @@ import type {
   TrainingPlan,
 } from "@/types";
 import { GRADE_ORDER } from "@/lib/training/periodization";
-import { defaultSplit, isValidSplit } from "@/lib/training/split";
+import { defaultSplit } from "@/lib/training/split";
+import {
+  TrainingStructureFields,
+  TrainingStructureValue,
+  deriveDefaultStructure,
+} from "@/components/goals/training-structure-fields";
 import { format } from "date-fns";
 
-const WEEKDAYS = [
-  { value: 1, label: "Mon" },
-  { value: 2, label: "Tue" },
-  { value: 3, label: "Wed" },
-  { value: 4, label: "Thu" },
-  { value: 5, label: "Fri" },
-  { value: 6, label: "Sat" },
-  { value: 7, label: "Sun" },
-] as const;
-
-function PreferredDayRow({
-  label,
-  subtitle,
-  selected,
-  onToggle,
-}: {
-  label: string;
-  subtitle?: string;
-  selected: Set<number>;
-  onToggle: (value: number) => void;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <div>
-        <Label className="text-xs">{label}</Label>
-        {subtitle ? (
-          <p className="text-[10px] text-muted-foreground">{subtitle}</p>
-        ) : null}
-      </div>
-      <div className="flex gap-1.5 flex-wrap">
-        {WEEKDAYS.map((day) => (
-          <button
-            key={day.value}
-            type="button"
-            onClick={() => onToggle(day.value)}
-            className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
-              selected.has(day.value)
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted/30 text-muted-foreground hover:bg-muted/50"
-            }`}
-          >
-            {day.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 interface TrainingPlanDialogProps {
   open: boolean;
@@ -130,10 +87,9 @@ export function TrainingPlanDialog({
   const [assessment, setAssessment] = useState<LevelAssessment | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const [trainingSessionsInput, setTrainingSessionsInput] = useState("");
-  const [supplementalSessionsInput, setSupplementalSessionsInput] = useState("");
-  const [trainingPreferredDays, setTrainingPreferredDays] = useState<Set<number>>(new Set());
-  const [supplementalPreferredDays, setSupplementalPreferredDays] = useState<Set<number>>(new Set());
+  const [structure, setStructure] = useState<TrainingStructureValue>(
+    deriveDefaultStructure(goalSessionsPerWeek, null)
+  );
 
   const hydrateFromExisting = useCallback(
     (plan: TrainingPlan) => {
@@ -147,27 +103,21 @@ export function TrainingPlanDialog({
 
       const t = plan.trainingSessionsPerWeek;
       const s = plan.supplementalSessionsPerWeek;
-      if (t != null && s != null) {
-        setTrainingSessionsInput(String(t));
-        setSupplementalSessionsInput(String(s));
-      } else {
-        const d = defaultSplit(goalSessionsPerWeek);
-        setTrainingSessionsInput(String(d.training));
-        setSupplementalSessionsInput(String(d.supplemental));
-      }
-
-      setTrainingPreferredDays(new Set(plan.trainingPreferredDays ?? []));
-      setSupplementalPreferredDays(new Set(plan.supplementalPreferredDays ?? []));
+      const split = t != null && s != null
+        ? { training: t, supplemental: s }
+        : defaultSplit(goalSessionsPerWeek);
+      setStructure({
+        trainingSessionsPerWeek: split.training,
+        supplementalSessionsPerWeek: split.supplemental,
+        trainingPreferredDays: plan.trainingPreferredDays ?? [],
+        supplementalPreferredDays: plan.supplementalPreferredDays ?? [],
+      });
     },
     [goalSessionsPerWeek]
   );
 
   const hydrateForCreate = useCallback(() => {
-    const d = defaultSplit(goalSessionsPerWeek);
-    setTrainingSessionsInput(String(d.training));
-    setSupplementalSessionsInput(String(d.supplemental));
-    setTrainingPreferredDays(new Set());
-    setSupplementalPreferredDays(new Set());
+    setStructure(deriveDefaultStructure(goalSessionsPerWeek, null));
 
     setDiscipline("bouldering");
     setMaxBoulderGrade("5c");
@@ -219,29 +169,6 @@ export function TrainingPlanDialog({
     );
   }
 
-  function toggleTrainingDay(value: number) {
-    setTrainingPreferredDays((prev) => {
-      const next = new Set(prev);
-      if (next.has(value)) next.delete(value);
-      else next.add(value);
-      return next;
-    });
-  }
-
-  function toggleSupplementalDay(value: number) {
-    setSupplementalPreferredDays((prev) => {
-      const next = new Set(prev);
-      if (next.has(value)) next.delete(value);
-      else next.add(value);
-      return next;
-    });
-  }
-
-  const trainingParsed = parseInt(trainingSessionsInput, 10);
-  const supplementalParsed = parseInt(supplementalSessionsInput, 10);
-  const splitValid =
-    isValidSplit(trainingParsed, supplementalParsed, goalSessionsPerWeek);
-
   const showReconcileBanner =
     isEditMode &&
     existingPlan != null &&
@@ -250,18 +177,22 @@ export function TrainingPlanDialog({
     existingPlan.trainingSessionsPerWeek + existingPlan.supplementalSessionsPerWeek !==
       goalSessionsPerWeek;
 
-  function applyDefaultSplitInputs() {
+  function applyDefaultSplit() {
     const d = defaultSplit(goalSessionsPerWeek);
-    setTrainingSessionsInput(String(d.training));
-    setSupplementalSessionsInput(String(d.supplemental));
+    setStructure((prev) => ({
+      ...prev,
+      trainingSessionsPerWeek: d.training,
+      supplementalSessionsPerWeek: d.supplemental,
+    }));
   }
 
   async function handleSubmit() {
-    const trainingSessionsPerWeek = trainingParsed;
-    const supplementalSessionsPerWeek = supplementalParsed;
-    if (!isValidSplit(trainingSessionsPerWeek, supplementalSessionsPerWeek, goalSessionsPerWeek)) {
-      return;
-    }
+    const {
+      trainingSessionsPerWeek,
+      supplementalSessionsPerWeek,
+      trainingPreferredDays,
+      supplementalPreferredDays,
+    } = structure;
 
     setSaving(true);
     try {
@@ -272,8 +203,8 @@ export function TrainingPlanDialog({
           body: JSON.stringify({
             trainingSessionsPerWeek,
             supplementalSessionsPerWeek,
-            trainingPreferredDays: [...trainingPreferredDays].sort((a, b) => a - b),
-            supplementalPreferredDays: [...supplementalPreferredDays].sort((a, b) => a - b),
+            trainingPreferredDays,
+            supplementalPreferredDays,
           }),
         });
         if (res.ok) {
@@ -297,8 +228,8 @@ export function TrainingPlanDialog({
             },
             trainingSessionsPerWeek,
             supplementalSessionsPerWeek,
-            trainingPreferredDays: [...trainingPreferredDays].sort((a, b) => a - b),
-            supplementalPreferredDays: [...supplementalPreferredDays].sort((a, b) => a - b),
+            trainingPreferredDays,
+            supplementalPreferredDays,
           }),
         });
         if (res.ok) {
@@ -311,6 +242,9 @@ export function TrainingPlanDialog({
     }
   }
 
+  const splitValid =
+    structure.trainingSessionsPerWeek + structure.supplementalSessionsPerWeek ===
+    goalSessionsPerWeek;
   const canSubmitCreate = Boolean(assessment) && splitValid;
   const canSubmitEdit = splitValid;
 
@@ -339,7 +273,7 @@ export function TrainingPlanDialog({
                 .
                 Align the split with your goal, or tap reset to apply the suggested default.
               </p>
-              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={applyDefaultSplitInputs}>
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={applyDefaultSplit}>
                 Reset to default
               </Button>
             </div>
@@ -424,68 +358,10 @@ export function TrainingPlanDialog({
             </div>
           </div>
 
-          <div className="rounded-lg border bg-muted/20 p-3 space-y-3">
-            <div>
-              <Label className="text-xs font-medium">Weekly session split</Label>
-              <p className="text-[10px] text-muted-foreground mt-0.5">
-                Must sum to{" "}
-                <span className="font-medium text-foreground">{goalSessionsPerWeek}</span> (this goal&apos;s
-                sessions/week).
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="tp-training" className="text-xs">
-                  Training sessions/week
-                </Label>
-                <Input
-                  id="tp-training"
-                  type="number"
-                  min={0}
-                  className={`h-9 ${!splitValid && trainingSessionsInput !== "" ? "border-destructive" : ""}`}
-                  value={trainingSessionsInput}
-                  onChange={(e) => setTrainingSessionsInput(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="tp-supplemental" className="text-xs">
-                  Supplemental sessions/week
-                </Label>
-                <Input
-                  id="tp-supplemental"
-                  type="number"
-                  min={0}
-                  className={`h-9 ${!splitValid && supplementalSessionsInput !== "" ? "border-destructive" : ""}`}
-                  value={supplementalSessionsInput}
-                  onChange={(e) => setSupplementalSessionsInput(e.target.value)}
-                />
-              </div>
-            </div>
-            {!splitValid && trainingSessionsInput !== "" && supplementalSessionsInput !== "" ? (
-              <p className="text-xs text-destructive">
-                Training + supplemental must equal {goalSessionsPerWeek}.
-              </p>
-            ) : null}
-            {goalSessionsPerWeek === 2 ? (
-              <p className="text-sm text-muted-foreground">
-                The source material recommends supplemental work alongside training. If your schedule allows
-                more than 2 sessions per week, the default will add supplemental sessions automatically.
-              </p>
-            ) : null}
-          </div>
-
-          <PreferredDayRow
-            label="Training preferred days"
-            subtitle="Leave empty — scheduler picks freely."
-            selected={trainingPreferredDays}
-            onToggle={toggleTrainingDay}
-          />
-
-          <PreferredDayRow
-            label="Supplemental preferred days"
-            subtitle="Gym-focused sessions. Empty = no preference."
-            selected={supplementalPreferredDays}
-            onToggle={toggleSupplementalDay}
+          <TrainingStructureFields
+            sessionsPerWeek={goalSessionsPerWeek}
+            value={structure}
+            onChange={setStructure}
           />
 
           <div className="space-y-1.5">

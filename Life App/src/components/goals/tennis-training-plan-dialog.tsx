@@ -15,12 +15,20 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Info } from "lucide-react";
 import type { LevelAssessment, TennisPlayingStyle, PhysicalLimitation } from "@/types";
 import { format } from "date-fns";
+import {
+  TrainingStructureFields,
+  TrainingStructureValue,
+  deriveDefaultStructure,
+} from "@/components/goals/training-structure-fields";
+import { parsePreferredDays } from "@/lib/dates";
 
 interface TennisTrainingPlanDialogProps {
   open: boolean;
   onClose: () => void;
   goalId: number;
   goalTitle: string;
+  goalSessionsPerWeek: number;
+  goalPreferredDays?: string | null;
   onCreated: () => void;
 }
 
@@ -62,6 +70,8 @@ export function TennisTrainingPlanDialog({
   onClose,
   goalId,
   goalTitle,
+  goalSessionsPerWeek,
+  goalPreferredDays,
   onCreated,
 }: TennisTrainingPlanDialogProps) {
   const [selfRating, setSelfRating] = useState<string>("club");
@@ -72,6 +82,15 @@ export function TennisTrainingPlanDialog({
   const [startDate, setStartDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [assessment, setAssessment] = useState<LevelAssessment | null>(null);
   const [saving, setSaving] = useState(false);
+  const [structure, setStructure] = useState<TrainingStructureValue>(() =>
+    deriveDefaultStructure(goalSessionsPerWeek, parsePreferredDays(goalPreferredDays))
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    setStructure(deriveDefaultStructure(goalSessionsPerWeek, parsePreferredDays(goalPreferredDays)));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -111,6 +130,10 @@ export function TennisTrainingPlanDialog({
             matchesPerWeek,
             physicalLimitations,
           },
+          trainingSessionsPerWeek: structure.trainingSessionsPerWeek,
+          supplementalSessionsPerWeek: structure.supplementalSessionsPerWeek,
+          trainingPreferredDays: structure.trainingPreferredDays,
+          supplementalPreferredDays: structure.supplementalPreferredDays,
         }),
       });
       if (res.ok) {
@@ -225,6 +248,13 @@ export function TennisTrainingPlanDialog({
               ))}
             </div>
           </div>
+
+          {/* Training structure: split + preferred days */}
+          <TrainingStructureFields
+            sessionsPerWeek={goalSessionsPerWeek}
+            value={structure}
+            onChange={setStructure}
+          />
 
           {/* Assessment Preview */}
           {assessment && (
