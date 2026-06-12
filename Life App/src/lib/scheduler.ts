@@ -396,7 +396,10 @@ export function generateSchedule(
       const sessionsRemaining = Math.max(0, totalSessionsRaw - existing);
       const roleIds = getGoalRoleIds(goal);
       const hasWorkRole = roleIds.some((id) => rolesById.get(id)?.isWorkRole);
-      const patterns = goalSessionPatterns?.get(goal.id);
+      // When a training plan is present it is the sole source of session cadence.
+      // Session patterns must not constrain day spacing on top of the plan split.
+      const hasPlan = trainingPlanSplits?.has(goal.id) ?? false;
+      const patterns = hasPlan ? undefined : goalSessionPatterns?.get(goal.id);
 
       const g = goal as Goal & { preferredDays?: string | null; preferredTimeSlot?: string | null };
       const prefDays = g.preferredDays

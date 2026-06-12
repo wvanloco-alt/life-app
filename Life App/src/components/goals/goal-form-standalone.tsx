@@ -53,6 +53,7 @@ interface GoalFormStandaloneProps {
   roles: Role[];
   goal?: Goal | null;
   yearlyGoals?: Goal[];
+  hasTrainingPlan?: boolean;
 }
 
 export function GoalFormStandalone({
@@ -62,6 +63,7 @@ export function GoalFormStandalone({
   roles,
   goal,
   yearlyGoals = [],
+  hasTrainingPlan = false,
 }: GoalFormStandaloneProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -640,81 +642,89 @@ export function GoalFormStandalone({
               </div>
 
               {/* Session Pattern */}
-              <div className="rounded-lg border p-3 space-y-3">
-                <button
-                  type="button"
-                  className="flex items-center gap-2 w-full text-left"
-                  onClick={() => setShowPatterns(!showPatterns)}
-                >
-                  {showPatterns
-                    ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                    : <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  }
-                  <Label className="text-sm font-medium cursor-pointer">
-                    Session Pattern
-                  </Label>
-                  {sessionPatterns.length > 0 && (
-                    <span className="text-xs text-muted-foreground">
-                      ({sessionPatterns.length} step{sessionPatterns.length !== 1 ? "s" : ""})
-                    </span>
-                  )}
-                </button>
-                {!showPatterns && (
-                  <p className="text-xs text-muted-foreground pl-6">
-                    Define a repeating cycle with different rest requirements.
+              {(hasTrainingPlan || createTrainingPlan) ? (
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">
+                    Session patterns are managed by the training plan for this goal.
                   </p>
-                )}
-                {showPatterns && (
-                  <div className="space-y-2 pl-6">
-                    {sessionPatterns.map((p, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground w-5">{idx + 1}.</span>
-                        <Input
-                          value={p.label}
-                          onChange={(e) => {
-                            const next = [...sessionPatterns];
-                            next[idx] = { ...next[idx], label: e.target.value };
-                            setSessionPatterns(next);
-                          }}
-                          placeholder="e.g., Short run 4km"
-                          className="flex-1"
-                        />
-                        <div className="flex items-center gap-1">
+                </div>
+              ) : (
+                <div className="rounded-lg border p-3 space-y-3">
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 w-full text-left"
+                    onClick={() => setShowPatterns(!showPatterns)}
+                  >
+                    {showPatterns
+                      ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      : <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    }
+                    <Label className="text-sm font-medium cursor-pointer">
+                      Session Pattern
+                    </Label>
+                    {sessionPatterns.length > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        ({sessionPatterns.length} step{sessionPatterns.length !== 1 ? "s" : ""})
+                      </span>
+                    )}
+                  </button>
+                  {!showPatterns && (
+                    <p className="text-xs text-muted-foreground pl-6">
+                      Define a repeating cycle with different rest requirements.
+                    </p>
+                  )}
+                  {showPatterns && (
+                    <div className="space-y-2 pl-6">
+                      {sessionPatterns.map((p, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground w-5">{idx + 1}.</span>
                           <Input
-                            type="number"
-                            value={p.restDaysAfter}
+                            value={p.label}
                             onChange={(e) => {
                               const next = [...sessionPatterns];
-                              next[idx] = { ...next[idx], restDaysAfter: parseInt(e.target.value) || 1 };
+                              next[idx] = { ...next[idx], label: e.target.value };
                               setSessionPatterns(next);
                             }}
-                            min={0}
-                            max={7}
-                            className="w-14 text-center"
+                            placeholder="e.g., Short run 4km"
+                            className="flex-1"
                           />
-                          <span className="text-xs text-muted-foreground whitespace-nowrap">rest</span>
+                          <div className="flex items-center gap-1">
+                            <Input
+                              type="number"
+                              value={p.restDaysAfter}
+                              onChange={(e) => {
+                                const next = [...sessionPatterns];
+                                next[idx] = { ...next[idx], restDaysAfter: parseInt(e.target.value) || 1 };
+                                setSessionPatterns(next);
+                              }}
+                              min={0}
+                              max={7}
+                              className="w-14 text-center"
+                            />
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">rest</span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSessionPatterns(sessionPatterns.filter((_, i) => i !== idx))}
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                          </Button>
                         </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setSessionPatterns(sessionPatterns.filter((_, i) => i !== idx))}
-                        >
-                          <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                        </Button>
-                      </div>
-                    ))}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSessionPatterns([...sessionPatterns, { label: "", restDaysAfter: 1 }])}
-                    >
-                      <Plus className="h-3.5 w-3.5 mr-1" /> Add Step
-                    </Button>
-                  </div>
-                )}
-              </div>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSessionPatterns([...sessionPatterns, { label: "", restDaysAfter: 1 }])}
+                      >
+                        <Plus className="h-3.5 w-3.5 mr-1" /> Add Step
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Auto-generate benchmarks (yearly only) */}
               {horizon === "yearly" && !isEditing && (
