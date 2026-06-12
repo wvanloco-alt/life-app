@@ -32,6 +32,8 @@ interface TrainingStructureFieldsProps {
   sessionsPerWeek: number;
   value: TrainingStructureValue;
   onChange: (v: TrainingStructureValue) => void;
+  /** Prefix for input id/htmlFor pairs — prevents duplicate IDs if rendered twice. Defaults to "tsf". */
+  idPrefix?: string;
 }
 
 // ─── Pure helper ─────────────────────────────────────────────────────────────
@@ -162,6 +164,7 @@ export function TrainingStructureFields({
   sessionsPerWeek,
   value,
   onChange,
+  idPrefix = "tsf",
 }: TrainingStructureFieldsProps) {
   const { trainingSessionsPerWeek, supplementalSessionsPerWeek } = value;
   const splitValid = isValidSplit(
@@ -210,30 +213,30 @@ export function TrainingStructureFields({
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <Label htmlFor="tsf-training" className="text-xs">
+          <Label htmlFor={`${idPrefix}-training`} className="text-xs">
             Training sessions/week
           </Label>
           <Input
-            id="tsf-training"
+            id={`${idPrefix}-training`}
             type="number"
             min={0}
             className={`h-9 ${
-              !splitValid && trainingSessionsPerWeek >= 0 ? "border-destructive" : ""
+              !splitValid ? "border-destructive" : ""
             }`}
             value={trainingSessionsPerWeek}
             onChange={(e) => handleTrainingCount(e.target.value)}
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="tsf-supplemental" className="text-xs">
+          <Label htmlFor={`${idPrefix}-supplemental`} className="text-xs">
             Supplemental sessions/week
           </Label>
           <Input
-            id="tsf-supplemental"
+            id={`${idPrefix}-supplemental`}
             type="number"
             min={0}
             className={`h-9 ${
-              !splitValid && supplementalSessionsPerWeek >= 0 ? "border-destructive" : ""
+              !splitValid ? "border-destructive" : ""
             }`}
             value={supplementalSessionsPerWeek}
             onChange={(e) => handleSupplementalCount(e.target.value)}
