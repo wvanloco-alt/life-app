@@ -786,13 +786,19 @@ export function GoalFormStandalone({
                           ? "border-primary bg-primary text-primary-foreground"
                           : "border-muted-foreground/30"
                       }`}
-                      onClick={() => setCreateTrainingPlan(!createTrainingPlan)}
+                      onClick={() => {
+                        if (!createTrainingPlan) setSessionPatterns([]);
+                        setCreateTrainingPlan(!createTrainingPlan);
+                      }}
                     >
                       {createTrainingPlan && <Check className="h-3 w-3" />}
                     </div>
                     <Label
                       className="cursor-pointer text-sm"
-                      onClick={() => setCreateTrainingPlan(!createTrainingPlan)}
+                      onClick={() => {
+                        if (!createTrainingPlan) setSessionPatterns([]);
+                        setCreateTrainingPlan(!createTrainingPlan);
+                      }}
                     >
                       Create Training Plan
                     </Label>

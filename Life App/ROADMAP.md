@@ -390,7 +390,7 @@ The refactor introduces three new shared UI primitives (icon registry, `LucideIc
 ### Training Plan Discipline Parity
 
 **Spec / working docs**: `Life App/feature requests/training-plan-discipline-parity/` (`scope.md`, `plan.md`, `tasks.md`)
-**Status**: Built (four PRs merged 2026-06-12)
+**Status**: In review (four PRs open, target merge 2026-06-12)
 
 **What it does**: Closes the feature gap between climbing, tennis, and running training plans. Before this feature, only climbing plans correctly populated the scheduler's preferred-day arrays and the phase content layers used to differentiate training vs supplemental session notes.
 
