@@ -20,7 +20,7 @@ interface TrainingPlanSectionProps {
   onRefresh: () => void;
   /** Shown on the goal card; used to reconcile split with goal.sessionsPerWeek */
   goalSessionsPerWeek: number;
-  /** Climbing-only: opens edit dialog for split & preferred days */
+  /** Opens the edit dialog for split & preferred days (all sports). */
   onEditTrainingSplit?: () => void;
 }
 
@@ -109,7 +109,6 @@ export function TrainingPlanSection({
   const activePhase = phases.find((p) => p.status === "active");
   const totalWeeks = phases.reduce((s, p) => s + p.durationWeeks, 0);
   const isCompleted = plan.status === "completed";
-  const isClimbingPlan = plan.sport === "climbing";
   const isTennis = plan.sport === "tennis";
   const isRunning = plan.sport === "running";
   const tennisProfile = isTennis ? (plan.sportProfile as TennisSportProfile) : null;
@@ -312,8 +311,7 @@ export function TrainingPlanSection({
             ))}
           </div>
 
-          {isClimbingPlan &&
-            plan.trainingSessionsPerWeek != null &&
+          {plan.trainingSessionsPerWeek != null &&
             plan.supplementalSessionsPerWeek != null &&
             plan.trainingSessionsPerWeek + plan.supplementalSessionsPerWeek !== goalSessionsPerWeek && (
               <p className="text-[10px] text-amber-600 dark:text-amber-400">
@@ -324,7 +322,7 @@ export function TrainingPlanSection({
             )}
 
           <div className="flex gap-2 pt-1 flex-wrap">
-            {isClimbingPlan && onEditTrainingSplit && (
+            {onEditTrainingSplit && (
               <Button
                 variant="outline"
                 size="sm"
