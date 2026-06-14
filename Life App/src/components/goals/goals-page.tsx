@@ -65,7 +65,7 @@ export function GoalsPage() {
   const [tallyGoal, setTallyGoal] = useState<Goal | null>(null);
   const [trainingPlansMap, setTrainingPlansMap] = useState<Record<number, TrainingPlan>>({});
   const [trainingPlanGoal, setTrainingPlanGoal] = useState<Goal | null>(null);
-  const [climbingPlanDialog, setClimbingPlanDialog] = useState<{
+  const [planEditDialog, setPlanEditDialog] = useState<{
     goal: Goal;
     plan?: TrainingPlan;
   } | null>(null);
@@ -74,10 +74,10 @@ export function GoalsPage() {
     const sport = detectSport(goal);
     if (sport === "climbing") {
       setTrainingPlanGoal(null);
-      setClimbingPlanDialog({ goal });
+      setPlanEditDialog({ goal });
       return;
     }
-    setClimbingPlanDialog(null);
+    setPlanEditDialog(null);
     setTrainingPlanGoal(goal);
   }, []);
 
@@ -410,8 +410,8 @@ export function GoalsPage() {
                     onLogTally={() => setTallyGoal(g)}
                     onCreateTrainingPlan={detectSport(g) ? () => openTrainingPlanCreator(g) : undefined}
                     onEditTrainingSplit={
-                      detectSport(g) === "climbing" && trainingPlansMap[g.id]
-                        ? () => setClimbingPlanDialog({ goal: g, plan: trainingPlansMap[g.id] })
+                      trainingPlansMap[g.id]
+                        ? () => setPlanEditDialog({ goal: g, plan: trainingPlansMap[g.id] })
                         : undefined
                     }
                     onTrainingPlanChanged={() => fetchData()}
@@ -564,9 +564,9 @@ export function GoalsPage() {
                             onRefresh={() => fetchData()}
                             goalSessionsPerWeek={goal.sessionsPerWeek}
                             onEditTrainingSplit={
-                              detectSport(goal) === "climbing"
+                              trainingPlansMap[goal.id]
                                 ? () =>
-                                    setClimbingPlanDialog({
+                                    setPlanEditDialog({
                                       goal,
                                       plan: trainingPlansMap[goal.id],
                                     })
@@ -737,15 +737,15 @@ export function GoalsPage() {
         </Dialog>
       )}
 
-      {climbingPlanDialog && (
+      {planEditDialog && (
         <TrainingPlanDialog
-          key={`${climbingPlanDialog.goal.id}-${climbingPlanDialog.plan?.id ?? "new"}`}
+          key={`${planEditDialog.goal.id}-${planEditDialog.plan?.id ?? "new"}`}
           open
-          onClose={() => setClimbingPlanDialog(null)}
-          goalId={climbingPlanDialog.goal.id}
-          goalTitle={climbingPlanDialog.goal.title}
-          goalSessionsPerWeek={climbingPlanDialog.goal.sessionsPerWeek}
-          existingPlan={climbingPlanDialog.plan}
+          onClose={() => setPlanEditDialog(null)}
+          goalId={planEditDialog.goal.id}
+          goalTitle={planEditDialog.goal.title}
+          goalSessionsPerWeek={planEditDialog.goal.sessionsPerWeek}
+          existingPlan={planEditDialog.plan}
           onSuccess={() => fetchData()}
         />
       )}
