@@ -1,6 +1,6 @@
 ﻿# Life App -- Feature Roadmap
 
-> Last updated: 2026-06-05.
+> Last updated: 2026-06-12.
 
 ## Product Vision
 
@@ -383,7 +383,26 @@ The refactor introduces three new shared UI primitives (icon registry, `LucideIc
 - **Calendar visual treatment** (Phase 5): Shared helper `src/lib/session-type-styles.ts`. Supplemental sessions render with muted background + Supplemental badge across `day-column.tsx`, `weekly-plan-view.tsx` (incl. `DragOverlay`), `schedule-preview.tsx`, and `daily-view.tsx`. Drag-and-drop preserves the visual treatment.
 - **Activity edit form** (Phase 6): `ActivityForm` shows a **Session type** select (Training / Supplemental) when the linked goal has a training plan; hidden otherwise. Backed by `PATCH /api/activities/:id` with optional `sessionType`.
 
-**Follow-up (see `tasks.md`)**: Phase 7 automated test matrix (T031-T034); tennis/running parity deferred by spec. T031 (split helpers) and T032 (scheduler) shipped 2026-05-12; T033 / T034 are manual user tasks.
+**Follow-up (see `tasks.md`)**: Phase 7 automated test matrix (T031-T034); T031 (split helpers) and T032 (scheduler) shipped 2026-05-12; T033 / T034 are manual user tasks.
+
+---
+
+### Training Plan Discipline Parity
+
+**Spec / working docs**: `Life App/feature requests/training-plan-discipline-parity/` (`scope.md`, `plan.md`, `tasks.md`)
+**Status**: In review (four PRs open, target merge 2026-06-12)
+
+**What it does**: Closes the feature gap between climbing, tennis, and running training plans. Before this feature, only climbing plans correctly populated the scheduler's preferred-day arrays and the phase content layers used to differentiate training vs supplemental session notes.
+
+**What has been built**:
+- **PR A — Shared training-structure UI**: `TrainingStructureFields` component (split inputs + dual preferred-day pickers) shared across all three sport dialogs. `deriveDefaultStructure()` seeds sensible defaults from the goal's `preferredDays` or spreads evenly if absent. Tennis and running creation dialogs now POST `trainingPreferredDays` + `supplementalPreferredDays`. `parsePreferredDays` moved to `src/lib/dates.ts` as the single comma-string → number[] parser.
+- **PR B — Ungate edit for all sports**: `TrainingPlanDialog` promoted to sport-agnostic edit dialog. `goals-page.tsx` wires "Edit plan" for any goal with a plan (not climbing-only). `TrainingPlanSection` shows the reconcile warning and "Edit plan" button for all sports.
+- **PR C — Phase content layers for tennis and running**: `buildTennisPhaseContent` and `buildRunningPhaseContent` populate `sportFocusContent`, `supplementalContent`, `mentalGameContent` on phase creation. `POST /api/training-plans/refresh-descriptions` extended to backfill existing plans. The scheduler's session notes now show sport-specific training vs supplemental content for all three sports.
+- **PR D — Session-pattern / training-plan mutual exclusion**: Scheduler ignores `goalSessionPatterns` for any goal with a training plan. Goal form hides the session-pattern editor when a plan exists or "Create Training Plan" is ticked.
+
+**Schema changes**: None (all columns already existed).
+
+**Files changed**: `training-structure-fields.tsx` (new), `training-plan-dialog.tsx`, `tennis-training-plan-dialog.tsx`, `running-training-plan-dialog.tsx`, `goals-page.tsx`, `training-plan-section.tsx`, `goal-form-standalone.tsx`, `scheduler.ts`, `running-periodization.ts`, `tennis-periodization.ts`, `refresh-descriptions/route.ts`, `src/lib/dates.ts`.
 
 **Dependencies**: Climbing phase content upgrade (three-layer source content), Feature 1 (scheduler / apply).
 

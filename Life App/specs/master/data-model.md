@@ -1,6 +1,6 @@
 # Data Model: Life App
 
-> Last updated: 2026-06-05. Reflects current schema including Feature 1 (Calendar Management), Feature 2 (Fitness Tracking → Activities), Feature 3 (Budget Management), v2 Overhaul, Goals V2, Scheduler Rules, Training Periodization, **Training vs Supplemental Session Split (V1, partial)**, **Activities Refactoring V1** (`activities.is_log_entry` → `created_from_log`, `activity_types.default_duration_minutes`, schedule-to-log bridge, derived `linkedLogId` on activity GET), UI Refinements, **Friend Release** (users table, user_id on all data tables, per-user data isolation), **Role Scheduling Rules Removal** (dropped `max_weekly_occurrences` and `min_rest_days` from `roles`, added `[1, 7]` clamp on `goals.sessions_per_week`), **Habit Tracking V1** (`habits`, `habit_logs` tables with unique index), **Habit Tracking V2** (`habits.reward`, `habits.cue_type`, `habits.is_keystone` added), **Budget Expansion** (`moment_logs` table; `bucket` on `spending_categories`; `bucket_targets`, `moment_threshold`, `target_annual_spending`, `state_pension_annual_amount` on `budget_settings`), and **Body Metrics Guidance** (`user_body_profiles` table for optional demographic inputs powering client-side metric interpretation).
+> Last updated: 2026-06-12. Reflects current schema including Feature 1 (Calendar Management), Feature 2 (Fitness Tracking → Activities), Feature 3 (Budget Management), v2 Overhaul, Goals V2, Scheduler Rules, Training Periodization, **Training vs Supplemental Session Split (V1, partial)**, **Training Plan Discipline Parity** (tennis + running preferred days, phase content layers, session-pattern exclusion), **Activities Refactoring V1** (`activities.is_log_entry` → `created_from_log`, `activity_types.default_duration_minutes`, schedule-to-log bridge, derived `linkedLogId` on activity GET), UI Refinements, **Friend Release** (users table, user_id on all data tables, per-user data isolation), **Role Scheduling Rules Removal** (dropped `max_weekly_occurrences` and `min_rest_days` from `roles`, added `[1, 7]` clamp on `goals.sessions_per_week`), **Habit Tracking V1** (`habits`, `habit_logs` tables with unique index), **Habit Tracking V2** (`habits.reward`, `habits.cue_type`, `habits.is_keystone` added), **Budget Expansion** (`moment_logs` table; `bucket` on `spending_categories`; `bucket_targets`, `moment_threshold`, `target_annual_spending`, `state_pension_annual_amount` on `budget_settings`), and **Body Metrics Guidance** (`user_body_profiles` table for optional demographic inputs powering client-side metric interpretation).
 
 ## Multi-User Architecture (Friend Release)
 
@@ -701,9 +701,9 @@ An ordered phase within a training plan cycle. Phases have date ranges, statuses
 | endDate | TEXT | NOT NULL, ISO date | startDate + (durationWeeks * 7) |
 | status | TEXT | NOT NULL, default 'upcoming' | One of: 'upcoming', 'active', 'completed' |
 | description | TEXT | NOT NULL | Legacy full-phase text (concatenated layers for climbing; still used for tennis/running and as scheduler fallback). |
-| sportFocusContent | TEXT | nullable | **Climbing (V1)**: On-wall / discipline focus for **training** sessions. |
-| supplementalContent | TEXT | nullable | **Climbing (V1)**: Gym supplemental block for **supplemental** sessions. |
-| mentalGameContent | TEXT | nullable | **Climbing (V1)**: Mental layer; scheduler appends to **training** session notes when present. |
+| sportFocusContent | TEXT | nullable | Sport-specific focus for **training** sessions. Populated for climbing, tennis, and running (Training Plan Discipline Parity). |
+| supplementalContent | TEXT | nullable | Gym/supplemental block for **supplemental** sessions. Populated for climbing, tennis, and running. |
+| mentalGameContent | TEXT | nullable | Mental layer; scheduler appends to **training** session notes when present. Populated for climbing, tennis, and running. |
 | limitationNotes | TEXT | nullable | Extra precautions based on physical limitations (populated for tennis and running, null for climbing without limitations) |
 | createdAt | TEXT | NOT NULL, ISO 8601 | When created |
 | updatedAt | TEXT | NOT NULL, ISO 8601 | Last modification time |
@@ -712,7 +712,7 @@ An ordered phase within a training plan cycle. Phases have date ranges, statuses
 - Phase transitions are manual (button press), not automated.
 - Rest/Recovery phases cause the scheduler to skip the goal entirely for that period.
 - `limitationNotes` is populated by the tennis periodization engine when physical limitations are declared. Climbing phases leave this null.
-- Phases are regenerated (deleted + recreated) on cycle restart. **Restart** also rewrites the three climbing layer columns from current profile (split on parent plan unchanged).
+- Phases are regenerated (deleted + recreated) on cycle restart. **Restart** rewrites the three content layer columns from current profile for all sports (split on parent plan unchanged).
 
 ---
 

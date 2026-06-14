@@ -707,6 +707,7 @@ export function GoalsPage() {
         roles={roles}
         goal={editingGoal}
         yearlyGoals={allGoals.filter((g) => g.horizon === "yearly" && g.status === "active")}
+        hasTrainingPlan={editingGoal ? Boolean(trainingPlansMap[editingGoal.id]) : false}
       />
 
       {tallyGoal && (
