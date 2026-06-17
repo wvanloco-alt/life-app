@@ -276,6 +276,7 @@ export function RoleList() {
       )}
 
       <RoleForm
+        key={editingRole?.id ?? "new"}
         open={formOpen}
         onClose={() => {
           setFormOpen(false);
