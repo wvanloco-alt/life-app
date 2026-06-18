@@ -244,7 +244,6 @@ export function ThisWeekView() {
       }
     }
     setActivities((prev) => prev.filter((a) => a.id !== id));
-    await fetchAll();
   }
 
   function handleDeleteActivity(activity: Activity) {

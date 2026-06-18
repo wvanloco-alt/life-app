@@ -338,8 +338,6 @@ export function WeeklyPlanView() {
 
     setActivities((prev) => prev.filter((a) => a.id !== id));
     setMonthActivities((prev) => prev.filter((a) => a.id !== id));
-    await fetchAll();
-    fetchMonthActivities();
   }
 
   function handleDeleteActivity(activity: Activity) {
