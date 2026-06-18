@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   ChevronLeft,
   ChevronRight,
@@ -30,11 +29,7 @@ import {
   getWeekStartDate,
   getFocusGoalWeekKey,
 } from "@/lib/dates";
-import { getQuadrantInfo } from "@/lib/quadrants";
-import {
-  getSessionTypeCardClasses,
-  shouldShowSupplementalBadge,
-} from "@/lib/session-type-styles";
+import { shouldShowSupplementalBadge } from "@/lib/session-type-styles";
 import { cn } from "@/lib/utils";
 import { ActivityForm } from "@/components/monthly-plan/activity-form";
 import { GoalOverviewSection } from "@/components/shared/goal-overview-section";
@@ -71,54 +66,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { LucideIcon } from "@/components/ui/lucide-icon";
-
-function NotesPreview({ notes }: { notes: string }) {
-  const [expanded, setExpanded] = useState(false);
-  const firstLine = notes.split("\n")[0];
-  const isLong = notes.length > 120 || notes.includes("\n\n");
-
-  if (!isLong) {
-    return <p className="text-xs text-muted-foreground mt-1">{notes}</p>;
-  }
-
-  return (
-    <div className="mt-1" onClick={(e) => e.stopPropagation()}>
-      {expanded ? (
-        <div className="text-xs text-muted-foreground space-y-1.5">
-          {notes.split("\n\n").map((block, i) => {
-            const lines = block.split("\n");
-            const isHeading = lines.length > 1 && lines[0] === lines[0].toUpperCase() && lines[0].length < 60;
-            if (isHeading) {
-              return (
-                <div key={i}>
-                  <span className="font-medium text-foreground/70">{lines[0]}</span>
-                  <p className="leading-relaxed">{lines.slice(1).join(" ")}</p>
-                </div>
-              );
-            }
-            return <p key={i} className="leading-relaxed">{block}</p>;
-          })}
-          <button
-            className="text-primary text-[11px] hover:underline"
-            onClick={() => setExpanded(false)}
-          >
-            Show less
-          </button>
-        </div>
-      ) : (
-        <p className="text-xs text-muted-foreground">
-          <span className="line-clamp-1">{firstLine}</span>
-          <button
-            className="text-primary text-[11px] hover:underline ml-1"
-            onClick={() => setExpanded(true)}
-          >
-            Show more
-          </button>
-        </p>
-      )}
-    </div>
-  );
-}
+import { HourlyTimeline } from "@/components/daily/hourly-timeline";
 
 function formatDuration(minutes: number): string {
   const h = Math.floor(minutes / 60);
@@ -697,129 +645,24 @@ export function DailyView() {
                     description="Your day is wide open. Plan activities or generate a schedule from the Monthly Plan."
                   />
                 ) : (
-                  <div className="space-y-2">
-                    {sortedActivities.map((activity) => {
-                      const quadrant = getQuadrantInfo(activity.quadrant);
-                      const sessionType = activity.sessionType ?? "training";
-                      const isSupplemental = sessionType === "supplemental";
-                      const showSupplementalBadge =
-                        shouldShowSupplementalBadge(sessionType);
-                      const effectiveActivityTypeId =
-                        activity.activityTypeId ??
-                        goals.find((g) => g.id === activity.goalId)?.activityTypeId ??
-                        null;
-                      const canLogAndComplete =
-                        !activity.isCompleted &&
-                        effectiveActivityTypeId != null;
-                      return (
-                        <div
-                          key={activity.id}
-                          className={cn(
-                            "group relative flex items-start gap-3 rounded-lg border p-3 transition-opacity cursor-pointer hover:bg-accent/50",
-                            getSessionTypeCardClasses(sessionType),
-                            activity.isCompleted && "opacity-50"
-                          )}
-                          onClick={() => {
-                            setEditingActivity(activity);
-                            setFormOpen(true);
-                          }}
-                          style={{
-                            borderLeftWidth: "4px",
-                            borderLeftColor:
-                              activity.roleColor ?? quadrant.hexColor,
-                          }}
-                        >
-                          {showSupplementalBadge && (
-                            <Badge
-                              variant="secondary"
-                              className="absolute right-2 top-2 z-10 text-[10px] font-normal"
-                            >
-                              Supplemental
-                            </Badge>
-                          )}
-                          <Checkbox
-                            checked={activity.isCompleted}
-                            onCheckedChange={(checked) => {
-                              handleToggle(activity.id, checked as boolean);
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="mt-0.5"
-                          />
-                          <div
-                            className={cn(
-                              "flex-1 min-w-0",
-                              showSupplementalBadge && "pr-24"
-                            )}
-                          >
-                            <div
-                              className={`font-medium text-sm ${
-                                activity.isCompleted ? "line-through" : ""
-                              }`}
-                            >
-                              {activity.title}
-                            </div>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                              <span>
-                                {formatTime(activity.startTime)} –{" "}
-                                {formatTime(activity.endTime)}
-                              </span>
-                              {activity.roleName && (
-                                <>
-                                  <span>·</span>
-                                  <span
-                                    style={{
-                                      color: activity.roleColor ?? undefined,
-                                    }}
-                                  >
-                                    {activity.roleName}
-                                  </span>
-                                </>
-                              )}
-                            </div>
-                            {activity.notes && (
-                              <NotesPreview notes={activity.notes} />
-                            )}
-                          </div>
-                          <span
-                            className={cn(
-                              "text-xs px-1.5 py-0.5 rounded shrink-0",
-                              isSupplemental
-                                ? "bg-muted/50 text-muted-foreground"
-                                : ""
-                            )}
-                            style={
-                              isSupplemental
-                                ? undefined
-                                : {
-                                    backgroundColor: `${quadrant.hexColor}20`,
-                                    color: quadrant.hexColor,
-                                  }
-                            }
-                          >
-                            {quadrant.shortLabel}
-                          </span>
-                          {canLogAndComplete && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setLogDialogActivity({
-                                  activityTypeId: effectiveActivityTypeId,
-                                  activityId: activity.id,
-                                });
-                                setLogDialogOpen(true);
-                              }}
-                              title="Log & Complete"
-                            >
-                              <ClipboardList className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <HourlyTimeline
+                    activities={sortedActivities}
+                    goals={goals}
+                    onToggle={handleToggle}
+                    onEdit={(activity) => {
+                      setEditingActivity(activity);
+                      setFormOpen(true);
+                    }}
+                    onAdd={(startTime) => {
+                      setEditingActivity(null);
+                      setDefaultStartTime(startTime);
+                      setFormOpen(true);
+                    }}
+                    onLogAndComplete={(activityTypeId, activityId) => {
+                      setLogDialogActivity({ activityTypeId, activityId });
+                      setLogDialogOpen(true);
+                    }}
+                  />
                 )}
               </CardContent>
             </Card>
