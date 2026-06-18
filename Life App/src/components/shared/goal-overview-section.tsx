@@ -30,6 +30,13 @@ export interface GoalOverviewSectionProps {
   today?: string;
   /** Called when the user clicks "Log session" on a session-based goal card. */
   onLogActivity?: (goal: Goal) => void;
+  /**
+   * When true, renders a "No focus goals set" prompt with a link to Monthly Plan
+   * instead of returning null when goals is empty. Default false — callers that
+   * show this section on every view (e.g. Today) should leave this unset so an
+   * empty day doesn't surface a misleading "no goals" message.
+   */
+  showEmptyPrompt?: boolean;
 }
 
 // ─── GoalCard ─────────────────────────────────────────────────────────────────
@@ -49,9 +56,11 @@ function GoalCard({
 }) {
   const [tallyAdded, setTallyAdded] = useState(0);
   const [tallyError, setTallyError] = useState(false);
-  const [contentExpanded, setContentExpanded] = useState(false);
+  const [focusExpanded, setFocusExpanded] = useState(false);
+  const [supplementalExpanded, setSupplementalExpanded] = useState(false);
 
-  // Goals with a targetMetric are quantifiable (tally) goals.
+  // targetMetric is null for session-based goals; non-null string for tally/metric goals
+  // (goal-form-standalone.tsx explicitly sets payload.targetMetric = null for session goals).
   const isTallyGoal = goal.targetMetric !== null;
 
   const trainingCount = weekActivities.filter(
@@ -64,7 +73,9 @@ function GoalCard({
 
   const weekN = phase ? computeWeekN(phase.phaseStartDate, phase.durationWeeks) : null;
   const focusContent = phase?.sportFocusContent ?? null;
-  const isLongContent = focusContent !== null && focusContent.length > 120;
+  const isLongFocus = focusContent !== null && focusContent.length > 120;
+  const supplementalContent = hasSupplementalThisWeek ? (phase?.supplementalContent ?? null) : null;
+  const isLongSupplemental = supplementalContent !== null && supplementalContent.length > 120;
 
   async function handleTallyIncrement() {
     try {
@@ -139,27 +150,42 @@ function GoalCard({
           <p
             className={cn(
               "text-xs text-muted-foreground leading-relaxed",
-              !contentExpanded && "line-clamp-2"
+              !focusExpanded && "line-clamp-2"
             )}
           >
             {focusContent}
           </p>
-          {isLongContent && (
+          {isLongFocus && (
             <button
               className="text-[11px] text-primary hover:underline mt-0.5"
-              onClick={() => setContentExpanded((e) => !e)}
+              onClick={() => setFocusExpanded((e) => !e)}
             >
-              {contentExpanded ? "Show less" : "Show more"}
+              {focusExpanded ? "Show less" : "Show more"}
             </button>
           )}
         </div>
       )}
 
-      {/* Supplemental content — only when there's supplemental activity this week */}
-      {hasSupplementalThisWeek && phase?.supplementalContent && (
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          {phase.supplementalContent}
-        </p>
+      {/* Supplemental content — only when there's a supplemental activity this week */}
+      {supplementalContent && (
+        <div>
+          <p
+            className={cn(
+              "text-xs text-muted-foreground leading-relaxed",
+              !supplementalExpanded && "line-clamp-2"
+            )}
+          >
+            {supplementalContent}
+          </p>
+          {isLongSupplemental && (
+            <button
+              className="text-[11px] text-primary hover:underline mt-0.5"
+              onClick={() => setSupplementalExpanded((e) => !e)}
+            >
+              {supplementalExpanded ? "Show less" : "Show more"}
+            </button>
+          )}
+        </div>
       )}
 
       {/* Week activity count */}
@@ -185,6 +211,7 @@ export function GoalOverviewSection({
   weekActivities = [],
   today,
   onLogActivity,
+  showEmptyPrompt = false,
 }: GoalOverviewSectionProps) {
   const todayStr = today ?? new Date().toISOString().slice(0, 10);
 
@@ -205,6 +232,7 @@ export function GoalOverviewSection({
   }
 
   if (goals.length === 0) {
+    if (!showEmptyPrompt) return null;
     return (
       <div className="rounded-lg border border-dashed p-6 text-center">
         <p className="text-sm text-muted-foreground">

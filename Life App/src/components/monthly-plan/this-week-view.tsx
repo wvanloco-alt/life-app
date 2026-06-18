@@ -485,6 +485,7 @@ export function ThisWeekView() {
         goals={focusGoals}
         trainingPhaseInfo={trainingPhaseInfo}
         loading={loading}
+        showEmptyPrompt
         weekActivities={activities}
         today={currentWeekMonday <= new Date().toISOString().slice(0, 10)
           ? new Date().toISOString().slice(0, 10)
