@@ -1,9 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
   timeToMinutes,
+  minutesToTimeString,
   computeVisibleRange,
   computeActivityPosition,
   groupOverlappingActivities,
+  computeDragOffset,
   ROW_HEIGHT_PX,
 } from "@/components/daily/hourly-timeline";
 import type { Activity } from "@/types";
@@ -189,5 +191,83 @@ describe("groupOverlappingActivities", () => {
     // They share the boundary minute (start < end): 540 < 600 && 600 < 600 → false
     // So they do NOT overlap — two separate groups
     expect(groups).toHaveLength(2);
+  });
+});
+
+// ─── minutesToTimeString ──────────────────────────────────────────────────────
+
+describe("minutesToTimeString", () => {
+  it("formats 0 as 00:00", () => {
+    expect(minutesToTimeString(0)).toBe("00:00");
+  });
+  it("formats 9*60 as 09:00", () => {
+    expect(minutesToTimeString(9 * 60)).toBe("09:00");
+  });
+  it("formats 9*60+30 as 09:30", () => {
+    expect(minutesToTimeString(9 * 60 + 30)).toBe("09:30");
+  });
+  it("formats 13*60+45 as 13:45", () => {
+    expect(minutesToTimeString(13 * 60 + 45)).toBe("13:45");
+  });
+});
+
+// ─── computeDragOffset ────────────────────────────────────────────────────────
+
+describe("computeDragOffset", () => {
+  // ROW_HEIGHT_PX = 64 → 1px = 60/64 min ≈ 0.9375 min
+  // 40px → 40/64*60 = 37.5 min → nearest 30-min snap = 30 min
+
+  it("snaps a 40px drag to the nearest 30-minute slot (30 min)", () => {
+    const { offsetMinutes, valid } = computeDragOffset(40, 9 * 60, 60);
+    expect(valid).toBe(true);
+    expect(offsetMinutes).toBe(30);
+  });
+
+  it("snaps a delta just over 45min worth of pixels to 60 min", () => {
+    // 50px → 50/64*60 = 46.875 → nearest 30-min = 60 min
+    const { offsetMinutes, valid } = computeDragOffset(50, 9 * 60, 60);
+    expect(valid).toBe(true);
+    expect(offsetMinutes).toBe(60);
+  });
+
+  it("rejects a drag that would push a 1-hour activity past midnight", () => {
+    // Start 23:30 (1410 min) + 60 min = 24:30 → invalid
+    const { offsetMinutes, valid } = computeDragOffset(
+      ROW_HEIGHT_PX, // +60 min drag
+      23 * 60 + 30,  // 23:30 start
+      60             // 1-hour duration
+    );
+    expect(valid).toBe(false);
+    expect(offsetMinutes).toBe(0);
+  });
+
+  it("correctly derives end time for a 90-minute activity", () => {
+    const originalStart = 9 * 60; // 09:00
+    const duration = 90;
+    const { offsetMinutes, valid } = computeDragOffset(
+      ROW_HEIGHT_PX, // +60 min drag
+      originalStart,
+      duration
+    );
+    expect(valid).toBe(true);
+    const newStart = originalStart + offsetMinutes;
+    const newEnd = newStart + duration;
+    // New start: 10:00, new end: 11:30
+    expect(minutesToTimeString(newStart)).toBe("10:00");
+    expect(minutesToTimeString(newEnd)).toBe("11:30");
+  });
+
+  it("returns offsetMinutes 0 when drag is too small to snap (< 15 min worth)", () => {
+    // 10px → 10/64*60 = 9.375 min → nearest 30 = 0
+    const { offsetMinutes, valid } = computeDragOffset(10, 9 * 60, 60);
+    expect(valid).toBe(true);
+    expect(offsetMinutes).toBe(0);
+  });
+
+  it("handles upward drags (negative delta) correctly", () => {
+    // -ROW_HEIGHT_PX → -60 min
+    const { offsetMinutes, valid } = computeDragOffset(-ROW_HEIGHT_PX, 10 * 60, 60);
+    expect(valid).toBe(true);
+    expect(offsetMinutes).toBe(-60);
   });
 });

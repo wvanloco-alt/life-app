@@ -1,6 +1,15 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import {
+  DndContext,
+  MouseSensor,
+  useSensor,
+  useSensors,
+  useDraggable,
+  useDroppable,
+  type DragEndEvent,
+} from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -65,6 +74,12 @@ export function timeToMinutes(time: string): number {
   return (h || 0) * 60 + (m || 0);
 }
 
+export function minutesToTimeString(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
 function minutesToHourLabel(totalMinutes: number): string {
   const h = Math.floor(totalMinutes / 60);
   const ampm = h < 12 ? "AM" : "PM";
@@ -88,11 +103,11 @@ export function computeVisibleRange(
   const ends = activities.map((a) => {
     const s = timeToMinutes(a.startTime);
     const e = timeToMinutes(a.endTime);
-    return e > s ? e : s + 60; // treat inverted/zero-duration as 1 hr
+    return e > s ? e : s + 60;
   });
   return {
-    startMinutes: Math.max(6 * 60, Math.min(...starts) - 60), // floor at 06:00
-    endMinutes: Math.min(22 * 60, Math.max(...ends) + 60),    // ceiling at 22:00
+    startMinutes: Math.max(6 * 60, Math.min(...starts) - 60),
+    endMinutes: Math.min(22 * 60, Math.max(...ends) + 60),
   };
 }
 
@@ -109,11 +124,6 @@ export function computeActivityPosition(
   };
 }
 
-/**
- * Groups activities that overlap in time. Each returned sub-array contains
- * activities that share at least one overlapping neighbour and should be
- * rendered side-by-side. Singleton groups are non-overlapping activities.
- */
 export function groupOverlappingActivities(activities: Activity[]): Activity[][] {
   const sorted = [...activities].sort(
     (a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime)
@@ -145,6 +155,24 @@ export function groupOverlappingActivities(activities: Activity[]): Activity[][]
   return groups;
 }
 
+/**
+ * Translates a drag delta (px) into a snapped minute offset.
+ * Returns `valid: false` if the drag would push the activity past midnight.
+ */
+export function computeDragOffset(
+  deltaY: number,
+  originalStartMinutes: number,
+  durationMinutes: number
+): { offsetMinutes: number; valid: boolean } {
+  const snapMinutes = 30;
+  const rawOffset = (deltaY / ROW_HEIGHT_PX) * 60;
+  const snapped = Math.round(rawOffset / snapMinutes) * snapMinutes;
+  const newStart = Math.max(0, Math.min(23 * 60 + 30, originalStartMinutes + snapped));
+  const newEnd = newStart + durationMinutes;
+  if (newEnd > 24 * 60) return { offsetMinutes: 0, valid: false };
+  return { offsetMinutes: newStart - originalStartMinutes, valid: true };
+}
+
 // ─── DailyActivityCard ────────────────────────────────────────────────────────
 
 interface DailyActivityCardProps {
@@ -153,7 +181,6 @@ interface DailyActivityCardProps {
   onToggle: (id: number, checked: boolean) => void;
   onEdit: (activity: Activity) => void;
   onLogAndComplete: (activityTypeId: number, activityId: number) => void;
-  /** When true the card fills its parent via a plain div (used in the Logged section). */
   relative?: boolean;
 }
 
@@ -177,10 +204,10 @@ function DailyActivityCard({
   return (
     <div
       className={cn(
-        "group rounded-lg border cursor-pointer hover:bg-accent/50 transition-colors overflow-hidden",
+        "group h-full rounded-lg border cursor-pointer hover:bg-accent/50 transition-colors overflow-hidden",
         getSessionTypeCardClasses(sessionType),
         activity.isCompleted && "opacity-50",
-        relative ? "p-3" : "absolute inset-0 p-2"
+        relative ? "p-3" : "p-2"
       )}
       style={{
         borderLeftWidth: "3px",
@@ -244,19 +271,153 @@ function DailyActivityCard({
   );
 }
 
+// ─── DraggableActivityWrapper ─────────────────────────────────────────────────
+
+interface DraggableActivityWrapperProps {
+  activity: Activity;
+  goals: Goal[];
+  top: number;
+  height: number;
+  leftPct: number;
+  widthPct: number;
+  hasError: boolean;
+  onToggle: (id: number, checked: boolean) => void;
+  onEdit: (activity: Activity) => void;
+  onLogAndComplete: (activityTypeId: number, activityId: number) => void;
+}
+
+function DraggableActivityWrapper({
+  activity,
+  goals,
+  top,
+  height,
+  leftPct,
+  widthPct,
+  hasError,
+  onToggle,
+  onEdit,
+  onLogAndComplete,
+}: DraggableActivityWrapperProps) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: activity.id.toString(),
+    disabled: activity.isCompleted,
+  });
+
+  // Derive snapped label directly from useDraggable's own transform — avoids
+  // a parent state update (and full-tree re-render) on every mousemove event.
+  const snappedOffsetMin = isDragging
+    ? Math.round(((transform?.y ?? 0) / ROW_HEIGHT_PX) * 60 / 30) * 30
+    : 0;
+  const startMin = timeToMinutes(activity.startTime);
+  const snappedStartMin = Math.max(0, Math.min(23 * 60 + 30, startMin + snappedOffsetMin));
+
+  const posStyle: React.CSSProperties = {
+    position: "absolute",
+    top,
+    height,
+    left: `${leftPct}%`,
+    width: `calc(${widthPct}% - 2px)`,
+    zIndex: isDragging ? 100 : 10,
+    transform: transform ? `translate(0px, ${transform.y}px)` : undefined,
+    opacity: isDragging ? 0.9 : 1,
+    touchAction: "none",
+  };
+
+  return (
+    <>
+      {/* Ghost at original slot while dragging */}
+      {isDragging && (
+        <div
+          className="absolute rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/20"
+          style={{
+            top,
+            height,
+            left: `${leftPct}%`,
+            width: `calc(${widthPct}% - 2px)`,
+            zIndex: 5,
+          }}
+        />
+      )}
+
+      <div
+        ref={setNodeRef}
+        className="px-0.5"
+        style={posStyle}
+        {...(!activity.isCompleted ? listeners : {})}
+        {...(!activity.isCompleted ? attributes : {})}
+      >
+        <DailyActivityCard
+          activity={activity}
+          goals={goals}
+          onToggle={onToggle}
+          onEdit={onEdit}
+          onLogAndComplete={onLogAndComplete}
+        />
+
+        {/* Floating time label during drag */}
+        {isDragging && (
+          <div className="absolute -top-6 left-0 z-50 rounded border bg-background px-1.5 py-0.5 text-[10px] font-medium shadow-sm whitespace-nowrap pointer-events-none">
+            {minutesToTimeString(snappedStartMin)}
+          </div>
+        )}
+
+        {/* Inline error after failed reschedule */}
+        {hasError && (
+          <div className="absolute -bottom-5 left-0 z-50 text-[10px] text-destructive whitespace-nowrap pointer-events-none">
+            Could not reschedule — reverted
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+// ─── TimelineSurface (Droppable) ──────────────────────────────────────────────
+
+function TimelineSurface({
+  hours,
+  totalHeight,
+  onAdd,
+  children,
+}: {
+  hours: number[];
+  totalHeight: number;
+  onAdd: (startTime: string) => void;
+  children: React.ReactNode;
+}) {
+  const { setNodeRef } = useDroppable({ id: "timeline" });
+
+  return (
+    <div ref={setNodeRef} className="relative flex-1 border-l border-border/30">
+      {/* Hour grid lines */}
+      {hours.map((hour, i) => (
+        <div
+          key={hour}
+          className="absolute inset-x-0 border-t border-border/20 cursor-pointer hover:bg-accent/20 transition-colors"
+          style={{ top: i * ROW_HEIGHT_PX, height: ROW_HEIGHT_PX }}
+          onClick={() => onAdd(`${String(hour).padStart(2, "0")}:00`)}
+        />
+      ))}
+      {children}
+    </div>
+  );
+}
+
 // ─── HourlyTimeline ───────────────────────────────────────────────────────────
 
 export interface HourlyTimelineProps {
   activities: Activity[];
   goals: Goal[];
-  /** Called when the user checks or unchecks an activity. */
   onToggle: (id: number, checked: boolean) => void;
-  /** Called when the user clicks on an activity card to edit it. */
   onEdit: (activity: Activity) => void;
-  /** Called when the user clicks an empty hour slot. `startTime` is "HH:MM". */
   onAdd: (startTime: string) => void;
-  /** Called when the user clicks the Log & Complete icon on a card. */
   onLogAndComplete: (activityTypeId: number, activityId: number) => void;
+  /**
+   * Called when the user drags an activity to a new time slot.
+   * Should PATCH /api/activities/:id with the new startTime and endTime.
+   * Throw (or return a rejected promise) on failure so the timeline can revert.
+   */
+  onReschedule: (id: number, startTime: string, endTime: string) => Promise<void>;
 }
 
 export function HourlyTimeline({
@@ -266,12 +427,33 @@ export function HourlyTimeline({
   onEdit,
   onAdd,
   onLogAndComplete,
+  onReschedule,
 }: HourlyTimelineProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Split: activities with a meaningful time slot vs those created from logs
-  const timelineActivities = activities.filter((a) => !a.createdFromLog);
-  const loggedActivities = activities.filter((a) => a.createdFromLog);
+  // Optimistic time overrides: activityId → { startTime, endTime }
+  const [timeOverrides, setTimeOverrides] = useState<
+    Map<number, { startTime: string; endTime: string }>
+  >(new Map());
+  // ID of the activity whose last reschedule failed (shows inline error)
+  const [rescheduleErrorId, setRescheduleErrorId] = useState<number | null>(null);
+
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } })
+  );
+
+  // Apply optimistic time overrides before computing layout
+  const resolvedActivities = useMemo(
+    () =>
+      activities.map((a) => {
+        const ov = timeOverrides.get(a.id);
+        return ov ? { ...a, ...ov } : a;
+      }),
+    [activities, timeOverrides]
+  );
+
+  const timelineActivities = resolvedActivities.filter((a) => !a.createdFromLog);
+  const loggedActivities = resolvedActivities.filter((a) => a.createdFromLog);
 
   const { startMinutes, endMinutes } = computeVisibleRange(timelineActivities);
   const startHour = Math.floor(startMinutes / 60);
@@ -279,7 +461,6 @@ export function HourlyTimeline({
   const hours = Array.from({ length: endHour - startHour }, (_, i) => startHour + i);
   const totalHeight = hours.length * ROW_HEIGHT_PX;
 
-  // Column layout for overlapping activities
   const groups = groupOverlappingActivities(timelineActivities);
   const columnInfo = new Map<number, { columnIndex: number; columnCount: number }>();
   for (const group of groups) {
@@ -288,22 +469,61 @@ export function HourlyTimeline({
     });
   }
 
-  // Scroll so the current hour (minus 1) is at the top on mount
+  // Scroll to current hour on mount
   useEffect(() => {
     if (!scrollRef.current) return;
     const currentHour = new Date().getHours();
     const earliestHour =
       timelineActivities.length > 0
-        ? Math.floor(Math.min(...timelineActivities.map((a) => timeToMinutes(a.startTime))) / 60)
+        ? Math.floor(
+            Math.min(...timelineActivities.map((a) => timeToMinutes(a.startTime))) / 60
+          )
         : currentHour;
     const targetHour = Math.max(currentHour - 1, earliestHour - 1);
     const clampedHour = Math.max(startHour, Math.min(endHour - 1, targetHour));
     scrollRef.current.scrollTop = (clampedHour - startHour) * ROW_HEIGHT_PX;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // intentionally runs once on mount only
+  }, []);
+
+  async function handleDragEnd({ active, delta }: DragEndEvent) {
+    const activityId = Number(active.id);
+    // Use original (non-overridden) times for computing the offset
+    const original = activities.find((a) => a.id === activityId);
+    if (!original) return;
+
+    const startMin = timeToMinutes(original.startTime);
+    const endMin = timeToMinutes(original.endTime);
+    const durationMin = endMin > startMin ? endMin - startMin : 60;
+
+    const { offsetMinutes, valid } = computeDragOffset(delta.y, startMin, durationMin);
+    if (!valid || offsetMinutes === 0) return;
+
+    const newStartTime = minutesToTimeString(startMin + offsetMinutes);
+    const newEndTime = minutesToTimeString(startMin + offsetMinutes + durationMin);
+
+    // Optimistically position the card at the new time
+    setTimeOverrides((prev) =>
+      new Map(prev).set(activityId, { startTime: newStartTime, endTime: newEndTime })
+    );
+
+    try {
+      await onReschedule(activityId, newStartTime, newEndTime);
+    } catch {
+      setTimeOverrides((prev) => {
+        const next = new Map(prev);
+        next.delete(activityId);
+        return next;
+      });
+      setRescheduleErrorId(activityId);
+      setTimeout(() => setRescheduleErrorId(null), 3000);
+    }
+  }
 
   return (
-    <div>
+    <DndContext
+      sensors={sensors}
+      onDragEnd={handleDragEnd}
+    >
       {/* Scrollable timeline */}
       <div ref={scrollRef} className="overflow-y-auto max-h-[560px]">
         <div className="relative flex" style={{ height: totalHeight }}>
@@ -322,21 +542,12 @@ export function HourlyTimeline({
             ))}
           </div>
 
-          {/* Activity surface */}
-          <div className="relative flex-1 border-l border-border/30">
-            {/* Hour grid lines — clickable to open Add Activity pre-filled with that slot */}
-            {hours.map((hour, i) => (
-              <div
-                key={hour}
-                className="absolute inset-x-0 border-t border-border/20 cursor-pointer hover:bg-accent/20 transition-colors"
-                style={{ top: i * ROW_HEIGHT_PX, height: ROW_HEIGHT_PX }}
-                onClick={() =>
-                  onAdd(`${String(hour).padStart(2, "0")}:00`)
-                }
-              />
-            ))}
-
-            {/* Activity cards */}
+          {/* Droppable activity surface */}
+          <TimelineSurface
+            hours={hours}
+            totalHeight={totalHeight}
+            onAdd={onAdd}
+          >
             {timelineActivities.map((activity) => {
               const { top, height } = computeActivityPosition(activity, startMinutes);
               const info = columnInfo.get(activity.id) ?? {
@@ -347,28 +558,22 @@ export function HourlyTimeline({
               const leftPct = widthPct * info.columnIndex;
 
               return (
-                <div
+                <DraggableActivityWrapper
                   key={activity.id}
-                  className="absolute px-0.5"
-                  style={{
-                    top,
-                    height,
-                    left: `${leftPct}%`,
-                    width: `calc(${widthPct}% - 2px)`,
-                    zIndex: 10,
-                  }}
-                >
-                  <DailyActivityCard
-                    activity={activity}
-                    goals={goals}
-                    onToggle={onToggle}
-                    onEdit={onEdit}
-                    onLogAndComplete={onLogAndComplete}
-                  />
-                </div>
+                  activity={activity}
+                  goals={goals}
+                  top={top}
+                  height={height}
+                  leftPct={leftPct}
+                  widthPct={widthPct}
+                  hasError={rescheduleErrorId === activity.id}
+                  onToggle={onToggle}
+                  onEdit={onEdit}
+                  onLogAndComplete={onLogAndComplete}
+                />
               );
             })}
-          </div>
+          </TimelineSurface>
         </div>
       </div>
 
@@ -392,6 +597,6 @@ export function HourlyTimeline({
           ))}
         </div>
       )}
-    </div>
+    </DndContext>
   );
 }

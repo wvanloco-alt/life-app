@@ -285,6 +285,15 @@ export function DailyView() {
     void performDelete(activity.id);
   }
 
+  async function handleTimeReschedule(id: number, startTime: string, endTime: string) {
+    const res = await fetch(`/api/activities/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ startTime, endTime }),
+    });
+    if (!res.ok) throw new Error("Reschedule failed");
+  }
+
   async function handleSaveActivity(data: {
     title: string;
     activityDate: string;
@@ -515,6 +524,7 @@ export function DailyView() {
                       setLogDialogActivity({ activityTypeId, activityId });
                       setLogDialogOpen(true);
                     }}
+                    onReschedule={handleTimeReschedule}
                   />
                 )}
               </CardContent>
