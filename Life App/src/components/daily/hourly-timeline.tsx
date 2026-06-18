@@ -9,8 +9,6 @@ import {
   useDraggable,
   useDroppable,
   type DragEndEvent,
-  type DragMoveEvent,
-  type DragStartEvent,
 } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -282,8 +280,6 @@ interface DraggableActivityWrapperProps {
   height: number;
   leftPct: number;
   widthPct: number;
-  isActive: boolean;
-  activeTransformY: number;
   hasError: boolean;
   onToggle: (id: number, checked: boolean) => void;
   onEdit: (activity: Activity) => void;
@@ -297,21 +293,20 @@ function DraggableActivityWrapper({
   height,
   leftPct,
   widthPct,
-  isActive,
-  activeTransformY,
   hasError,
   onToggle,
   onEdit,
   onLogAndComplete,
 }: DraggableActivityWrapperProps) {
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: activity.id.toString(),
     disabled: activity.isCompleted,
   });
 
-  // Compute snapped start time for floating label
-  const snappedOffsetMin = isActive
-    ? Math.round(((activeTransformY / ROW_HEIGHT_PX) * 60) / 30) * 30
+  // Derive snapped label directly from useDraggable's own transform — avoids
+  // a parent state update (and full-tree re-render) on every mousemove event.
+  const snappedOffsetMin = isDragging
+    ? Math.round(((transform?.y ?? 0) / ROW_HEIGHT_PX) * 60 / 30) * 30
     : 0;
   const startMin = timeToMinutes(activity.startTime);
   const snappedStartMin = Math.max(0, Math.min(23 * 60 + 30, startMin + snappedOffsetMin));
@@ -322,16 +317,16 @@ function DraggableActivityWrapper({
     height,
     left: `${leftPct}%`,
     width: `calc(${widthPct}% - 2px)`,
-    zIndex: isActive ? 100 : 10,
+    zIndex: isDragging ? 100 : 10,
     transform: transform ? `translate(0px, ${transform.y}px)` : undefined,
-    opacity: isActive ? 0.9 : 1,
+    opacity: isDragging ? 0.9 : 1,
     touchAction: "none",
   };
 
   return (
     <>
       {/* Ghost at original slot while dragging */}
-      {isActive && (
+      {isDragging && (
         <div
           className="absolute rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/20"
           style={{
@@ -360,7 +355,7 @@ function DraggableActivityWrapper({
         />
 
         {/* Floating time label during drag */}
-        {isActive && (
+        {isDragging && (
           <div className="absolute -top-6 left-0 z-50 rounded border bg-background px-1.5 py-0.5 text-[10px] font-medium shadow-sm whitespace-nowrap pointer-events-none">
             {minutesToTimeString(snappedStartMin)}
           </div>
@@ -422,7 +417,7 @@ export interface HourlyTimelineProps {
    * Should PATCH /api/activities/:id with the new startTime and endTime.
    * Throw (or return a rejected promise) on failure so the timeline can revert.
    */
-  onReschedule?: (id: number, startTime: string, endTime: string) => Promise<void>;
+  onReschedule: (id: number, startTime: string, endTime: string) => Promise<void>;
 }
 
 export function HourlyTimeline({
@@ -436,9 +431,6 @@ export function HourlyTimeline({
 }: HourlyTimelineProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Drag state
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [activeTransformY, setActiveTransformY] = useState(0);
   // Optimistic time overrides: activityId → { startTime, endTime }
   const [timeOverrides, setTimeOverrides] = useState<
     Map<number, { startTime: string; endTime: string }>
@@ -447,7 +439,7 @@ export function HourlyTimeline({
   const [rescheduleErrorId, setRescheduleErrorId] = useState<number | null>(null);
 
   const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 5 } })
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } })
   );
 
   // Apply optimistic time overrides before computing layout
@@ -493,23 +485,11 @@ export function HourlyTimeline({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function handleDragStart({ active }: DragStartEvent) {
-    setActiveId(active.id.toString());
-    setActiveTransformY(0);
-  }
-
-  function handleDragMove({ delta }: DragMoveEvent) {
-    setActiveTransformY(delta.y);
-  }
-
   async function handleDragEnd({ active, delta }: DragEndEvent) {
-    setActiveId(null);
-    setActiveTransformY(0);
-
     const activityId = Number(active.id);
     // Use original (non-overridden) times for computing the offset
     const original = activities.find((a) => a.id === activityId);
-    if (!original || !onReschedule) return;
+    if (!original) return;
 
     const startMin = timeToMinutes(original.startTime);
     const endMin = timeToMinutes(original.endTime);
@@ -539,18 +519,10 @@ export function HourlyTimeline({
     }
   }
 
-  function handleDragCancel() {
-    setActiveId(null);
-    setActiveTransformY(0);
-  }
-
   return (
     <DndContext
       sensors={sensors}
-      onDragStart={handleDragStart}
-      onDragMove={handleDragMove}
       onDragEnd={handleDragEnd}
-      onDragCancel={handleDragCancel}
     >
       {/* Scrollable timeline */}
       <div ref={scrollRef} className="overflow-y-auto max-h-[560px]">
@@ -594,8 +566,6 @@ export function HourlyTimeline({
                   height={height}
                   leftPct={leftPct}
                   widthPct={widthPct}
-                  isActive={activeId === activity.id.toString()}
-                  activeTransformY={activeTransformY}
                   hasError={rescheduleErrorId === activity.id}
                   onToggle={onToggle}
                   onEdit={onEdit}
