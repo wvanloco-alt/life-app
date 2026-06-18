@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,46 @@ import {
 } from "@/lib/session-type-styles";
 import { getQuadrantInfo } from "@/lib/quadrants";
 import type { Activity, Goal } from "@/types";
+
+// ─── NotesPreview ─────────────────────────────────────────────────────────────
+
+function NotesPreview({ notes }: { notes: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const firstLine = notes.split("\n")[0];
+  const isLong = notes.length > 120 || notes.includes("\n\n");
+
+  if (!isLong) {
+    return <p className="text-[10px] text-muted-foreground mt-0.5">{notes}</p>;
+  }
+
+  return (
+    <div className="mt-0.5" onClick={(e) => e.stopPropagation()}>
+      {expanded ? (
+        <div className="text-[10px] text-muted-foreground space-y-1">
+          {notes.split("\n\n").map((block, i) => (
+            <p key={i} className="leading-relaxed">{block}</p>
+          ))}
+          <button
+            className="text-primary hover:underline"
+            onClick={() => setExpanded(false)}
+          >
+            Show less
+          </button>
+        </div>
+      ) : (
+        <p className="text-[10px] text-muted-foreground">
+          <span className="line-clamp-1">{firstLine}</span>
+          <button
+            className="text-primary hover:underline ml-1"
+            onClick={() => setExpanded(true)}
+          >
+            Show more
+          </button>
+        </p>
+      )}
+    </div>
+  );
+}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -32,6 +72,12 @@ function minutesToHourLabel(totalMinutes: number): string {
   return `${display} ${ampm}`;
 }
 
+/**
+ * Computes the visible hour range for the timeline.
+ * Expects only activities with `createdFromLog === false` (i.e. those with
+ * meaningful startTime/endTime). Passing unfiltered activities may skew the
+ * range if log-created entries carry synthetic or zero-duration times.
+ */
 export function computeVisibleRange(
   activities: Activity[]
 ): { startMinutes: number; endMinutes: number } {
@@ -134,7 +180,7 @@ function DailyActivityCard({
         "group rounded-lg border cursor-pointer hover:bg-accent/50 transition-colors overflow-hidden",
         getSessionTypeCardClasses(sessionType),
         activity.isCompleted && "opacity-50",
-        relative ? "p-3" : "absolute p-2"
+        relative ? "p-3" : "absolute inset-0 p-2"
       )}
       style={{
         borderLeftWidth: "3px",
@@ -177,11 +223,7 @@ function DailyActivityCard({
               {activity.roleName}
             </p>
           )}
-          {activity.notes && (
-            <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">
-              {activity.notes}
-            </p>
-          )}
+          {activity.notes && <NotesPreview notes={activity.notes} />}
         </div>
         {canLogAndComplete && (
           <Button
