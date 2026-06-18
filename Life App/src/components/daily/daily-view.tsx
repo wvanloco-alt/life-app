@@ -123,8 +123,9 @@ export function DailyView() {
   const [loading, setLoading] = useState(true);
   const [focusGoals, setFocusGoals] = useState<Goal[]>([]);
   const [trainingPhaseInfo, setTrainingPhaseInfo] = useState<
-    Record<number, { phaseName: string; phaseStartDate: string; durationWeeks: number }>
+    Record<number, { phaseName: string; phaseStartDate: string; durationWeeks: number; sportFocusContent?: string | null; supplementalContent?: string | null }>
   >({});
+  const [weekActivities, setWeekActivities] = useState<Activity[]>([]);
 
   const [formOpen, setFormOpen] = useState(false);
   const [logDialogOpen, setLogDialogOpen] = useState(false);
@@ -187,7 +188,10 @@ export function DailyView() {
     setActivityLogs(logsData);
     setActivityTypes(typesData);
 
-    const incomplete = (weekData as Activity[]).filter(
+    const week = weekData as Activity[];
+    setWeekActivities(week);
+
+    const incomplete = week.filter(
       (a) => !a.isCompleted && a.activityDate < dateStr
     );
     setCarryForward(incomplete);
@@ -201,11 +205,11 @@ export function DailyView() {
       if (planRes.ok) {
         const planData: Array<{
           goalId: number;
-          phases: Array<{ status: string; phaseType: string; startDate: string; durationWeeks: number }>;
+          phases: Array<{ status: string; phaseType: string; startDate: string; durationWeeks: number; sportFocusContent?: string | null; supplementalContent?: string | null }>;
         }> = await planRes.json();
         const phaseMap: Record<
           number,
-          { phaseName: string; phaseStartDate: string; durationWeeks: number }
+          { phaseName: string; phaseStartDate: string; durationWeeks: number; sportFocusContent?: string | null; supplementalContent?: string | null }
         > = {};
         for (const plan of planData) {
           const activePhase = plan.phases.find((ph) => ph.status === "active");
@@ -214,6 +218,8 @@ export function DailyView() {
               phaseName: getPhaseDisplayName(activePhase.phaseType),
               phaseStartDate: activePhase.startDate,
               durationWeeks: activePhase.durationWeeks,
+              sportFocusContent: activePhase.sportFocusContent ?? null,
+              supplementalContent: activePhase.supplementalContent ?? null,
             };
           }
         }
@@ -729,6 +735,12 @@ export function DailyView() {
         trainingPhaseInfo={trainingPhaseInfo}
         loading={loading}
         heading="Focus today"
+        weekActivities={weekActivities}
+        today={dateStr}
+        onLogActivity={(goal) => {
+          setLogDialogActivity({ activityTypeId: goal.activityTypeId ?? undefined });
+          setLogDialogOpen(true);
+        }}
       />
 
       <ActivityForm
