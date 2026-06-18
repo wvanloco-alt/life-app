@@ -418,9 +418,9 @@ export function DailyView() {
     if (res.ok) {
       setActivities((prev) => prev.filter((a) => a.id !== id));
       setCarryForward((prev) => prev.filter((a) => a.id !== id));
+      setWeekActivities((prev) => prev.filter((a) => a.id !== id));
       setFormOpen(false);
       setEditingActivity(null);
-      await fetchData();
     }
   }
 
