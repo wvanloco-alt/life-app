@@ -141,6 +141,7 @@ export function WeeklyPlanView() {
   const fetchAll = useCallback(async () => {
     const ws = getWeekStartDate(new Date(currentMonth + "-01T00:00:00"));
     setLoading(true);
+    try {
 
     const fetches = [
       fetch(`/api/weekly-plans?week=${ws}`),
@@ -197,8 +198,9 @@ export function WeeklyPlanView() {
       setTrainingPlanData({});
       setTrainingPhaseInfo({});
     }
-
-    setLoading(false);
+    } finally {
+      setLoading(false);
+    }
   }, [currentMonth]);
 
   useEffect(() => {

@@ -160,6 +160,7 @@ export function DailyView() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
+    try {
     const weekStart = getWeekStartDate(currentDate);
 
     const [actRes, weekRes, rolesRes, goalsRes, logsRes, typesRes, focusRes] = await Promise.all([
@@ -228,8 +229,9 @@ export function DailyView() {
     } else {
       setTrainingPhaseInfo({});
     }
-
-    setLoading(false);
+    } finally {
+      setLoading(false);
+    }
   }, [dateStr, currentDate]);
 
   useEffect(() => {
