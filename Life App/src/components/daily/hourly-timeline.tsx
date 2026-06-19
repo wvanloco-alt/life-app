@@ -66,6 +66,8 @@ function NotesPreview({ notes }: { notes: string }) {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 export const ROW_HEIGHT_PX = 64; // 1 hour = 64 px
+export const FULL_DAY_START_MINUTES = 6 * 60; // 6:00 AM
+export const FULL_DAY_END_MINUTES = 24 * 60; // midnight (end of day)
 
 // ─── Pure helpers (exported for unit tests) ───────────────────────────────────
 
@@ -88,26 +90,15 @@ function minutesToHourLabel(totalMinutes: number): string {
 }
 
 /**
- * Computes the visible hour range for the timeline.
- * Expects only activities with `createdFromLog === false` (i.e. those with
- * meaningful startTime/endTime). Passing unfiltered activities may skew the
- * range if log-created entries carry synthetic or zero-duration times.
+ * Returns the full-day hour range shown in the timeline (6:00 AM – midnight).
+ * Activities are positioned within this range regardless of when they occur.
  */
 export function computeVisibleRange(
-  activities: Activity[]
+  _activities: Activity[]
 ): { startMinutes: number; endMinutes: number } {
-  if (activities.length === 0) {
-    return { startMinutes: 7 * 60, endMinutes: 20 * 60 }; // 07:00–20:00 default
-  }
-  const starts = activities.map((a) => timeToMinutes(a.startTime));
-  const ends = activities.map((a) => {
-    const s = timeToMinutes(a.startTime);
-    const e = timeToMinutes(a.endTime);
-    return e > s ? e : s + 60;
-  });
   return {
-    startMinutes: Math.max(6 * 60, Math.min(...starts) - 60),
-    endMinutes: Math.min(22 * 60, Math.max(...ends) + 60),
+    startMinutes: FULL_DAY_START_MINUTES,
+    endMinutes: FULL_DAY_END_MINUTES,
   };
 }
 
@@ -524,8 +515,11 @@ export function HourlyTimeline({
       sensors={sensors}
       onDragEnd={handleDragEnd}
     >
-      {/* Scrollable timeline */}
-      <div ref={scrollRef} className="overflow-y-auto max-h-[560px]">
+      {/* Scrollable timeline — fills remaining viewport height */}
+      <div
+        ref={scrollRef}
+        className="overflow-y-auto min-h-[calc(100dvh-280px)] max-h-[calc(100dvh-240px)]"
+      >
         <div className="relative flex" style={{ height: totalHeight }}>
           {/* Time label column */}
           <div className="w-12 shrink-0 select-none" aria-hidden="true">
