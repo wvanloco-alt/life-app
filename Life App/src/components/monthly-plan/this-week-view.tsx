@@ -84,6 +84,7 @@ export function ThisWeekView() {
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
+    try {
     const responses = await Promise.all([
       fetch("/api/roles"),
       fetch(`/api/weekly-plans/${getFocusGoalWeekKey(new Date(currentWeekMonday + "T12:00:00Z"))}/goals`),
@@ -137,8 +138,9 @@ export function ThisWeekView() {
       setTrainingPlanData({});
       setTrainingPhaseInfo({});
     }
-
-    setLoading(false);
+    } finally {
+      setLoading(false);
+    }
   }, [currentWeekMonday]);
 
   useEffect(() => {
