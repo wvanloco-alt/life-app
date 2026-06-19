@@ -60,41 +60,41 @@ describe("timeToMinutes", () => {
 // ─── computeVisibleRange ──────────────────────────────────────────────────────
 
 describe("computeVisibleRange", () => {
-  it("returns 07:00–20:00 for empty activities", () => {
+  it("returns 06:00–24:00 for empty activities", () => {
     const { startMinutes, endMinutes } = computeVisibleRange([]);
-    expect(startMinutes).toBe(7 * 60);
-    expect(endMinutes).toBe(20 * 60);
+    expect(startMinutes).toBe(6 * 60);
+    expect(endMinutes).toBe(24 * 60);
   });
 
-  it("adds 1-hour buffer around a single activity", () => {
+  it("returns full day regardless of activity times", () => {
     const acts = [makeActivity(1, "09:00", "10:00")];
     const { startMinutes, endMinutes } = computeVisibleRange(acts);
-    // start = max(6*60, 540 - 60) = max(360, 480) = 480  → 08:00
-    expect(startMinutes).toBe(8 * 60);
-    // end   = min(22*60, 600 + 60) = min(1320, 660) = 660 → 11:00
-    expect(endMinutes).toBe(11 * 60);
+    expect(startMinutes).toBe(6 * 60);
+    expect(endMinutes).toBe(24 * 60);
   });
 
-  it("does not go below 06:00 even with an early activity", () => {
+  it("returns full day for early activities", () => {
     const acts = [makeActivity(1, "05:30", "06:30")];
-    const { startMinutes } = computeVisibleRange(acts);
-    expect(startMinutes).toBe(6 * 60); // floored at 06:00
+    const { startMinutes, endMinutes } = computeVisibleRange(acts);
+    expect(startMinutes).toBe(6 * 60);
+    expect(endMinutes).toBe(24 * 60);
   });
 
-  it("does not exceed 22:00 with a late activity", () => {
+  it("returns full day for late activities", () => {
     const acts = [makeActivity(1, "21:00", "22:30")];
-    const { endMinutes } = computeVisibleRange(acts);
-    expect(endMinutes).toBe(22 * 60); // capped at 22:00
+    const { startMinutes, endMinutes } = computeVisibleRange(acts);
+    expect(startMinutes).toBe(6 * 60);
+    expect(endMinutes).toBe(24 * 60);
   });
 
-  it("spans the full range of multiple activities", () => {
+  it("returns full day for multiple activities", () => {
     const acts = [
       makeActivity(1, "08:00", "09:00"),
       makeActivity(2, "15:00", "16:30"),
     ];
     const { startMinutes, endMinutes } = computeVisibleRange(acts);
-    expect(startMinutes).toBe(7 * 60); // max(360, 480-60)=max(360,420)=420
-    expect(endMinutes).toBe(17 * 60 + 30); // min(1320, 990+60)=min(1320,1050)=1050
+    expect(startMinutes).toBe(6 * 60);
+    expect(endMinutes).toBe(24 * 60);
   });
 });
 
