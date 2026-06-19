@@ -2,11 +2,12 @@ import { describe, it, expect } from "vitest";
 import {
   timeToMinutes,
   minutesToTimeString,
-  computeVisibleRange,
   computeActivityPosition,
   groupOverlappingActivities,
   computeDragOffset,
   ROW_HEIGHT_PX,
+  FULL_DAY_START_MINUTES,
+  FULL_DAY_END_MINUTES,
 } from "@/components/daily/hourly-timeline";
 import type { Activity } from "@/types";
 
@@ -57,44 +58,12 @@ describe("timeToMinutes", () => {
   });
 });
 
-// ─── computeVisibleRange ──────────────────────────────────────────────────────
+// ─── full-day range constants ─────────────────────────────────────────────────
 
-describe("computeVisibleRange", () => {
-  it("returns 06:00–24:00 for empty activities", () => {
-    const { startMinutes, endMinutes } = computeVisibleRange([]);
-    expect(startMinutes).toBe(6 * 60);
-    expect(endMinutes).toBe(24 * 60);
-  });
-
-  it("returns full day regardless of activity times", () => {
-    const acts = [makeActivity(1, "09:00", "10:00")];
-    const { startMinutes, endMinutes } = computeVisibleRange(acts);
-    expect(startMinutes).toBe(6 * 60);
-    expect(endMinutes).toBe(24 * 60);
-  });
-
-  it("returns full day for early activities", () => {
-    const acts = [makeActivity(1, "05:30", "06:30")];
-    const { startMinutes, endMinutes } = computeVisibleRange(acts);
-    expect(startMinutes).toBe(6 * 60);
-    expect(endMinutes).toBe(24 * 60);
-  });
-
-  it("returns full day for late activities", () => {
-    const acts = [makeActivity(1, "21:00", "22:30")];
-    const { startMinutes, endMinutes } = computeVisibleRange(acts);
-    expect(startMinutes).toBe(6 * 60);
-    expect(endMinutes).toBe(24 * 60);
-  });
-
-  it("returns full day for multiple activities", () => {
-    const acts = [
-      makeActivity(1, "08:00", "09:00"),
-      makeActivity(2, "15:00", "16:30"),
-    ];
-    const { startMinutes, endMinutes } = computeVisibleRange(acts);
-    expect(startMinutes).toBe(6 * 60);
-    expect(endMinutes).toBe(24 * 60);
+describe("full-day range constants", () => {
+  it("spans 06:00–24:00", () => {
+    expect(FULL_DAY_START_MINUTES).toBe(6 * 60);
+    expect(FULL_DAY_END_MINUTES).toBe(24 * 60);
   });
 });
 

@@ -69,6 +69,11 @@ export const ROW_HEIGHT_PX = 64; // 1 hour = 64 px
 export const FULL_DAY_START_MINUTES = 6 * 60; // 6:00 AM
 export const FULL_DAY_END_MINUTES = 24 * 60; // midnight (end of day)
 
+/** Combined height of chrome above the timeline scroll area on Today. */
+export const TIMELINE_MIN_VIEWPORT_OFFSET_PX = 280;
+/** Slightly tighter offset for max-height (excludes bottom card padding). */
+export const TIMELINE_MAX_VIEWPORT_OFFSET_PX = 240;
+
 // ─── Pure helpers (exported for unit tests) ───────────────────────────────────
 
 export function timeToMinutes(time: string): number {
@@ -87,19 +92,6 @@ function minutesToHourLabel(totalMinutes: number): string {
   const ampm = h < 12 ? "AM" : "PM";
   const display = h === 0 ? 12 : h > 12 ? h - 12 : h;
   return `${display} ${ampm}`;
-}
-
-/**
- * Returns the full-day hour range shown in the timeline (6:00 AM – midnight).
- * Activities are positioned within this range regardless of when they occur.
- */
-export function computeVisibleRange(
-  _activities: Activity[]
-): { startMinutes: number; endMinutes: number } {
-  return {
-    startMinutes: FULL_DAY_START_MINUTES,
-    endMinutes: FULL_DAY_END_MINUTES,
-  };
 }
 
 export function computeActivityPosition(
@@ -446,7 +438,8 @@ export function HourlyTimeline({
   const timelineActivities = resolvedActivities.filter((a) => !a.createdFromLog);
   const loggedActivities = resolvedActivities.filter((a) => a.createdFromLog);
 
-  const { startMinutes, endMinutes } = computeVisibleRange(timelineActivities);
+  const startMinutes = FULL_DAY_START_MINUTES;
+  const endMinutes = FULL_DAY_END_MINUTES;
   const startHour = Math.floor(startMinutes / 60);
   const endHour = Math.ceil(endMinutes / 60);
   const hours = Array.from({ length: endHour - startHour }, (_, i) => startHour + i);
@@ -515,10 +508,15 @@ export function HourlyTimeline({
       sensors={sensors}
       onDragEnd={handleDragEnd}
     >
-      {/* Scrollable timeline — fills remaining viewport height */}
+      {/* Scrollable timeline — fills remaining viewport height. Offsets account for
+          page header, carry-forward banner, schedule card header, and summary row. */}
       <div
         ref={scrollRef}
-        className="overflow-y-auto min-h-[calc(100dvh-280px)] max-h-[calc(100dvh-240px)]"
+        className="overflow-y-auto"
+        style={{
+          minHeight: `calc(100dvh - ${TIMELINE_MIN_VIEWPORT_OFFSET_PX}px)`,
+          maxHeight: `calc(100dvh - ${TIMELINE_MAX_VIEWPORT_OFFSET_PX}px)`,
+        }}
       >
         <div className="relative flex" style={{ height: totalHeight }}>
           {/* Time label column */}
