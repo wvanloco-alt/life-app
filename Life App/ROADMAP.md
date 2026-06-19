@@ -1,6 +1,6 @@
 ﻿# Life App -- Feature Roadmap
 
-> Last updated: 2026-06-05.
+> Last updated: 2026-06-19.
 
 ## Product Vision
 
@@ -822,6 +822,66 @@ The refactor introduces three new shared UI primitives (icon registry, `LucideIc
 **Routes added**: `GET /api/body-profile`, `PATCH /api/body-profile`
 
 **Dependencies**: Feature 2 (body metrics logging — built).
+
+---
+
+### Training Plan Discipline Parity
+
+**Spec ID**: `training-plan-discipline-parity`
+**Status**: Built (complete — PRs #73, #74, #75, #76)
+**Completed**: 2026-06-18
+
+**What it does**: Brings tennis and running training plans up to the same level as climbing across all three axes: shared UI components for split configuration, universal "Edit plan" access from the Goals page, phase content layers surfaced to the scheduler, and mutual exclusion between session patterns and training plan splits.
+
+**What has been built**:
+- `TrainingStructureFields` shared component: split selector + weekday chip pickers for training vs. supplemental preferred days. Used by climbing, tennis, and running plan creation dialogs and the sport-agnostic `TrainingPlanDialog` edit dialog.
+- `deriveDefaultStructure()` pure function: seeds split defaults from goal's `sessionsPerWeek` and existing `preferredDays`.
+- "Edit plan" button and reconcile banner ungated for all sports (previously climbing-only). `TrainingPlanDialog` now acts as a sport-agnostic edit dialog for any plan type.
+- Phase content layers (`sport_focus_content`, `supplemental_content`) populated for tennis (`buildTennisPhaseContent`) and running (`buildRunningPhaseContent`). Both functions follow the same three-layer structure as climbing. `POST /api/training-plans/refresh-descriptions` extended to backfill both sports.
+- Session patterns and training plan splits made mutually exclusive: `goal-form-standalone.tsx` hides the session-pattern editor when a training plan is present or being created; `scheduler.ts` ignores `goalSessionPatterns` for goals that have a training plan split. Toggling "Create Training Plan" on clears any existing session patterns.
+
+**Schema changes**: None (all columns already existed).
+
+**Routes modified**: `POST /api/training-plans/refresh-descriptions` (backfill for tennis + running).
+
+**Dependencies**: Training vs Supplemental Session Split (shared UI pattern), Tennis Periodization V1, Running Training Periodization V1.
+
+---
+
+### Execution Views Overhaul
+
+**Spec ID**: `execution-views-overhaul`
+**Status**: Built (complete — PRs #78, #79, #80, #81)
+**Completed**: 2026-06-19
+
+**What it does**: Replaces the flat activity list on the Today view with an interactive hourly timeline, adds drag-to-reschedule, removes the redundant "FOCUS THIS WEEK" section on This Week, and enriches focus goal cards on both views with training phase content and inline progress logging.
+
+**What has been built**:
+
+*PR A — Hourly timeline (read-only)*
+- `HourlyTimeline` component: activities rendered at their scheduled times in a scrollable 64px-per-hour grid. Overlapping activities rendered side-by-side using `groupOverlappingActivities`. Clicking an empty hour slot pre-fills the Add Activity dialog. Completed activities shown in a separate "Completed Activities" section below.
+- Pure helpers with full unit test coverage: `timeToMinutes`, `minutesToTimeString`, `computeVisibleRange`, `computeActivityPosition`, `groupOverlappingActivities`, `computeDragOffset`.
+- `NotesPreview` with show-more / show-less toggle for long notes (replaces static `line-clamp-2`).
+
+*PR B — Drag to reschedule*
+- `DraggableActivityWrapper` and `TimelineSurface` (droppable) built on `@dnd-kit/core`. `MouseSensor` with `distance: 8` activation constraint prevents accidental drag on Checkbox or button clicks.
+- 30-minute snap-to-grid. Ghost element at original slot during drag. Floating time label shows the snapped target time.
+- Optimistic update: activity moves immediately; reverts with a 3-second inline error banner if the PATCH fails.
+- Completed activities are non-draggable.
+- `handleTimeReschedule` in `daily-view.tsx` calls `PATCH /api/activities/:id` with new `startTime`/`endTime`.
+
+*PR C — Enriched goal cards*
+- `GoalCard` component replaces the old inline rendering in `GoalOverviewSection`. Shows: goal title (link to /goals), active phase name + week number, `sportFocusContent` (truncated at 120 chars with Show more/less), supplemental content (same truncation, only when supplemental activity logged this week), weekly training/supplemental activity counts.
+- Inline progress logging: tally goals get a `+1` button (POST `/api/goal-tallies`); session-based goals get a "Log session" button that opens `LogActivityDialog`. Both wired on Today and This Week.
+- `GoalOverviewSection` extended with `weekActivities`, `today`, `onLogActivity`, `showEmptyPrompt` props. Empty state prompt (link to Monthly Plan) shown only on This Week.
+- `LogActivityDialog` extracted to `src/components/activities/log-activity-dialog.tsx` for reuse between Today and This Week.
+- Duplicate "FOCUS THIS WEEK" section removed; the existing FOCUS pills at the top of the screen scroll to the corresponding `GoalCard` anchor (`#goal-{id}`).
+
+**Schema changes**: None.
+
+**Routes modified**: `PATCH /api/activities/:id` (accepts `startTime`/`endTime` for reschedule).
+
+**Dependencies**: Training vs Supplemental Session Split (session type display), Feature 1 (activities API).
 
 ---
 
