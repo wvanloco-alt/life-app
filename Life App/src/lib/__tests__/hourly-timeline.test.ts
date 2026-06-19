@@ -2,11 +2,12 @@ import { describe, it, expect } from "vitest";
 import {
   timeToMinutes,
   minutesToTimeString,
-  computeVisibleRange,
   computeActivityPosition,
   groupOverlappingActivities,
   computeDragOffset,
   ROW_HEIGHT_PX,
+  FULL_DAY_START_MINUTES,
+  FULL_DAY_END_MINUTES,
 } from "@/components/daily/hourly-timeline";
 import type { Activity } from "@/types";
 
@@ -57,44 +58,12 @@ describe("timeToMinutes", () => {
   });
 });
 
-// ─── computeVisibleRange ──────────────────────────────────────────────────────
+// ─── full-day range constants ─────────────────────────────────────────────────
 
-describe("computeVisibleRange", () => {
-  it("returns 07:00–20:00 for empty activities", () => {
-    const { startMinutes, endMinutes } = computeVisibleRange([]);
-    expect(startMinutes).toBe(7 * 60);
-    expect(endMinutes).toBe(20 * 60);
-  });
-
-  it("adds 1-hour buffer around a single activity", () => {
-    const acts = [makeActivity(1, "09:00", "10:00")];
-    const { startMinutes, endMinutes } = computeVisibleRange(acts);
-    // start = max(6*60, 540 - 60) = max(360, 480) = 480  → 08:00
-    expect(startMinutes).toBe(8 * 60);
-    // end   = min(22*60, 600 + 60) = min(1320, 660) = 660 → 11:00
-    expect(endMinutes).toBe(11 * 60);
-  });
-
-  it("does not go below 06:00 even with an early activity", () => {
-    const acts = [makeActivity(1, "05:30", "06:30")];
-    const { startMinutes } = computeVisibleRange(acts);
-    expect(startMinutes).toBe(6 * 60); // floored at 06:00
-  });
-
-  it("does not exceed 22:00 with a late activity", () => {
-    const acts = [makeActivity(1, "21:00", "22:30")];
-    const { endMinutes } = computeVisibleRange(acts);
-    expect(endMinutes).toBe(22 * 60); // capped at 22:00
-  });
-
-  it("spans the full range of multiple activities", () => {
-    const acts = [
-      makeActivity(1, "08:00", "09:00"),
-      makeActivity(2, "15:00", "16:30"),
-    ];
-    const { startMinutes, endMinutes } = computeVisibleRange(acts);
-    expect(startMinutes).toBe(7 * 60); // max(360, 480-60)=max(360,420)=420
-    expect(endMinutes).toBe(17 * 60 + 30); // min(1320, 990+60)=min(1320,1050)=1050
+describe("full-day range constants", () => {
+  it("spans 06:00–24:00", () => {
+    expect(FULL_DAY_START_MINUTES).toBe(6 * 60);
+    expect(FULL_DAY_END_MINUTES).toBe(24 * 60);
   });
 });
 
