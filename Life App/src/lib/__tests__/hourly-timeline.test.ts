@@ -7,6 +7,7 @@ import {
   computeDragOffset,
   computeRowHeightPx,
   ROW_HEIGHT_PX,
+  MIN_ROW_HEIGHT_PX,
   FULL_DAY_START_MINUTES,
   FULL_DAY_END_MINUTES,
 } from "@/components/daily/hourly-timeline";
@@ -71,7 +72,7 @@ describe("computeRowHeightPx", () => {
   });
 
   it("never goes below the min row height", () => {
-    expect(computeRowHeightPx(200, 18)).toBe(20);
+    expect(computeRowHeightPx(200, 18)).toBe(MIN_ROW_HEIGHT_PX);
   });
 });
 

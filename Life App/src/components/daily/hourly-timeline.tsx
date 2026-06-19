@@ -66,7 +66,7 @@ function NotesPreview({ notes }: { notes: string }) {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 export const ROW_HEIGHT_PX = 64; // default / max row height when space allows
-export const MIN_ROW_HEIGHT_PX = 20; // floor when compressing to fit the viewport
+export const MIN_ROW_HEIGHT_PX = 32; // floor — keeps title readable at one hour per row
 export const FULL_DAY_START_MINUTES = 6 * 60; // 6:00 AM
 export const FULL_DAY_END_MINUTES = 24 * 60; // midnight (end of day)
 /** Padding below the timeline within the schedule card. */
@@ -482,12 +482,15 @@ export function HourlyTimeline({
     updateRowHeight();
     const observer = new ResizeObserver(updateRowHeight);
     observer.observe(el);
+    // Also observe the parent so carry-forward / header changes above shift .top
+    const layoutParent = el.parentElement;
+    if (layoutParent) observer.observe(layoutParent);
     window.addEventListener("resize", updateRowHeight);
     return () => {
       observer.disconnect();
       window.removeEventListener("resize", updateRowHeight);
     };
-  }, [hours.length, loggedActivities.length]);
+  }, [hours.length]);
 
   async function handleDragEnd({ active, delta }: DragEndEvent) {
     const activityId = Number(active.id);
