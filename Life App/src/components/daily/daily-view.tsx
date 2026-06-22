@@ -394,6 +394,20 @@ export function DailyView() {
         </div>
       ) : (
         <div className="space-y-4">
+            {/* Goal overview — top of the page */}
+            <GoalOverviewSection
+              goals={todayFocusGoals}
+              trainingPhaseInfo={trainingPhaseInfo}
+              loading={loading}
+              heading="Focus today"
+              weekActivities={weekActivities}
+              today={dateStr}
+              onLogActivity={(goal) => {
+                setLogDialogActivity({ activityTypeId: goal.activityTypeId ?? undefined });
+                setLogDialogOpen(true);
+              }}
+            />
+
             {activeCarryForward.length > 0 && (
               <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20">
                 <CardHeader className="pb-2">
@@ -582,19 +596,6 @@ export function DailyView() {
         </div>
       )}
 
-      {/* Goal overview — active focus goals with training phase context */}
-      <GoalOverviewSection
-        goals={todayFocusGoals}
-        trainingPhaseInfo={trainingPhaseInfo}
-        loading={loading}
-        heading="Focus today"
-        weekActivities={weekActivities}
-        today={dateStr}
-        onLogActivity={(goal) => {
-          setLogDialogActivity({ activityTypeId: goal.activityTypeId ?? undefined });
-          setLogDialogOpen(true);
-        }}
-      />
 
       <ActivityForm
         key={editingActivity?.id ?? "new"}
