@@ -5,7 +5,9 @@ import {
   computeActivityPosition,
   groupOverlappingActivities,
   computeDragOffset,
+  computeRowHeightPx,
   ROW_HEIGHT_PX,
+  MIN_ROW_HEIGHT_PX,
   FULL_DAY_START_MINUTES,
   FULL_DAY_END_MINUTES,
 } from "@/components/daily/hourly-timeline";
@@ -55,6 +57,22 @@ describe("timeToMinutes", () => {
   });
   it("converts 22:00 to 1320", () => {
     expect(timeToMinutes("22:00")).toBe(1320);
+  });
+});
+
+// ─── computeRowHeightPx ───────────────────────────────────────────────────────
+
+describe("computeRowHeightPx", () => {
+  it("divides available height evenly across hours", () => {
+    expect(computeRowHeightPx(900, 18)).toBe(50);
+  });
+
+  it("never exceeds the max row height", () => {
+    expect(computeRowHeightPx(2000, 18)).toBe(ROW_HEIGHT_PX);
+  });
+
+  it("never goes below the min row height", () => {
+    expect(computeRowHeightPx(200, 18)).toBe(MIN_ROW_HEIGHT_PX);
   });
 });
 

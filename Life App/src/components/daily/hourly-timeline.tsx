@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useLayoutEffect, useRef, useMemo } from "react";
 import {
   DndContext,
   MouseSensor,
@@ -65,14 +65,12 @@ function NotesPreview({ notes }: { notes: string }) {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-export const ROW_HEIGHT_PX = 64; // 1 hour = 64 px
+export const ROW_HEIGHT_PX = 64; // default / max row height when space allows
+export const MIN_ROW_HEIGHT_PX = 32; // floor — keeps title readable at one hour per row
 export const FULL_DAY_START_MINUTES = 6 * 60; // 6:00 AM
 export const FULL_DAY_END_MINUTES = 24 * 60; // midnight (end of day)
-
-/** Combined height of chrome above the timeline scroll area on Today. */
-export const TIMELINE_MIN_VIEWPORT_OFFSET_PX = 280;
-/** Slightly tighter offset for max-height (excludes bottom card padding). */
-export const TIMELINE_MAX_VIEWPORT_OFFSET_PX = 240;
+/** Padding below the timeline within the schedule card. */
+export const TIMELINE_BOTTOM_MARGIN_PX = 16;
 
 // ─── Pure helpers (exported for unit tests) ───────────────────────────────────
 
@@ -94,16 +92,29 @@ function minutesToHourLabel(totalMinutes: number): string {
   return `${display} ${ampm}`;
 }
 
+export function computeRowHeightPx(
+  availableHeightPx: number,
+  hourCount: number,
+  minRowHeightPx = MIN_ROW_HEIGHT_PX,
+  maxRowHeightPx = ROW_HEIGHT_PX
+): number {
+  if (hourCount <= 0 || availableHeightPx <= 0) return maxRowHeightPx;
+  const fitted = Math.floor(availableHeightPx / hourCount);
+  return Math.max(minRowHeightPx, Math.min(maxRowHeightPx, fitted));
+}
+
 export function computeActivityPosition(
   activity: Activity,
-  visibleStartMinutes: number
+  visibleStartMinutes: number,
+  rowHeightPx: number = ROW_HEIGHT_PX
 ): { top: number; height: number } {
   const startMin = timeToMinutes(activity.startTime);
   const endMin = timeToMinutes(activity.endTime);
   const durationMin = endMin > startMin ? endMin - startMin : 60;
+  const minCardHeight = Math.min(24, rowHeightPx * 0.75);
   return {
-    top: ((startMin - visibleStartMinutes) / 60) * ROW_HEIGHT_PX,
-    height: Math.max(24, (durationMin / 60) * ROW_HEIGHT_PX),
+    top: ((startMin - visibleStartMinutes) / 60) * rowHeightPx,
+    height: Math.max(minCardHeight, (durationMin / 60) * rowHeightPx),
   };
 }
 
@@ -145,10 +156,11 @@ export function groupOverlappingActivities(activities: Activity[]): Activity[][]
 export function computeDragOffset(
   deltaY: number,
   originalStartMinutes: number,
-  durationMinutes: number
+  durationMinutes: number,
+  rowHeightPx: number = ROW_HEIGHT_PX
 ): { offsetMinutes: number; valid: boolean } {
   const snapMinutes = 30;
-  const rawOffset = (deltaY / ROW_HEIGHT_PX) * 60;
+  const rawOffset = (deltaY / rowHeightPx) * 60;
   const snapped = Math.round(rawOffset / snapMinutes) * snapMinutes;
   const newStart = Math.max(0, Math.min(23 * 60 + 30, originalStartMinutes + snapped));
   const newEnd = newStart + durationMinutes;
@@ -264,6 +276,7 @@ interface DraggableActivityWrapperProps {
   leftPct: number;
   widthPct: number;
   hasError: boolean;
+  rowHeightPx: number;
   onToggle: (id: number, checked: boolean) => void;
   onEdit: (activity: Activity) => void;
   onLogAndComplete: (activityTypeId: number, activityId: number) => void;
@@ -277,6 +290,7 @@ function DraggableActivityWrapper({
   leftPct,
   widthPct,
   hasError,
+  rowHeightPx,
   onToggle,
   onEdit,
   onLogAndComplete,
@@ -289,7 +303,7 @@ function DraggableActivityWrapper({
   // Derive snapped label directly from useDraggable's own transform — avoids
   // a parent state update (and full-tree re-render) on every mousemove event.
   const snappedOffsetMin = isDragging
-    ? Math.round(((transform?.y ?? 0) / ROW_HEIGHT_PX) * 60 / 30) * 30
+    ? Math.round(((transform?.y ?? 0) / rowHeightPx) * 60 / 30) * 30
     : 0;
   const startMin = timeToMinutes(activity.startTime);
   const snappedStartMin = Math.max(0, Math.min(23 * 60 + 30, startMin + snappedOffsetMin));
@@ -359,12 +373,12 @@ function DraggableActivityWrapper({
 
 function TimelineSurface({
   hours,
-  totalHeight,
+  rowHeightPx,
   onAdd,
   children,
 }: {
   hours: number[];
-  totalHeight: number;
+  rowHeightPx: number;
   onAdd: (startTime: string) => void;
   children: React.ReactNode;
 }) {
@@ -377,7 +391,7 @@ function TimelineSurface({
         <div
           key={hour}
           className="absolute inset-x-0 border-t border-border/20 cursor-pointer hover:bg-accent/20 transition-colors"
-          style={{ top: i * ROW_HEIGHT_PX, height: ROW_HEIGHT_PX }}
+          style={{ top: i * rowHeightPx, height: rowHeightPx }}
           onClick={() => onAdd(`${String(hour).padStart(2, "0")}:00`)}
         />
       ))}
@@ -412,7 +426,8 @@ export function HourlyTimeline({
   onLogAndComplete,
   onReschedule,
 }: HourlyTimelineProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [rowHeightPx, setRowHeightPx] = useState(ROW_HEIGHT_PX);
 
   // Optimistic time overrides: activityId → { startTime, endTime }
   const [timeOverrides, setTimeOverrides] = useState<
@@ -443,7 +458,7 @@ export function HourlyTimeline({
   const startHour = Math.floor(startMinutes / 60);
   const endHour = Math.ceil(endMinutes / 60);
   const hours = Array.from({ length: endHour - startHour }, (_, i) => startHour + i);
-  const totalHeight = hours.length * ROW_HEIGHT_PX;
+  const totalHeight = hours.length * rowHeightPx;
 
   const groups = groupOverlappingActivities(timelineActivities);
   const columnInfo = new Map<number, { columnIndex: number; columnCount: number }>();
@@ -453,21 +468,29 @@ export function HourlyTimeline({
     });
   }
 
-  // Scroll to current hour on mount
-  useEffect(() => {
-    if (!scrollRef.current) return;
-    const currentHour = new Date().getHours();
-    const earliestHour =
-      timelineActivities.length > 0
-        ? Math.floor(
-            Math.min(...timelineActivities.map((a) => timeToMinutes(a.startTime))) / 60
-          )
-        : currentHour;
-    const targetHour = Math.max(currentHour - 1, earliestHour - 1);
-    const clampedHour = Math.max(startHour, Math.min(endHour - 1, targetHour));
-    scrollRef.current.scrollTop = (clampedHour - startHour) * ROW_HEIGHT_PX;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Scale row height so the full day fits in the remaining viewport — no scroll.
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    function updateRowHeight() {
+      const top = el!.getBoundingClientRect().top;
+      const available = window.innerHeight - top - TIMELINE_BOTTOM_MARGIN_PX;
+      setRowHeightPx(computeRowHeightPx(available, hours.length));
+    }
+
+    updateRowHeight();
+    const observer = new ResizeObserver(updateRowHeight);
+    observer.observe(el);
+    // Also observe the parent so carry-forward / header changes above shift .top
+    const layoutParent = el.parentElement;
+    if (layoutParent) observer.observe(layoutParent);
+    window.addEventListener("resize", updateRowHeight);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateRowHeight);
+    };
+  }, [hours.length]);
 
   async function handleDragEnd({ active, delta }: DragEndEvent) {
     const activityId = Number(active.id);
@@ -479,7 +502,12 @@ export function HourlyTimeline({
     const endMin = timeToMinutes(original.endTime);
     const durationMin = endMin > startMin ? endMin - startMin : 60;
 
-    const { offsetMinutes, valid } = computeDragOffset(delta.y, startMin, durationMin);
+    const { offsetMinutes, valid } = computeDragOffset(
+      delta.y,
+      startMin,
+      durationMin,
+      rowHeightPx
+    );
     if (!valid || offsetMinutes === 0) return;
 
     const newStartTime = minutesToTimeString(startMin + offsetMinutes);
@@ -508,16 +536,8 @@ export function HourlyTimeline({
       sensors={sensors}
       onDragEnd={handleDragEnd}
     >
-      {/* Scrollable timeline — fills remaining viewport height. Offsets account for
-          page header, carry-forward banner, schedule card header, and summary row. */}
-      <div
-        ref={scrollRef}
-        className="overflow-y-auto"
-        style={{
-          minHeight: `calc(100dvh - ${TIMELINE_MIN_VIEWPORT_OFFSET_PX}px)`,
-          maxHeight: `calc(100dvh - ${TIMELINE_MAX_VIEWPORT_OFFSET_PX}px)`,
-        }}
-      >
+      {/* Full-day timeline — row height scales to fit the remaining viewport */}
+      <div ref={containerRef} className="overflow-hidden" style={{ height: totalHeight }}>
         <div className="relative flex" style={{ height: totalHeight }}>
           {/* Time label column */}
           <div className="w-12 shrink-0 select-none" aria-hidden="true">
@@ -525,7 +545,7 @@ export function HourlyTimeline({
               <div
                 key={hour}
                 className="flex items-start justify-end pr-2"
-                style={{ height: ROW_HEIGHT_PX, paddingTop: 2 }}
+                style={{ height: rowHeightPx, paddingTop: 2 }}
               >
                 <span className="text-[10px] text-muted-foreground/60 leading-none">
                   {minutesToHourLabel(hour * 60)}
@@ -535,13 +555,13 @@ export function HourlyTimeline({
           </div>
 
           {/* Droppable activity surface */}
-          <TimelineSurface
-            hours={hours}
-            totalHeight={totalHeight}
-            onAdd={onAdd}
-          >
+          <TimelineSurface hours={hours} rowHeightPx={rowHeightPx} onAdd={onAdd}>
             {timelineActivities.map((activity) => {
-              const { top, height } = computeActivityPosition(activity, startMinutes);
+              const { top, height } = computeActivityPosition(
+                activity,
+                startMinutes,
+                rowHeightPx
+              );
               const info = columnInfo.get(activity.id) ?? {
                 columnIndex: 0,
                 columnCount: 1,
@@ -559,6 +579,7 @@ export function HourlyTimeline({
                   leftPct={leftPct}
                   widthPct={widthPct}
                   hasError={rescheduleErrorId === activity.id}
+                  rowHeightPx={rowHeightPx}
                   onToggle={onToggle}
                   onEdit={onEdit}
                   onLogAndComplete={onLogAndComplete}
