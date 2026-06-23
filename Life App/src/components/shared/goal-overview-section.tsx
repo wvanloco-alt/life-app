@@ -18,6 +18,12 @@ export interface TrainingPhaseEntry {
   supplementalContent?: string | null;
 }
 
+export interface TallyProgressEntry {
+  current: number;
+  target: number;
+  percentage: number;
+}
+
 export interface GoalOverviewSectionProps {
   goals: Goal[];
   trainingPhaseInfo: Record<number, TrainingPhaseEntry>;
@@ -26,9 +32,11 @@ export interface GoalOverviewSectionProps {
   heading?: string;
   /** All activities for the current week. Used to compute supplemental context. */
   weekActivities?: Activity[];
+  /** Tally goal progress keyed by goal id (from GET /api/goals/:id/progress). */
+  tallyProgress?: Record<number, TallyProgressEntry>;
   /** ISO date string for today — used for tally logging. Defaults to today. */
   today?: string;
-  /** Called when the user clicks "Log session" on a session-based goal card. */
+  /** Called when the user clicks "Log session" on a goal card. */
   onLogActivity?: (goal: Goal) => void;
   /**
    * When true, renders a "No focus goals set" prompt with a link to Monthly Plan
@@ -39,33 +47,56 @@ export interface GoalOverviewSectionProps {
   showEmptyPrompt?: boolean;
 }
 
+function GoalCardProgressBar({
+  current,
+  target,
+  percentage,
+}: {
+  current: number;
+  target: number;
+  percentage: number;
+}) {
+  if (target <= 0) return null;
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+        <span>This week</span>
+        <span className="tabular-nums">
+          {current} / {target}
+        </span>
+      </div>
+      <div className="h-1.5 rounded-full bg-muted/40 overflow-hidden">
+        <div
+          className="h-full rounded-full bg-primary transition-all"
+          style={{ width: `${Math.min(percentage, 100)}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 // ─── GoalCard ─────────────────────────────────────────────────────────────────
 
 function GoalCard({
   goal,
   phase,
   weekActivities,
-  today,
   onLogActivity,
+  tallyProgress,
 }: {
   goal: Goal;
   phase: TrainingPhaseEntry | undefined;
   weekActivities: Activity[];
-  today: string;
   onLogActivity?: (goal: Goal) => void;
+  tallyProgress?: TallyProgressEntry;
 }) {
-  const [tallyAdded, setTallyAdded] = useState(0);
-  const [tallyError, setTallyError] = useState(false);
   const [focusExpanded, setFocusExpanded] = useState(false);
   const [supplementalExpanded, setSupplementalExpanded] = useState(false);
 
-  // targetMetric is null for session-based goals; non-null string for tally/metric goals
-  // (goal-form-standalone.tsx explicitly sets payload.targetMetric = null for session goals).
   const isTallyGoal = goal.targetMetric !== null;
+  const roleColor = goal.roles[0]?.color;
 
-  const trainingCount = weekActivities.filter(
-    (a) => a.goalId === goal.id && a.sessionType === "training"
-  ).length;
   const supplementalCount = weekActivities.filter(
     (a) => a.goalId === goal.id && a.sessionType === "supplemental"
   ).length;
@@ -77,27 +108,28 @@ function GoalCard({
   const supplementalContent = hasSupplementalThisWeek ? (phase?.supplementalContent ?? null) : null;
   const isLongSupplemental = supplementalContent !== null && supplementalContent.length > 120;
 
-  async function handleTallyIncrement() {
-    try {
-      const res = await fetch("/api/goal-tallies", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ goalId: goal.id, date: today, count: 1 }),
-      });
-      if (!res.ok) throw new Error("Failed");
-      setTallyAdded((n) => n + 1);
-    } catch {
-      setTallyError(true);
-      setTimeout(() => setTallyError(false), 3000);
-    }
-  }
+  // Session progress on Today counts completed scheduled activities for this week,
+  // not activity_logs. Manual logs (Log Activity) appear on the Goals page but not
+  // here — intentional: Today reflects calendar execution, not total logged volume.
+  const completedSessions = weekActivities.filter(
+    (a) => a.goalId === goal.id && a.isCompleted
+  ).length;
+  const sessionTarget = goal.sessionsPerWeek;
+  const sessionPercentage =
+    sessionTarget > 0
+      ? Math.min(100, Math.round((completedSessions / sessionTarget) * 100))
+      : 0;
 
   return (
     <div
       id={`goal-${goal.id}`}
       className="rounded-lg border p-4 space-y-2 scroll-mt-4"
+      style={{
+        borderLeftWidth: roleColor ? "3px" : undefined,
+        borderLeftColor: roleColor ?? undefined,
+        backgroundColor: roleColor ? `${roleColor}15` : undefined,
+      }}
     >
-      {/* Header row */}
       <div className="flex items-start justify-between gap-3">
         <Link href="/goals" className="flex-1 min-w-0">
           <p className="text-sm font-medium leading-tight hover:underline truncate">
@@ -105,46 +137,38 @@ function GoalCard({
           </p>
         </Link>
 
-        {/* Inline log progress */}
-        <div className="shrink-0 flex items-center gap-1.5">
-          {isTallyGoal ? (
-            <>
-              {tallyAdded > 0 && (
-                <span className="text-xs text-muted-foreground">+{tallyAdded}</span>
-              )}
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-6 text-xs px-2"
-                onClick={handleTallyIncrement}
-              >
-                +1
-              </Button>
-              {tallyError && (
-                <span className="text-[10px] text-destructive">Error</span>
-              )}
-            </>
-          ) : onLogActivity ? (
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-6 text-xs px-2"
-              onClick={() => onLogActivity(goal)}
-            >
-              Log session
-            </Button>
-          ) : null}
-        </div>
+        {onLogActivity && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-6 text-xs px-2 shrink-0"
+            onClick={() => onLogActivity(goal)}
+          >
+            Log session
+          </Button>
+        )}
       </div>
 
-      {/* Phase info */}
+      {isTallyGoal && tallyProgress ? (
+        <GoalCardProgressBar
+          current={tallyProgress.current}
+          target={tallyProgress.target}
+          percentage={tallyProgress.percentage}
+        />
+      ) : !isTallyGoal ? (
+        <GoalCardProgressBar
+          current={completedSessions}
+          target={sessionTarget}
+          percentage={sessionPercentage}
+        />
+      ) : null}
+
       {phase && weekN !== null && (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-muted-foreground line-clamp-1">
           Active: {phase.phaseName} — Week {weekN} of {phase.durationWeeks}
         </p>
       )}
 
-      {/* Training focus content */}
       {focusContent && (
         <div>
           <p
@@ -166,7 +190,6 @@ function GoalCard({
         </div>
       )}
 
-      {/* Supplemental content — only when there's a supplemental activity this week */}
       {supplementalContent && (
         <div>
           <p
@@ -187,16 +210,6 @@ function GoalCard({
           )}
         </div>
       )}
-
-      {/* Week activity count */}
-      {(trainingCount > 0 || supplementalCount > 0) && (
-        <p className="text-[10px] text-muted-foreground tabular-nums">
-          This week:{" "}
-          {trainingCount > 0 && `${trainingCount} training`}
-          {trainingCount > 0 && supplementalCount > 0 && ", "}
-          {supplementalCount > 0 && `${supplementalCount} supplemental`}
-        </p>
-      )}
     </div>
   );
 }
@@ -209,12 +222,10 @@ export function GoalOverviewSection({
   loading = false,
   heading,
   weekActivities = [],
-  today,
+  tallyProgress = {},
   onLogActivity,
   showEmptyPrompt = false,
 }: GoalOverviewSectionProps) {
-  const todayStr = today ?? new Date().toISOString().slice(0, 10);
-
   if (loading) {
     return (
       <div className="space-y-3">
@@ -260,8 +271,8 @@ export function GoalOverviewSection({
             goal={goal}
             phase={trainingPhaseInfo[goal.id]}
             weekActivities={weekActivities}
-            today={todayStr}
             onLogActivity={onLogActivity}
+            tallyProgress={tallyProgress[goal.id]}
           />
         ))}
       </div>

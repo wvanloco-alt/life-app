@@ -25,7 +25,6 @@ import { EmptyState } from "@/components/ui/empty-state";
 import {
   isToday,
   toISODate,
-  formatTime,
   getWeekStartDate,
   getFocusGoalWeekKey,
 } from "@/lib/dates";
@@ -74,6 +73,9 @@ export function DailyView() {
     Record<number, { phaseName: string; phaseStartDate: string; durationWeeks: number; sportFocusContent?: string | null; supplementalContent?: string | null }>
   >({});
   const [weekActivities, setWeekActivities] = useState<Activity[]>([]);
+  const [tallyProgressMap, setTallyProgressMap] = useState<
+    Record<number, { current: number; target: number; percentage: number }>
+  >({});
 
   const [formOpen, setFormOpen] = useState(false);
   const [logDialogOpen, setLogDialogOpen] = useState(false);
@@ -146,6 +148,30 @@ export function DailyView() {
 
     const focusGoalList: Goal[] = Array.isArray(focusData) ? focusData : [];
     setFocusGoals(focusGoalList);
+
+    const tallyGoals = focusGoalList.filter((g) => g.targetMetric != null);
+    if (tallyGoals.length > 0) {
+      const progressResults = await Promise.all(
+        tallyGoals.map(async (g) => {
+          const res = await fetch(`/api/goals/${g.id}/progress`);
+          if (!res.ok) return null;
+          const data = await res.json();
+          return {
+            goalId: g.id,
+            current: data.current as number,
+            target: data.target as number,
+            percentage: data.percentage as number,
+          };
+        })
+      );
+      const map: Record<number, { current: number; target: number; percentage: number }> = {};
+      for (const row of progressResults) {
+        if (row) map[row.goalId] = row;
+      }
+      setTallyProgressMap(map);
+    } else {
+      setTallyProgressMap({});
+    }
 
     if (focusGoalList.length > 0) {
       const ids = focusGoalList.map((g) => g.id).join(",");
@@ -401,6 +427,7 @@ export function DailyView() {
               loading={loading}
               heading="Focus today"
               weekActivities={weekActivities}
+              tallyProgress={tallyProgressMap}
               today={dateStr}
               onLogActivity={(goal) => {
                 setLogDialogActivity({ activityTypeId: goal.activityTypeId ?? undefined });
@@ -595,7 +622,6 @@ export function DailyView() {
             )}
         </div>
       )}
-
 
       <ActivityForm
         key={editingActivity?.id ?? "new"}

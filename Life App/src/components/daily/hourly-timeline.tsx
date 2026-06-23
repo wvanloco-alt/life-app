@@ -15,53 +15,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ClipboardList } from "lucide-react";
-import { formatTime } from "@/lib/dates";
 import {
   getSessionTypeCardClasses,
   shouldShowSupplementalBadge,
 } from "@/lib/session-type-styles";
 import { getQuadrantInfo } from "@/lib/quadrants";
 import type { Activity, Goal } from "@/types";
-
-// ─── NotesPreview ─────────────────────────────────────────────────────────────
-
-function NotesPreview({ notes }: { notes: string }) {
-  const [expanded, setExpanded] = useState(false);
-  const firstLine = notes.split("\n")[0];
-  const isLong = notes.length > 120 || notes.includes("\n\n");
-
-  if (!isLong) {
-    return <p className="text-[10px] text-muted-foreground mt-0.5">{notes}</p>;
-  }
-
-  return (
-    <div className="mt-0.5" onClick={(e) => e.stopPropagation()}>
-      {expanded ? (
-        <div className="text-[10px] text-muted-foreground space-y-1">
-          {notes.split("\n\n").map((block, i) => (
-            <p key={i} className="leading-relaxed">{block}</p>
-          ))}
-          <button
-            className="text-primary hover:underline"
-            onClick={() => setExpanded(false)}
-          >
-            Show less
-          </button>
-        </div>
-      ) : (
-        <p className="text-[10px] text-muted-foreground">
-          <span className="line-clamp-1">{firstLine}</span>
-          <button
-            className="text-primary hover:underline ml-1"
-            onClick={() => setExpanded(true)}
-          >
-            Show more
-          </button>
-        </p>
-      )}
-    </div>
-  );
-}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -234,18 +193,6 @@ function DailyActivityCard({
           >
             {activity.title}
           </p>
-          <p className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">
-            {formatTime(activity.startTime)} – {formatTime(activity.endTime)}
-          </p>
-          {activity.roleName && (
-            <p
-              className="text-[10px] mt-0.5 truncate"
-              style={{ color: activity.roleColor ?? undefined }}
-            >
-              {activity.roleName}
-            </p>
-          )}
-          {activity.notes && <NotesPreview notes={activity.notes} />}
         </div>
         {canLogAndComplete && (
           <Button
