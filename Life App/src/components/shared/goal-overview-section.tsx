@@ -81,6 +81,9 @@ export function GoalOverviewSection({
             const weekN = phase ? computeWeekN(phase.phaseStartDate, phase.durationWeeks) : null;
             const roleColor = goal.roles[0]?.color;
             const isTallyGoal = goal.targetMetric != null;
+            // Session progress on Today counts completed scheduled activities for this week,
+            // not activity_logs. Manual logs (Log Activity) appear on the Goals page but not
+            // here — intentional: Today reflects calendar execution, not total logged volume.
             const completedSessions = weekActivities.filter(
               (a) => a.goalId === goal.id && a.isCompleted
             ).length;
