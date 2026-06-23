@@ -26,7 +26,6 @@ import { EmptyState } from "@/components/ui/empty-state";
 import {
   isToday,
   toISODate,
-  formatTime,
   getWeekStartDate,
   getFocusGoalWeekKey,
 } from "@/lib/dates";
@@ -71,54 +70,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { LucideIcon } from "@/components/ui/lucide-icon";
-
-function NotesPreview({ notes }: { notes: string }) {
-  const [expanded, setExpanded] = useState(false);
-  const firstLine = notes.split("\n")[0];
-  const isLong = notes.length > 120 || notes.includes("\n\n");
-
-  if (!isLong) {
-    return <p className="text-xs text-muted-foreground mt-1">{notes}</p>;
-  }
-
-  return (
-    <div className="mt-1" onClick={(e) => e.stopPropagation()}>
-      {expanded ? (
-        <div className="text-xs text-muted-foreground space-y-1.5">
-          {notes.split("\n\n").map((block, i) => {
-            const lines = block.split("\n");
-            const isHeading = lines.length > 1 && lines[0] === lines[0].toUpperCase() && lines[0].length < 60;
-            if (isHeading) {
-              return (
-                <div key={i}>
-                  <span className="font-medium text-foreground/70">{lines[0]}</span>
-                  <p className="leading-relaxed">{lines.slice(1).join(" ")}</p>
-                </div>
-              );
-            }
-            return <p key={i} className="leading-relaxed">{block}</p>;
-          })}
-          <button
-            className="text-primary text-[11px] hover:underline"
-            onClick={() => setExpanded(false)}
-          >
-            Show less
-          </button>
-        </div>
-      ) : (
-        <p className="text-xs text-muted-foreground">
-          <span className="line-clamp-1">{firstLine}</span>
-          <button
-            className="text-primary text-[11px] hover:underline ml-1"
-            onClick={() => setExpanded(true)}
-          >
-            Show more
-          </button>
-        </p>
-      )}
-    </div>
-  );
-}
 
 function formatDuration(minutes: number): string {
   const h = Math.floor(minutes / 60);
@@ -278,6 +229,10 @@ export function DailyView() {
   const [trainingPhaseInfo, setTrainingPhaseInfo] = useState<
     Record<number, { phaseName: string; phaseStartDate: string; durationWeeks: number }>
   >({});
+  const [weekActivities, setWeekActivities] = useState<Activity[]>([]);
+  const [tallyProgressMap, setTallyProgressMap] = useState<
+    Record<number, { current: number; target: number; percentage: number }>
+  >({});
 
   const [formOpen, setFormOpen] = useState(false);
   const [logDialogOpen, setLogDialogOpen] = useState(false);
@@ -335,6 +290,7 @@ export function DailyView() {
       ]);
 
     setActivities(actData);
+    setWeekActivities(weekData as Activity[]);
     setRoles(rolesData);
     setGoals(goalsData);
     setActivityLogs(logsData);
@@ -347,6 +303,30 @@ export function DailyView() {
 
     const focusGoalList: Goal[] = Array.isArray(focusData) ? focusData : [];
     setFocusGoals(focusGoalList);
+
+    const tallyGoals = focusGoalList.filter((g) => g.targetMetric != null);
+    if (tallyGoals.length > 0) {
+      const progressResults = await Promise.all(
+        tallyGoals.map(async (g) => {
+          const res = await fetch(`/api/goals/${g.id}/progress`);
+          if (!res.ok) return null;
+          const data = await res.json();
+          return {
+            goalId: g.id,
+            current: data.current as number,
+            target: data.target as number,
+            percentage: data.percentage as number,
+          };
+        })
+      );
+      const map: Record<number, { current: number; target: number; percentage: number }> = {};
+      for (const row of progressResults) {
+        if (row) map[row.goalId] = row;
+      }
+      setTallyProgressMap(map);
+    } else {
+      setTallyProgressMap({});
+    }
 
     if (focusGoalList.length > 0) {
       const ids = focusGoalList.map((g) => g.id).join(",");
@@ -758,27 +738,6 @@ export function DailyView() {
                             >
                               {activity.title}
                             </div>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                              <span>
-                                {formatTime(activity.startTime)} –{" "}
-                                {formatTime(activity.endTime)}
-                              </span>
-                              {activity.roleName && (
-                                <>
-                                  <span>·</span>
-                                  <span
-                                    style={{
-                                      color: activity.roleColor ?? undefined,
-                                    }}
-                                  >
-                                    {activity.roleName}
-                                  </span>
-                                </>
-                              )}
-                            </div>
-                            {activity.notes && (
-                              <NotesPreview notes={activity.notes} />
-                            )}
                           </div>
                           <span
                             className={cn(
@@ -880,6 +839,8 @@ export function DailyView() {
       <GoalOverviewSection
         goals={todayFocusGoals}
         trainingPhaseInfo={trainingPhaseInfo}
+        weekActivities={weekActivities}
+        tallyProgress={tallyProgressMap}
         loading={loading}
         heading="Focus today"
       />
