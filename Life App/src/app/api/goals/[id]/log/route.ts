@@ -62,7 +62,8 @@ export async function GET(
       notes: goalTallies.notes,
     })
     .from(goalTallies)
-    .where(eq(goalTallies.goalId, goalId))
+    .innerJoin(goals, eq(goalTallies.goalId, goals.id))
+    .where(and(eq(goalTallies.goalId, goalId), eq(goals.userId, userId)))
     .orderBy(desc(goalTallies.date))
     .limit(limit);
 
