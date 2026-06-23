@@ -434,6 +434,8 @@ const alterStatements = [
   `ALTER TABLE training_plans ADD COLUMN supplemental_sessions_per_week INTEGER`,
   `ALTER TABLE training_plans ADD COLUMN training_preferred_days TEXT DEFAULT '[]'`,
   `ALTER TABLE training_plans ADD COLUMN supplemental_preferred_days TEXT DEFAULT '[]'`,
+  `ALTER TABLE training_plans ADD COLUMN IF NOT EXISTS default_training_duration_minutes INTEGER`,
+  `ALTER TABLE training_plans ADD COLUMN IF NOT EXISTS default_supplemental_duration_minutes INTEGER`,
   `ALTER TABLE training_phases ADD COLUMN sport_focus_content TEXT`,
   `ALTER TABLE training_phases ADD COLUMN supplemental_content TEXT`,
   `ALTER TABLE training_phases ADD COLUMN mental_game_content TEXT`,

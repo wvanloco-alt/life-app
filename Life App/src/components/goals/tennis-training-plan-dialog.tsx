@@ -21,6 +21,10 @@ import {
   deriveDefaultStructure,
 } from "@/components/goals/training-structure-fields";
 import { parsePreferredDays } from "@/lib/dates";
+import {
+  PlanDefaultDurationsSection,
+  parseDurationFormField,
+} from "./plan-default-durations-section";
 
 interface TennisTrainingPlanDialogProps {
   open: boolean;
@@ -85,6 +89,13 @@ export function TennisTrainingPlanDialog({
   const [structure, setStructure] = useState<TrainingStructureValue>(() =>
     deriveDefaultStructure(goalSessionsPerWeek, parsePreferredDays(goalPreferredDays))
   );
+  const [defaultTrainingDurationInput, setDefaultTrainingDurationInput] = useState("");
+  const [defaultSupplementalDurationInput, setDefaultSupplementalDurationInput] = useState("");
+
+  const defaultTrainingDuration = parseDurationFormField(defaultTrainingDurationInput);
+  const defaultSupplementalDuration = parseDurationFormField(defaultSupplementalDurationInput);
+  const durationsValid =
+    defaultTrainingDuration !== "invalid" && defaultSupplementalDuration !== "invalid";
 
   useEffect(() => {
     if (!open) return;
@@ -114,6 +125,7 @@ export function TennisTrainingPlanDialog({
   }
 
   async function handleSubmit() {
+    if (!durationsValid) return;
     setSaving(true);
     try {
       const res = await fetch("/api/training-plans", {
@@ -134,6 +146,10 @@ export function TennisTrainingPlanDialog({
           supplementalSessionsPerWeek: structure.supplementalSessionsPerWeek,
           trainingPreferredDays: structure.trainingPreferredDays,
           supplementalPreferredDays: structure.supplementalPreferredDays,
+          defaultTrainingDurationMinutes:
+            typeof defaultTrainingDuration === "number" ? defaultTrainingDuration : null,
+          defaultSupplementalDurationMinutes:
+            typeof defaultSupplementalDuration === "number" ? defaultSupplementalDuration : null,
         }),
       });
       if (res.ok) {
@@ -274,10 +290,17 @@ export function TennisTrainingPlanDialog({
             </div>
           )}
 
+          <PlanDefaultDurationsSection
+            trainingDuration={defaultTrainingDurationInput}
+            supplementalDuration={defaultSupplementalDurationInput}
+            onTrainingDurationChange={setDefaultTrainingDurationInput}
+            onSupplementalDurationChange={setDefaultSupplementalDurationInput}
+          />
+
           <Button
             className="w-full"
             onClick={handleSubmit}
-            disabled={saving || !assessment}
+            disabled={saving || !assessment || !durationsValid}
           >
             {saving ? "Creating..." : "Create Training Plan"}
           </Button>

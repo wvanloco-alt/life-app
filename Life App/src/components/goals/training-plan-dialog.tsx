@@ -35,7 +35,10 @@ import {
   deriveDefaultStructure,
 } from "@/components/goals/training-structure-fields";
 import { format } from "date-fns";
-
+import {
+  PlanDefaultDurationsSection,
+  parseDurationFormField,
+} from "./plan-default-durations-section";
 
 interface TrainingPlanDialogProps {
   open: boolean;
@@ -86,10 +89,17 @@ export function TrainingPlanDialog({
   const [startDate, setStartDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [assessment, setAssessment] = useState<LevelAssessment | null>(null);
   const [saving, setSaving] = useState(false);
+  const [defaultTrainingDurationInput, setDefaultTrainingDurationInput] = useState("");
+  const [defaultSupplementalDurationInput, setDefaultSupplementalDurationInput] = useState("");
 
   const [structure, setStructure] = useState<TrainingStructureValue>(
     deriveDefaultStructure(goalSessionsPerWeek, null)
   );
+
+  const defaultTrainingDuration = parseDurationFormField(defaultTrainingDurationInput);
+  const defaultSupplementalDuration = parseDurationFormField(defaultSupplementalDurationInput);
+  const durationsValid =
+    defaultTrainingDuration !== "invalid" && defaultSupplementalDuration !== "invalid";
 
   const hydrateFromExisting = useCallback(
     (plan: TrainingPlan) => {
@@ -112,12 +122,25 @@ export function TrainingPlanDialog({
         trainingPreferredDays: plan.trainingPreferredDays ?? [],
         supplementalPreferredDays: plan.supplementalPreferredDays ?? [],
       });
+
+      setDefaultTrainingDurationInput(
+        plan.defaultTrainingDurationMinutes != null
+          ? String(plan.defaultTrainingDurationMinutes)
+          : ""
+      );
+      setDefaultSupplementalDurationInput(
+        plan.defaultSupplementalDurationMinutes != null
+          ? String(plan.defaultSupplementalDurationMinutes)
+          : ""
+      );
     },
     [goalSessionsPerWeek]
   );
 
   const hydrateForCreate = useCallback(() => {
     setStructure(deriveDefaultStructure(goalSessionsPerWeek, null));
+    setDefaultTrainingDurationInput("");
+    setDefaultSupplementalDurationInput("");
 
     setDiscipline("bouldering");
     setMaxBoulderGrade("5c");
@@ -187,12 +210,21 @@ export function TrainingPlanDialog({
   }
 
   async function handleSubmit() {
+    if (!durationsValid) return;
+
     const {
       trainingSessionsPerWeek,
       supplementalSessionsPerWeek,
       trainingPreferredDays,
       supplementalPreferredDays,
     } = structure;
+
+    const durationPayload = {
+      defaultTrainingDurationMinutes:
+        typeof defaultTrainingDuration === "number" ? defaultTrainingDuration : null,
+      defaultSupplementalDurationMinutes:
+        typeof defaultSupplementalDuration === "number" ? defaultSupplementalDuration : null,
+    };
 
     setSaving(true);
     try {
@@ -205,6 +237,7 @@ export function TrainingPlanDialog({
             supplementalSessionsPerWeek,
             trainingPreferredDays,
             supplementalPreferredDays,
+            ...durationPayload,
           }),
         });
         if (res.ok) {
@@ -230,6 +263,7 @@ export function TrainingPlanDialog({
             supplementalSessionsPerWeek,
             trainingPreferredDays,
             supplementalPreferredDays,
+            ...durationPayload,
           }),
         });
         if (res.ok) {
@@ -245,8 +279,8 @@ export function TrainingPlanDialog({
   const splitValid =
     structure.trainingSessionsPerWeek + structure.supplementalSessionsPerWeek ===
     goalSessionsPerWeek;
-  const canSubmitCreate = Boolean(assessment) && splitValid;
-  const canSubmitEdit = splitValid;
+  const canSubmitCreate = Boolean(assessment) && splitValid && durationsValid;
+  const canSubmitEdit = splitValid && durationsValid;
 
   const fieldsLocked = isEditMode;
 
@@ -362,6 +396,13 @@ export function TrainingPlanDialog({
             sessionsPerWeek={goalSessionsPerWeek}
             value={structure}
             onChange={setStructure}
+          />
+
+          <PlanDefaultDurationsSection
+            trainingDuration={defaultTrainingDurationInput}
+            supplementalDuration={defaultSupplementalDurationInput}
+            onTrainingDurationChange={setDefaultTrainingDurationInput}
+            onSupplementalDurationChange={setDefaultSupplementalDurationInput}
           />
 
           <div className="space-y-1.5">

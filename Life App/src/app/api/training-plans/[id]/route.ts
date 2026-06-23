@@ -5,6 +5,19 @@ import { eq, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { isValidSplit } from "@/lib/training/split";
 
+function parseOptionalDurationMinutes(
+  value: unknown
+): { ok: true; value: number | null } | { ok: false; error: string } {
+  if (value === undefined || value === null || value === "") {
+    return { ok: true, value: null };
+  }
+  const n = typeof value === "number" ? value : parseInt(String(value), 10);
+  if (!Number.isInteger(n) || n <= 0) {
+    return { ok: false, error: "Duration must be a positive integer" };
+  }
+  return { ok: true, value: n };
+}
+
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -59,6 +72,8 @@ export async function PATCH(
     supplementalSessionsPerWeek,
     trainingPreferredDays,
     supplementalPreferredDays,
+    defaultTrainingDurationMinutes,
+    defaultSupplementalDurationMinutes,
   } = body;
 
   const updates: Record<string, unknown> = {};
@@ -85,6 +100,17 @@ export async function PATCH(
   if (supplementalPreferredDays !== undefined) {
     const days = Array.isArray(supplementalPreferredDays) ? supplementalPreferredDays.filter((d) => typeof d === "number") : [];
     updates.supplementalPreferredDays = JSON.stringify(days);
+  }
+
+  if (defaultTrainingDurationMinutes !== undefined) {
+    const parsed = parseOptionalDurationMinutes(defaultTrainingDurationMinutes);
+    if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+    updates.defaultTrainingDurationMinutes = parsed.value;
+  }
+  if (defaultSupplementalDurationMinutes !== undefined) {
+    const parsed = parseOptionalDurationMinutes(defaultSupplementalDurationMinutes);
+    if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
+    updates.defaultSupplementalDurationMinutes = parsed.value;
   }
 
   if (Object.keys(updates).length === 0) {
