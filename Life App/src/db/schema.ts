@@ -364,6 +364,8 @@ export const trainingPlans = sqliteTable("training_plans", {
   supplementalSessionsPerWeek: integer("supplemental_sessions_per_week"),
   trainingPreferredDays: text("training_preferred_days").default("[]"),
   supplementalPreferredDays: text("supplemental_preferred_days").default("[]"),
+  defaultTrainingDurationMinutes: integer("default_training_duration_minutes"),
+  defaultSupplementalDurationMinutes: integer("default_supplemental_duration_minutes"),
   userId: text("user_id").notNull().default(""),
   createdAt: timestamp(),
   updatedAt: updatedAt(),

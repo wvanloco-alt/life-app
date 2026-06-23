@@ -93,6 +93,7 @@ export async function PATCH(
       activityTypeId: existingActivity.activityTypeId,
       goalId: existingActivity.goalId,
       activityDate: existingActivity.activityDate,
+      sessionType: existingActivity.sessionType,
     });
   }
 
