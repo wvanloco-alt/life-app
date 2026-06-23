@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   ChevronLeft,
   ChevronRight,
@@ -29,11 +28,7 @@ import {
   getWeekStartDate,
   getFocusGoalWeekKey,
 } from "@/lib/dates";
-import { getQuadrantInfo } from "@/lib/quadrants";
-import {
-  getSessionTypeCardClasses,
-  shouldShowSupplementalBadge,
-} from "@/lib/session-type-styles";
+import { shouldShowSupplementalBadge } from "@/lib/session-type-styles";
 import { cn } from "@/lib/utils";
 import { ActivityForm } from "@/components/monthly-plan/activity-form";
 import { GoalOverviewSection } from "@/components/shared/goal-overview-section";
@@ -42,6 +37,7 @@ import {
   LinkedLogActionDialog,
   type BridgedLogAction,
 } from "@/components/activities/linked-log-action-dialog";
+import { LogActivityDialog } from "@/components/activities/log-activity-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import type {
   Activity,
@@ -52,24 +48,8 @@ import type {
   ActivityType,
   SessionType,
 } from "@/types";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { LucideIcon } from "@/components/ui/lucide-icon";
+import { HourlyTimeline } from "@/components/daily/hourly-timeline";
 
 function formatDuration(minutes: number): string {
   const h = Math.floor(minutes / 60);
@@ -77,143 +57,6 @@ function formatDuration(minutes: number): string {
   if (h === 0) return `${m}m`;
   if (m === 0) return `${h}h`;
   return `${h}h ${m}m`;
-}
-
-interface LogActivityDialogProps {
-  open: boolean;
-  onClose: () => void;
-  onSave: () => void;
-  activityTypes: ActivityType[];
-  defaultDate: string;
-  defaultActivityTypeId?: number;
-  defaultActivityId?: number;
-}
-
-function LogActivityDialog({
-  open,
-  onClose,
-  onSave,
-  activityTypes,
-  defaultDate,
-  defaultActivityTypeId,
-  defaultActivityId,
-}: LogActivityDialogProps) {
-  const [activityTypeId, setActivityTypeId] = useState<string>(
-    defaultActivityTypeId?.toString() ?? ""
-  );
-  const [durationMinutes, setDurationMinutes] = useState("");
-  const [date, setDate] = useState(defaultDate);
-  const [notes, setNotes] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (open) {
-      setActivityTypeId(defaultActivityTypeId?.toString() ?? "");
-      setDurationMinutes("");
-      setDate(defaultDate);
-      setNotes("");
-    }
-  }, [open, defaultDate, defaultActivityTypeId]);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const mins = parseInt(durationMinutes, 10);
-    if (!activityTypeId || !mins || mins <= 0) return;
-
-    setSaving(true);
-    try {
-      await fetch("/api/activity-logs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          activityTypeId: parseInt(activityTypeId),
-          activityId: defaultActivityId ?? null,
-          date,
-          durationMinutes: mins,
-          notes: notes.trim() || null,
-        }),
-      });
-      if (defaultActivityId) {
-        await fetch(`/api/activities/${defaultActivityId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ isCompleted: true }),
-        });
-      }
-      onSave();
-      onClose();
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Log Activity</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="activity-type">Activity Type</Label>
-            <Select
-              value={activityTypeId || "none"}
-              onValueChange={(v) => setActivityTypeId(v === "none" ? "" : v)}
-            >
-              <SelectTrigger id="activity-type">
-                <SelectValue placeholder="Select activity type" />
-              </SelectTrigger>
-              <SelectContent>
-                {activityTypes.map((at) => (
-                  <SelectItem key={at.id} value={at.id.toString()}>
-                    <span className="flex items-center gap-2"><LucideIcon name={at.icon} size="sm" />{at.name}</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="duration">Duration (minutes)</Label>
-            <Input
-              id="duration"
-              type="number"
-              min={1}
-              value={durationMinutes}
-              onChange={(e) => setDurationMinutes(e.target.value)}
-              placeholder="e.g. 30"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="date">Date</Label>
-            <Input
-              id="date"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notes (optional)</Label>
-            <Textarea
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Any notes..."
-              rows={3}
-            />
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={saving || !activityTypeId || !durationMinutes}>
-              {saving ? "Saving..." : "Save"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
 }
 
 export function DailyView() {
@@ -227,7 +70,7 @@ export function DailyView() {
   const [loading, setLoading] = useState(true);
   const [focusGoals, setFocusGoals] = useState<Goal[]>([]);
   const [trainingPhaseInfo, setTrainingPhaseInfo] = useState<
-    Record<number, { phaseName: string; phaseStartDate: string; durationWeeks: number }>
+    Record<number, { phaseName: string; phaseStartDate: string; durationWeeks: number; sportFocusContent?: string | null; supplementalContent?: string | null }>
   >({});
   const [weekActivities, setWeekActivities] = useState<Activity[]>([]);
   const [tallyProgressMap, setTallyProgressMap] = useState<
@@ -290,13 +133,15 @@ export function DailyView() {
       ]);
 
     setActivities(actData);
-    setWeekActivities(weekData as Activity[]);
     setRoles(rolesData);
     setGoals(goalsData);
     setActivityLogs(logsData);
     setActivityTypes(typesData);
 
-    const incomplete = (weekData as Activity[]).filter(
+    const week = weekData as Activity[];
+    setWeekActivities(week);
+
+    const incomplete = week.filter(
       (a) => !a.isCompleted && a.activityDate < dateStr
     );
     setCarryForward(incomplete);
@@ -334,11 +179,11 @@ export function DailyView() {
       if (planRes.ok) {
         const planData: Array<{
           goalId: number;
-          phases: Array<{ status: string; phaseType: string; startDate: string; durationWeeks: number }>;
+          phases: Array<{ status: string; phaseType: string; startDate: string; durationWeeks: number; sportFocusContent?: string | null; supplementalContent?: string | null }>;
         }> = await planRes.json();
         const phaseMap: Record<
           number,
-          { phaseName: string; phaseStartDate: string; durationWeeks: number }
+          { phaseName: string; phaseStartDate: string; durationWeeks: number; sportFocusContent?: string | null; supplementalContent?: string | null }
         > = {};
         for (const plan of planData) {
           const activePhase = plan.phases.find((ph) => ph.status === "active");
@@ -347,6 +192,8 @@ export function DailyView() {
               phaseName: getPhaseDisplayName(activePhase.phaseType),
               phaseStartDate: activePhase.startDate,
               durationWeeks: activePhase.durationWeeks,
+              sportFocusContent: activePhase.sportFocusContent ?? null,
+              supplementalContent: activePhase.supplementalContent ?? null,
             };
           }
         }
@@ -464,6 +311,15 @@ export function DailyView() {
     void performDelete(activity.id);
   }
 
+  async function handleTimeReschedule(id: number, startTime: string, endTime: string) {
+    const res = await fetch(`/api/activities/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ startTime, endTime }),
+    });
+    if (!res.ok) throw new Error("Reschedule failed");
+  }
+
   async function handleSaveActivity(data: {
     title: string;
     activityDate: string;
@@ -564,6 +420,21 @@ export function DailyView() {
         </div>
       ) : (
         <div className="space-y-4">
+            {/* Goal overview — top of the page */}
+            <GoalOverviewSection
+              goals={todayFocusGoals}
+              trainingPhaseInfo={trainingPhaseInfo}
+              loading={loading}
+              heading="Focus today"
+              weekActivities={weekActivities}
+              tallyProgress={tallyProgressMap}
+              today={dateStr}
+              onLogActivity={(goal) => {
+                setLogDialogActivity({ activityTypeId: goal.activityTypeId ?? undefined });
+                setLogDialogOpen(true);
+              }}
+            />
+
             {activeCarryForward.length > 0 && (
               <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-900 dark:bg-amber-950/20">
                 <CardHeader className="pb-2">
@@ -677,108 +548,25 @@ export function DailyView() {
                     description="Your day is wide open. Plan activities or generate a schedule from the Monthly Plan."
                   />
                 ) : (
-                  <div className="space-y-2">
-                    {sortedActivities.map((activity) => {
-                      const quadrant = getQuadrantInfo(activity.quadrant);
-                      const sessionType = activity.sessionType ?? "training";
-                      const isSupplemental = sessionType === "supplemental";
-                      const showSupplementalBadge =
-                        shouldShowSupplementalBadge(sessionType);
-                      const effectiveActivityTypeId =
-                        activity.activityTypeId ??
-                        goals.find((g) => g.id === activity.goalId)?.activityTypeId ??
-                        null;
-                      const canLogAndComplete =
-                        !activity.isCompleted &&
-                        effectiveActivityTypeId != null;
-                      return (
-                        <div
-                          key={activity.id}
-                          className={cn(
-                            "group relative flex items-start gap-3 rounded-lg border p-3 transition-opacity cursor-pointer hover:bg-accent/50",
-                            getSessionTypeCardClasses(sessionType),
-                            activity.isCompleted && "opacity-50"
-                          )}
-                          onClick={() => {
-                            setEditingActivity(activity);
-                            setFormOpen(true);
-                          }}
-                          style={{
-                            borderLeftWidth: "4px",
-                            borderLeftColor:
-                              activity.roleColor ?? quadrant.hexColor,
-                          }}
-                        >
-                          {showSupplementalBadge && (
-                            <Badge
-                              variant="secondary"
-                              className="absolute right-2 top-2 z-10 text-[10px] font-normal"
-                            >
-                              Supplemental
-                            </Badge>
-                          )}
-                          <Checkbox
-                            checked={activity.isCompleted}
-                            onCheckedChange={(checked) => {
-                              handleToggle(activity.id, checked as boolean);
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="mt-0.5"
-                          />
-                          <div
-                            className={cn(
-                              "flex-1 min-w-0",
-                              showSupplementalBadge && "pr-24"
-                            )}
-                          >
-                            <div
-                              className={`font-medium text-sm ${
-                                activity.isCompleted ? "line-through" : ""
-                              }`}
-                            >
-                              {activity.title}
-                            </div>
-                          </div>
-                          <span
-                            className={cn(
-                              "text-xs px-1.5 py-0.5 rounded shrink-0",
-                              isSupplemental
-                                ? "bg-muted/50 text-muted-foreground"
-                                : ""
-                            )}
-                            style={
-                              isSupplemental
-                                ? undefined
-                                : {
-                                    backgroundColor: `${quadrant.hexColor}20`,
-                                    color: quadrant.hexColor,
-                                  }
-                            }
-                          >
-                            {quadrant.shortLabel}
-                          </span>
-                          {canLogAndComplete && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setLogDialogActivity({
-                                  activityTypeId: effectiveActivityTypeId,
-                                  activityId: activity.id,
-                                });
-                                setLogDialogOpen(true);
-                              }}
-                              title="Log & Complete"
-                            >
-                              <ClipboardList className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <HourlyTimeline
+                    activities={sortedActivities}
+                    goals={goals}
+                    onToggle={handleToggle}
+                    onEdit={(activity) => {
+                      setEditingActivity(activity);
+                      setFormOpen(true);
+                    }}
+                    onAdd={(startTime) => {
+                      setEditingActivity(null);
+                      setDefaultStartTime(startTime);
+                      setFormOpen(true);
+                    }}
+                    onLogAndComplete={(activityTypeId, activityId) => {
+                      setLogDialogActivity({ activityTypeId, activityId });
+                      setLogDialogOpen(true);
+                    }}
+                    onReschedule={handleTimeReschedule}
+                  />
                 )}
               </CardContent>
             </Card>
@@ -834,16 +622,6 @@ export function DailyView() {
             )}
         </div>
       )}
-
-      {/* Goal overview — active focus goals with training phase context */}
-      <GoalOverviewSection
-        goals={todayFocusGoals}
-        trainingPhaseInfo={trainingPhaseInfo}
-        weekActivities={weekActivities}
-        tallyProgress={tallyProgressMap}
-        loading={loading}
-        heading="Focus today"
-      />
 
       <ActivityForm
         key={editingActivity?.id ?? "new"}

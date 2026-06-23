@@ -337,7 +337,42 @@ export function assessRunningLevel(
   };
 }
 
-// ─── Phase Description Builder ──────────────────────────
+// ─── Phase Content Builders ─────────────────────────────
+
+/**
+ * Returns the three scheduler layer columns for a running phase.
+ *
+ * Mirrors buildRunningPhaseDescription but returns the strings separately so
+ * the scheduler can assign distinct notes to training vs supplemental sessions.
+ * The `goalDistance` parameter is kept for API symmetry with
+ * buildRunningPhaseDescription — it is not used in the content lookup (content
+ * is selected by phaseType + level from the *_PHASE_CONTENT tables).
+ */
+export function buildRunningPhaseContent(
+  phaseType: RunningPhaseType,
+  _goalDistance: RunningGoalDistance,
+  level: RunnerLevel
+): { sportFocusContent: string; supplementalContent: string; mentalGameContent: string } {
+  let content: PhaseContent;
+
+  if (level === "beginner") {
+    content = BEGINNER_PHASE_CONTENT[phaseType as BeginnerPhase];
+  } else if (level === "advanced") {
+    content = ADVANCED_PHASE_CONTENT[phaseType as IntAdvPhase];
+  } else {
+    content = INTERMEDIATE_PHASE_CONTENT[phaseType as IntAdvPhase];
+  }
+
+  if (!content) {
+    content = BEGINNER_PHASE_CONTENT.rest;
+  }
+
+  return {
+    sportFocusContent: content.running,
+    supplementalContent: content.supplemental,
+    mentalGameContent: content.mental,
+  };
+}
 
 export function buildRunningPhaseDescription(
   phaseType: RunningPhaseType,
@@ -445,6 +480,7 @@ export function generateRunningPhases(
       const t = BEGINNER_TEMPLATE[i];
       const phaseStart = format(currentDate, "yyyy-MM-dd");
       const phaseEnd = format(addWeeks(currentDate, t.weeks), "yyyy-MM-dd");
+      const layers = buildRunningPhaseContent(t.type, goalDistance, level);
 
       phases.push({
         phaseType: t.type,
@@ -454,6 +490,7 @@ export function generateRunningPhases(
         endDate: phaseEnd,
         description: buildRunningPhaseDescription(t.type, goalDistance, level),
         limitationNotes: buildRunningLimitationNotes(t.type, physicalLimitations),
+        ...layers,
       });
 
       currentDate = addWeeks(currentDate, t.weeks);
@@ -469,6 +506,7 @@ export function generateRunningPhases(
       const weeks = modifiers[i];
       const phaseStart = format(currentDate, "yyyy-MM-dd");
       const phaseEnd = format(addWeeks(currentDate, weeks), "yyyy-MM-dd");
+      const layers = buildRunningPhaseContent(phaseType, goalDistance, level);
 
       phases.push({
         phaseType,
@@ -478,6 +516,7 @@ export function generateRunningPhases(
         endDate: phaseEnd,
         description: buildRunningPhaseDescription(phaseType, goalDistance, level),
         limitationNotes: buildRunningLimitationNotes(phaseType, physicalLimitations),
+        ...layers,
       });
 
       currentDate = addWeeks(currentDate, weeks);
@@ -485,6 +524,7 @@ export function generateRunningPhases(
 
     const restStart = format(currentDate, "yyyy-MM-dd");
     const restEnd = format(addWeeks(currentDate, 1), "yyyy-MM-dd");
+    const restLayers = buildRunningPhaseContent("rest", goalDistance, level);
     phases.push({
       phaseType: "rest",
       orderIndex: INT_ADV_PHASE_ORDER.length,
@@ -493,6 +533,7 @@ export function generateRunningPhases(
       endDate: restEnd,
       description: buildRunningPhaseDescription("rest", goalDistance, level),
       limitationNotes: buildRunningLimitationNotes("rest", physicalLimitations),
+      ...restLayers,
     });
   }
 

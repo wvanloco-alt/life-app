@@ -125,10 +125,7 @@ export function RoleForm({ open, onClose, onSave, role }: RoleFormProps) {
           <div className="space-y-3">
             <Label className="text-sm font-semibold">Scheduling Rules</Label>
 
-            <div
-              className="flex items-center gap-2 cursor-pointer"
-              onClick={() => setIsWorkRole(!isWorkRole)}
-            >
+            <div className="flex items-center gap-2 cursor-pointer">
               <Checkbox
                 checked={isWorkRole}
                 onCheckedChange={(v) => setIsWorkRole(v as boolean)}
