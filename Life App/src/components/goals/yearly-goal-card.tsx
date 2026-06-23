@@ -18,10 +18,12 @@ import {
   ChevronUp,
   Plus,
   Mountain,
+  History,
 } from "lucide-react";
 import { RoleBadge } from "@/components/roles/role-badge";
 import { LucideIcon } from "@/components/ui/lucide-icon";
 import { TrainingPlanSection } from "./training-plan-section";
+import { GoalProgressSheet } from "./goal-progress-sheet";
 import type { Goal, GoalProgress, PaceStatus, TrainingPlan } from "@/types";
 import { format } from "date-fns";
 
@@ -89,6 +91,7 @@ export function YearlyGoalCard({
   onEditTrainingSplit,
 }: YearlyGoalCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [logOpen, setLogOpen] = useState(false);
 
   const paceStatus = progress?.paceStatus ?? "no_data";
   const isGradeTarget = goal.targetMetric === "grade" && goal.targetUnit;
@@ -168,7 +171,7 @@ export function YearlyGoalCard({
             </div>
           )}
 
-          <div className="flex items-center gap-2 pt-1">
+          <div className="flex items-center gap-2 pt-1 flex-wrap">
             <Button
               variant="outline"
               size="sm"
@@ -176,6 +179,14 @@ export function YearlyGoalCard({
               onClick={onLogTally}
             >
               <Plus className="mr-1 h-3 w-3" /> Log Progress
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => setLogOpen(true)}
+            >
+              <History className="mr-1 h-3 w-3" /> View log
             </Button>
             {!trainingPlan && onCreateTrainingPlan && (
               <Button
@@ -252,6 +263,12 @@ export function YearlyGoalCard({
           </div>
         )}
       </CardContent>
+      <GoalProgressSheet
+        goalId={goal.id}
+        goalTitle={goal.title}
+        open={logOpen}
+        onClose={() => setLogOpen(false)}
+      />
     </Card>
   );
 }
