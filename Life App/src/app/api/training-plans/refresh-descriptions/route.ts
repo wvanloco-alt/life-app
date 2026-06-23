@@ -3,8 +3,8 @@ import { db } from "@/db";
 import { trainingPlans, trainingPhases } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { buildClimbingPhaseDescription, buildClimbingPhaseContent, buildClimbingLimitationNotes } from "@/lib/training/periodization";
-import { buildPhaseDescription, buildLimitationNotes } from "@/lib/training/tennis-periodization";
-import { buildRunningPhaseDescription, buildRunningLimitationNotes } from "@/lib/training/running-periodization";
+import { buildPhaseDescription, buildTennisPhaseContent, buildLimitationNotes } from "@/lib/training/tennis-periodization";
+import { buildRunningPhaseDescription, buildRunningPhaseContent, buildRunningLimitationNotes } from "@/lib/training/running-periodization";
 import type { ClimbingPhaseType, ClimbingSportProfile, ClimbingLimitation, TennisSportProfile, TennisPlayingStyle, TennisPlayerLevel, PhysicalLimitation, ClimberLevel, RunningSportProfile, RunningPhaseType, RunningGoalDistance, RunnerLevel, RunningLimitation } from "@/types";
 import { auth } from "@/lib/auth";
 
@@ -32,12 +32,26 @@ export async function POST() {
 
       if (plan.sport === "tennis") {
         const tp = profile as TennisSportProfile;
-        description = buildPhaseDescription(phase.phaseType as any, (tp.playingStyle ?? "all-court") as TennisPlayingStyle, plan.playerLevel as TennisPlayerLevel);
-        limitationNotes = buildLimitationNotes(phase.phaseType as any, (tp.physicalLimitations ?? []) as PhysicalLimitation[]);
+        const phaseType = phase.phaseType as any;
+        const style = (tp.playingStyle ?? "all-court") as TennisPlayingStyle;
+        const level = plan.playerLevel as TennisPlayerLevel;
+        description = buildPhaseDescription(phaseType, style, level);
+        limitationNotes = buildLimitationNotes(phaseType, (tp.physicalLimitations ?? []) as PhysicalLimitation[]);
+        const layers = buildTennisPhaseContent(phaseType, style, level);
+        sportFocusContent = layers.sportFocusContent;
+        supplementalContent = layers.supplementalContent;
+        mentalGameContent = layers.mentalGameContent;
       } else if (plan.sport === "running") {
         const rp = profile as RunningSportProfile;
-        description = buildRunningPhaseDescription(phase.phaseType as RunningPhaseType, (rp.goalDistance ?? "general") as RunningGoalDistance, plan.playerLevel as RunnerLevel);
-        limitationNotes = buildRunningLimitationNotes(phase.phaseType as RunningPhaseType, (rp.physicalLimitations ?? []) as RunningLimitation[]);
+        const phaseType = phase.phaseType as RunningPhaseType;
+        const goalDistance = (rp.goalDistance ?? "general") as RunningGoalDistance;
+        const level = plan.playerLevel as RunnerLevel;
+        description = buildRunningPhaseDescription(phaseType, goalDistance, level);
+        limitationNotes = buildRunningLimitationNotes(phaseType, (rp.physicalLimitations ?? []) as RunningLimitation[]);
+        const layers = buildRunningPhaseContent(phaseType, goalDistance, level);
+        sportFocusContent = layers.sportFocusContent;
+        supplementalContent = layers.supplementalContent;
+        mentalGameContent = layers.mentalGameContent;
       } else {
         const cp = profile as ClimbingSportProfile;
         const discipline = cp.discipline ?? "bouldering";

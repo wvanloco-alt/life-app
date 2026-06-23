@@ -4,6 +4,7 @@ import {
   generateTennisPhases,
   buildLimitationNotes,
   buildPhaseDescription,
+  buildTennisPhaseContent,
   getTennisPhaseDisplayName,
   getTennisCycleTotalWeeks,
 } from "../training/tennis-periodization";
@@ -280,5 +281,75 @@ describe("getTennisCycleTotalWeeks", () => {
     expect(getTennisCycleTotalWeeks("advanced", "all-court")).toBe(6);
     expect(getTennisCycleTotalWeeks("advanced", "baseliner")).toBe(6);
     expect(getTennisCycleTotalWeeks("advanced", "serve-volley")).toBe(5);
+  });
+});
+
+// ─── buildTennisPhaseContent ────────────────────────────────────────────────
+
+const TENNIS_PHASE_TYPES = [
+  "foundation-prehab",
+  "strength-power",
+  "tennis-endurance",
+  "performance",
+  "recovery",
+] as const;
+
+const TENNIS_LEVELS = ["beginner", "club", "advanced"] as const;
+const TENNIS_STYLES = ["baseliner", "all-court", "serve-volley"] as const;
+
+describe("buildTennisPhaseContent", () => {
+  it("returns three non-empty strings for every (phase, style, level) combination", () => {
+    for (const phase of TENNIS_PHASE_TYPES) {
+      for (const level of TENNIS_LEVELS) {
+        for (const style of TENNIS_STYLES) {
+          const result = buildTennisPhaseContent(phase, style, level);
+          expect(result.sportFocusContent.length, `${phase}/${level}/${style} sportFocusContent`).toBeGreaterThan(0);
+          expect(result.supplementalContent.length, `${phase}/${level}/${style} supplementalContent`).toBeGreaterThan(0);
+          expect(result.mentalGameContent.length, `${phase}/${level}/${style} mentalGameContent`).toBeGreaterThan(0);
+        }
+      }
+    }
+  });
+
+  it("returns style-specific on-court content for non-beginner levels", () => {
+    const baseliner = buildTennisPhaseContent("foundation-prehab", "baseliner", "club");
+    const sAndV = buildTennisPhaseContent("foundation-prehab", "serve-volley", "club");
+    expect(baseliner.sportFocusContent).not.toBe(sAndV.sportFocusContent);
+  });
+
+  it("returns beginner on-court content for beginner level when available", () => {
+    const beginner = buildTennisPhaseContent("foundation-prehab", "baseliner", "beginner");
+    const club = buildTennisPhaseContent("foundation-prehab", "baseliner", "club");
+    // foundation-prehab has onCourtBeginner — beginner should differ from club
+    expect(beginner.sportFocusContent).not.toBe(club.sportFocusContent);
+  });
+
+  it("mentalGameContent is style-independent (same across styles)", () => {
+    for (const phase of TENNIS_PHASE_TYPES) {
+      const b = buildTennisPhaseContent(phase, "baseliner", "club");
+      const a = buildTennisPhaseContent(phase, "all-court", "club");
+      const s = buildTennisPhaseContent(phase, "serve-volley", "club");
+      expect(b.mentalGameContent).toBe(a.mentalGameContent);
+      expect(b.mentalGameContent).toBe(s.mentalGameContent);
+    }
+  });
+
+  it("layer strings match what buildPhaseDescription would concatenate", () => {
+    for (const phase of TENNIS_PHASE_TYPES) {
+      const layers = buildTennisPhaseContent(phase, "all-court", "club");
+      const description = buildPhaseDescription(phase, "all-court", "club");
+      expect(description).toContain(layers.sportFocusContent);
+      expect(description).toContain(layers.supplementalContent);
+      expect(description).toContain(layers.mentalGameContent);
+    }
+  });
+
+  it("generateTennisPhases populates layer fields on all phases", () => {
+    const phases = generateTennisPhases("club", "baseliner", [], "2026-01-05");
+    for (const phase of phases) {
+      expect(phase.sportFocusContent).toBeTruthy();
+      expect(phase.supplementalContent).toBeTruthy();
+      expect(phase.mentalGameContent).toBeTruthy();
+    }
   });
 });

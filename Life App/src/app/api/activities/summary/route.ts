@@ -93,19 +93,8 @@ export async function GET(request: NextRequest) {
 
   const heatmapData = allWorkouts.filter((w) => w.date >= heatmapCutoffStr).reduce((acc, w) => { acc[w.date] = (acc[w.date] || 0) + 1; return acc; }, {} as Record<string, number>);
 
-  const now = new Date();
-  const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const monthWorkouts = allWorkouts.filter((w) => w.date.startsWith(currentMonthStr));
-  const byTypeMap: Record<number, { name: string; icon: string; count: number }> = {};
-  for (const w of monthWorkouts) {
-    if (!byTypeMap[w.activityTypeId]) byTypeMap[w.activityTypeId] = { name: w.activityTypeName, icon: w.activityTypeIcon, count: 0 };
-    byTypeMap[w.activityTypeId].count++;
-  }
-  const activityByType = Object.entries(byTypeMap).map(([id, v]) => ({ activityTypeId: Number(id), ...v })).sort((a, b) => b.count - a.count);
-
   return NextResponse.json({
     activityByRole,
-    activityByType,
     streaks,
     latestBodyMetrics: latestByType,
     recentWorkouts: recent,
