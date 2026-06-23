@@ -12,13 +12,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   LineChart,
   Line,
-  BarChart,
-  Bar,
   XAxis,
-  YAxis,
   Tooltip,
   ResponsiveContainer,
-  Cell,
 } from "recharts";
 import {
   TrendingUp,
@@ -28,7 +24,6 @@ import {
   Dumbbell,
   Timer,
   Clock,
-  BarChart3,
 } from "lucide-react";
 import { format } from "date-fns";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -57,16 +52,8 @@ interface LatestMetric {
   history: { date: string; value: number }[];
 }
 
-interface ActivityByType {
-  activityTypeId: number;
-  name: string;
-  icon: string;
-  count: number;
-}
-
 interface SummaryData {
   activityByRole: RoleActivity[];
-  activityByType: ActivityByType[];
   streaks: Streak[];
   latestBodyMetrics: Record<string, LatestMetric>;
   recentWorkouts: {
@@ -165,63 +152,6 @@ export function ActivitiesDashboard() {
           </CardContent>
         </Card>
       </div>
-
-      <Card className="border-border/50 shadow-sm overflow-hidden">
-        <CardHeader className="pb-3 bg-muted/10 border-b border-border/40">
-          <CardTitle className="text-base flex items-center gap-2">
-            <BarChart3 className="h-4 w-4 text-emerald-500" />
-            This Month by Activity Type
-          </CardTitle>
-          <CardDescription>Number of logged activities per type this month</CardDescription>
-        </CardHeader>
-        <CardContent className="pt-6">
-          {data.activityByType.length === 0 ? (
-            <EmptyState
-              icon={Dumbbell}
-              title="No activities this month"
-              description="Log some activities to see your breakdown by type."
-            />
-          ) : (
-            <ResponsiveContainer width="100%" height={Math.max(data.activityByType.length * 48, 120)}>
-              <BarChart data={data.activityByType} layout="vertical" margin={{ left: 0, right: 16, top: 0, bottom: 0 }}>
-                <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} fontSize={12} />
-                <YAxis
-                  type="category"
-                  dataKey="name"
-                  width={120}
-                  tickLine={false}
-                  axisLine={false}
-                  fontSize={12}
-                  tick={({ x, y, payload }) => (
-                    <text x={x} y={y} dy={4} textAnchor="end" fill="currentColor" fontSize={12} className="fill-foreground">
-                      {payload.value}
-                    </text>
-                  )}
-                />
-                <Tooltip
-                  formatter={(value: number | undefined) => [`${value ?? 0} sessions`, "Count"]}
-                  contentStyle={{ fontSize: 12, borderRadius: 8 }}
-                />
-                <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={28}>
-                  {data.activityByType.map((_, index) => {
-                    const colors = [
-                      palette.color("blue"),
-                      palette.color("green"),
-                      palette.color("amber"),
-                      palette.color("purple"),
-                      palette.color("cyan"),
-                      palette.color("pink"),
-                      palette.color("red"),
-                      palette.color("indigo"),
-                    ];
-                    return <Cell key={index} fill={colors[index % colors.length]} />;
-                  })}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </CardContent>
-      </Card>
 
       {Object.keys(data.latestBodyMetrics).length > 0 && (
         <div className="grid gap-4 sm:grid-cols-3">

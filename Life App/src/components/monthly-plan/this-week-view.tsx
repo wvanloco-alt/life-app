@@ -11,16 +11,18 @@ import { getPhaseDisplayName } from "@/lib/training/periodization";
 import { DayColumn } from "./day-column";
 import { ActivityForm } from "./activity-form";
 import { SchedulePreferencesDialog, type GoalPatch } from "./schedule-preferences-dialog";
-import { GoalOverviewSection } from "@/components/shared/goal-overview-section";
+import { GoalOverviewSection, type TrainingPhaseEntry } from "@/components/shared/goal-overview-section";
 import {
   LinkedLogActionDialog,
   type BridgedLogAction,
 } from "@/components/activities/linked-log-action-dialog";
+import { LogActivityDialog } from "@/components/activities/log-activity-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import type {
   Role,
   Goal,
   Activity,
+  ActivityType,
   RecurringActivity,
   Quadrant,
   SessionType,
@@ -67,11 +69,15 @@ export function ThisWeekView() {
   const [pendingUncheck, setPendingUncheck] = useState<{ id: number; title: string } | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{ id: number; title: string } | null>(null);
 
+  const [activityTypes, setActivityTypes] = useState<ActivityType[]>([]);
+  const [logDialogOpen, setLogDialogOpen] = useState(false);
+  const [logDialogActivityTypeId, setLogDialogActivityTypeId] = useState<number | undefined>(undefined);
+
   const [trainingPlanData, setTrainingPlanData] = useState<
     Record<number, { id: number; trainingSessionsPerWeek: number | null; supplementalSessionsPerWeek: number | null; trainingPreferredDays: number[]; supplementalPreferredDays: number[] }>
   >({});
   const [trainingPhaseInfo, setTrainingPhaseInfo] = useState<
-    Record<number, { phaseName: string; phaseStartDate: string; durationWeeks: number }>
+    Record<number, TrainingPhaseEntry>
   >({});
 
   // Anchored to today — not the displayed week — so that generating from
@@ -90,10 +96,12 @@ export function ThisWeekView() {
       fetch("/api/goals?status=active"),
       fetch(`/api/activities?weekStart=${currentWeekMonday}`),
       fetch("/api/recurring-activities"),
+      fetch("/api/activity-types"),
     ]);
-    const [rolesData, focusData, allGoalsData, activitiesData, recurringData] = await Promise.all(
+    const [rolesData, focusData, allGoalsData, activitiesData, recurringData, typesData] = await Promise.all(
       responses.map((r) => r.json())
     );
+    setActivityTypes(Array.isArray(typesData) ? typesData : []);
 
     setRoles(rolesData);
     setFocusGoals(focusData);
@@ -106,10 +114,10 @@ export function ThisWeekView() {
     const goalIds: number[] = Array.isArray(focusData) ? focusData.map((g: { id: number }) => g.id) : [];
     if (goalIds.length > 0) {
       const batchRes = await fetch(`/api/training-plans?goalIds=${goalIds.join(",")}`);
-      const planResults: Array<{ id: number; goalId: number; trainingSessionsPerWeek: number | null; supplementalSessionsPerWeek: number | null; trainingPreferredDays: number[] | null; supplementalPreferredDays: number[] | null; phases: Array<{ status: string; phaseType: string; startDate: string; durationWeeks: number }> }> = batchRes.ok ? await batchRes.json() : [];
+      const planResults: Array<{ id: number; goalId: number; trainingSessionsPerWeek: number | null; supplementalSessionsPerWeek: number | null; trainingPreferredDays: number[] | null; supplementalPreferredDays: number[] | null; phases: Array<{ status: string; phaseType: string; startDate: string; durationWeeks: number; sportFocusContent?: string | null; supplementalContent?: string | null }> }> = batchRes.ok ? await batchRes.json() : [];
 
       const planDataMap: Record<number, { id: number; trainingSessionsPerWeek: number | null; supplementalSessionsPerWeek: number | null; trainingPreferredDays: number[]; supplementalPreferredDays: number[] }> = {};
-      const phaseInfoMap: Record<number, { phaseName: string; phaseStartDate: string; durationWeeks: number }> = {};
+      const phaseInfoMap: Record<number, TrainingPhaseEntry> = {};
 
       for (const plan of planResults) {
         planDataMap[plan.goalId] = {
@@ -127,6 +135,8 @@ export function ThisWeekView() {
             phaseName: getPhaseDisplayName(activePhase.phaseType),
             phaseStartDate: activePhase.startDate,
             durationWeeks: activePhase.durationWeeks,
+            sportFocusContent: activePhase.sportFocusContent ?? null,
+            supplementalContent: activePhase.supplementalContent ?? null,
           };
         }
       }
@@ -397,17 +407,20 @@ export function ThisWeekView() {
         </div>
       )}
 
-      {/* Focus goals strip */}
+      {/* Focus goals strip — pills scroll to the enriched goal cards below */}
       {!loading && focusGoals.length > 0 && (
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs text-muted-foreground uppercase tracking-wide">Focus</span>
           {focusGoals.map((g) => (
-            <span
+            <button
               key={g.id}
-              className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium"
+              className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium hover:bg-accent transition-colors cursor-pointer"
+              onClick={() =>
+                document.getElementById(`goal-${g.id}`)?.scrollIntoView({ behavior: "smooth" })
+              }
             >
               {g.title}
-            </span>
+            </button>
           ))}
         </div>
       )}
@@ -467,12 +480,33 @@ export function ThisWeekView() {
         </>
       )}
 
-      {/* Goal overview — active focus goals with training phase context */}
+      {/* Enriched goal cards — phase content, progress logging, supplemental context */}
       <GoalOverviewSection
         goals={focusGoals}
         trainingPhaseInfo={trainingPhaseInfo}
         loading={loading}
-        heading="Focus this week"
+        showEmptyPrompt
+        weekActivities={activities}
+        today={currentWeekMonday <= new Date().toISOString().slice(0, 10)
+          ? new Date().toISOString().slice(0, 10)
+          : currentWeekMonday}
+        onLogActivity={(goal) => {
+          setLogDialogActivityTypeId(goal.activityTypeId ?? undefined);
+          setLogDialogOpen(true);
+        }}
+      />
+
+      {/* Log Activity dialog — opened by "Log session" on goal cards */}
+      <LogActivityDialog
+        open={logDialogOpen}
+        onClose={() => {
+          setLogDialogOpen(false);
+          setLogDialogActivityTypeId(undefined);
+        }}
+        onSave={fetchAll}
+        activityTypes={activityTypes}
+        defaultDate={new Date().toISOString().slice(0, 10)}
+        defaultActivityTypeId={logDialogActivityTypeId}
       />
 
       {/* Activity form dialog */}
