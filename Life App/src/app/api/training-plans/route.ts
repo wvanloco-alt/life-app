@@ -21,6 +21,19 @@ function parseDayArray(raw: string | null | undefined): number[] {
   } catch { return []; }
 }
 
+function parseOptionalDurationMinutes(
+  value: unknown
+): { ok: true; value: number | null } | { ok: false; error: string } {
+  if (value === undefined || value === null || value === "") {
+    return { ok: true, value: null };
+  }
+  const n = typeof value === "number" ? value : parseInt(String(value), 10);
+  if (!Number.isInteger(n) || n <= 0) {
+    return { ok: false, error: "Duration must be a positive integer" };
+  }
+  return { ok: true, value: n };
+}
+
 export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -104,6 +117,8 @@ export async function POST(request: NextRequest) {
     supplementalSessionsPerWeek: requestedSupplemental,
     trainingPreferredDays: requestedTrainingDays,
     supplementalPreferredDays: requestedSupplementalDays,
+    defaultTrainingDurationMinutes: requestedTrainingDuration,
+    defaultSupplementalDurationMinutes: requestedSupplementalDuration,
   } = body;
 
   if (!goalId || yearsExperience == null || !startDate) return NextResponse.json({ error: "goalId, yearsExperience, and startDate are required" }, { status: 400 });
@@ -137,6 +152,11 @@ export async function POST(request: NextRequest) {
 
   const trainingPreferredDays = Array.isArray(requestedTrainingDays) ? requestedTrainingDays.filter((d) => typeof d === "number") : [];
   const supplementalPreferredDays = Array.isArray(requestedSupplementalDays) ? requestedSupplementalDays.filter((d) => typeof d === "number") : [];
+
+  const trainingDuration = parseOptionalDurationMinutes(requestedTrainingDuration);
+  if (!trainingDuration.ok) return NextResponse.json({ error: trainingDuration.error }, { status: 400 });
+  const supplementalDuration = parseOptionalDurationMinutes(requestedSupplementalDuration);
+  if (!supplementalDuration.ok) return NextResponse.json({ error: supplementalDuration.error }, { status: 400 });
 
   let derivedLevel: string;
   let recommendedModel: string;
@@ -180,6 +200,8 @@ export async function POST(request: NextRequest) {
       supplementalSessionsPerWeek,
       trainingPreferredDays: JSON.stringify(trainingPreferredDays),
       supplementalPreferredDays: JSON.stringify(supplementalPreferredDays),
+      defaultTrainingDurationMinutes: trainingDuration.value,
+      defaultSupplementalDurationMinutes: supplementalDuration.value,
       userId,
     })
     .returning();

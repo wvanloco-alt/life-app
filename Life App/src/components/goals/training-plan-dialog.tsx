@@ -30,6 +30,10 @@ import type {
 import { GRADE_ORDER } from "@/lib/training/periodization";
 import { defaultSplit, isValidSplit } from "@/lib/training/split";
 import { format } from "date-fns";
+import {
+  PlanDefaultDurationsSection,
+  parseDurationFormField,
+} from "./plan-default-durations-section";
 
 const WEEKDAYS = [
   { value: 1, label: "Mon" },
@@ -134,6 +138,8 @@ export function TrainingPlanDialog({
   const [supplementalSessionsInput, setSupplementalSessionsInput] = useState("");
   const [trainingPreferredDays, setTrainingPreferredDays] = useState<Set<number>>(new Set());
   const [supplementalPreferredDays, setSupplementalPreferredDays] = useState<Set<number>>(new Set());
+  const [defaultTrainingDurationInput, setDefaultTrainingDurationInput] = useState("");
+  const [defaultSupplementalDurationInput, setDefaultSupplementalDurationInput] = useState("");
 
   const hydrateFromExisting = useCallback(
     (plan: TrainingPlan) => {
@@ -158,6 +164,16 @@ export function TrainingPlanDialog({
 
       setTrainingPreferredDays(new Set(plan.trainingPreferredDays ?? []));
       setSupplementalPreferredDays(new Set(plan.supplementalPreferredDays ?? []));
+      setDefaultTrainingDurationInput(
+        plan.defaultTrainingDurationMinutes != null
+          ? String(plan.defaultTrainingDurationMinutes)
+          : ""
+      );
+      setDefaultSupplementalDurationInput(
+        plan.defaultSupplementalDurationMinutes != null
+          ? String(plan.defaultSupplementalDurationMinutes)
+          : ""
+      );
     },
     [goalSessionsPerWeek]
   );
@@ -168,6 +184,8 @@ export function TrainingPlanDialog({
     setSupplementalSessionsInput(String(d.supplemental));
     setTrainingPreferredDays(new Set());
     setSupplementalPreferredDays(new Set());
+    setDefaultTrainingDurationInput("");
+    setDefaultSupplementalDurationInput("");
 
     setDiscipline("bouldering");
     setMaxBoulderGrade("5c");
@@ -242,6 +260,11 @@ export function TrainingPlanDialog({
   const splitValid =
     isValidSplit(trainingParsed, supplementalParsed, goalSessionsPerWeek);
 
+  const defaultTrainingDuration = parseDurationFormField(defaultTrainingDurationInput);
+  const defaultSupplementalDuration = parseDurationFormField(defaultSupplementalDurationInput);
+  const durationsValid =
+    defaultTrainingDuration !== "invalid" && defaultSupplementalDuration !== "invalid";
+
   const showReconcileBanner =
     isEditMode &&
     existingPlan != null &&
@@ -262,9 +285,17 @@ export function TrainingPlanDialog({
     if (!isValidSplit(trainingSessionsPerWeek, supplementalSessionsPerWeek, goalSessionsPerWeek)) {
       return;
     }
+    if (!durationsValid) return;
 
     setSaving(true);
     try {
+      const durationPayload = {
+        defaultTrainingDurationMinutes:
+          typeof defaultTrainingDuration === "number" ? defaultTrainingDuration : null,
+        defaultSupplementalDurationMinutes:
+          typeof defaultSupplementalDuration === "number" ? defaultSupplementalDuration : null,
+      };
+
       if (isEditMode && existingPlan) {
         const res = await fetch(`/api/training-plans/${existingPlan.id}`, {
           method: "PATCH",
@@ -274,6 +305,7 @@ export function TrainingPlanDialog({
             supplementalSessionsPerWeek,
             trainingPreferredDays: [...trainingPreferredDays].sort((a, b) => a - b),
             supplementalPreferredDays: [...supplementalPreferredDays].sort((a, b) => a - b),
+            ...durationPayload,
           }),
         });
         if (res.ok) {
@@ -299,6 +331,7 @@ export function TrainingPlanDialog({
             supplementalSessionsPerWeek,
             trainingPreferredDays: [...trainingPreferredDays].sort((a, b) => a - b),
             supplementalPreferredDays: [...supplementalPreferredDays].sort((a, b) => a - b),
+            ...durationPayload,
           }),
         });
         if (res.ok) {
@@ -311,8 +344,8 @@ export function TrainingPlanDialog({
     }
   }
 
-  const canSubmitCreate = Boolean(assessment) && splitValid;
-  const canSubmitEdit = splitValid;
+  const canSubmitCreate = Boolean(assessment) && splitValid && durationsValid;
+  const canSubmitEdit = splitValid && durationsValid;
 
   const fieldsLocked = isEditMode;
 
@@ -473,6 +506,13 @@ export function TrainingPlanDialog({
               </p>
             ) : null}
           </div>
+
+          <PlanDefaultDurationsSection
+            trainingDuration={defaultTrainingDurationInput}
+            supplementalDuration={defaultSupplementalDurationInput}
+            onTrainingDurationChange={setDefaultTrainingDurationInput}
+            onSupplementalDurationChange={setDefaultSupplementalDurationInput}
+          />
 
           <PreferredDayRow
             label="Training preferred days"
