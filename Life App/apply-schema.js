@@ -408,6 +408,53 @@ const createStatements = [
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     UNIQUE(user_id, item_id)
   )`,
+
+  `CREATE TABLE IF NOT EXISTS sleep_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    user_id TEXT NOT NULL,
+    date TEXT NOT NULL,
+    score INTEGER,
+    duration_minutes INTEGER,
+    deep_sleep_minutes INTEGER,
+    rem_sleep_minutes INTEGER,
+    light_sleep_minutes INTEGER,
+    source TEXT NOT NULL DEFAULT 'garmin',
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+
+  `CREATE UNIQUE INDEX IF NOT EXISTS sleep_logs_user_date_unique ON sleep_logs (user_id, date)`,
+
+  `CREATE TABLE IF NOT EXISTS daily_metrics (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    user_id TEXT NOT NULL,
+    date TEXT NOT NULL,
+    calories_total INTEGER,
+    calories_active INTEGER,
+    steps INTEGER,
+    source TEXT NOT NULL DEFAULT 'garmin',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+
+  `CREATE UNIQUE INDEX IF NOT EXISTS daily_metrics_user_date_unique ON daily_metrics (user_id, date)`,
+
+  `CREATE TABLE IF NOT EXISTS garmin_connections (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    user_id TEXT NOT NULL UNIQUE,
+    session_tokens TEXT NOT NULL,
+    garmin_email TEXT,
+    last_synced_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS email_preferences (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    user_id TEXT NOT NULL UNIQUE,
+    enabled INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
 ];
 
 for (const sql of createStatements) {
@@ -442,10 +489,24 @@ const alterStatements = [
   `ALTER TABLE habits ADD COLUMN reward TEXT`,
   `ALTER TABLE habits ADD COLUMN cue_type TEXT`,
   `ALTER TABLE habits ADD COLUMN is_keystone INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE activity_logs ADD COLUMN garmin_activity_id TEXT`,
 ];
 
 for (const sql of alterStatements) {
   run(sql);
+}
+
+try {
+  db.exec(
+    `CREATE UNIQUE INDEX IF NOT EXISTS activity_logs_garmin_activity_id_unique ON activity_logs (garmin_activity_id) WHERE garmin_activity_id IS NOT NULL`
+  );
+  console.log("OK: activity_logs_garmin_activity_id_unique index");
+} catch (e) {
+  if (e.message.includes("already exists")) {
+    console.log("SKIP: activity_logs_garmin_activity_id_unique index");
+  } else {
+    console.error("ERROR creating garmin_activity_id index:", e.message);
+  }
 }
 
 // ─── 2a. Rename activities.is_log_entry → activities.created_from_log ─────────

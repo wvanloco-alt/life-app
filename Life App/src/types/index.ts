@@ -653,3 +653,77 @@ export interface UserBodyProfileInput {
   waistCm?: number | null;
 }
 
+// ─── Life App 2.0 ────────────────────────────────────────
+
+export interface SleepLog {
+  id: number;
+  userId: string;
+  date: string;
+  score: number | null;
+  durationMinutes: number | null;
+  deepSleepMinutes: number | null;
+  remSleepMinutes: number | null;
+  lightSleepMinutes: number | null;
+  source: string;
+  createdAt: string;
+}
+
+export interface DailyMetrics {
+  id: number;
+  userId: string;
+  date: string;
+  caloriesTotal: number | null;
+  caloriesActive: number | null;
+  steps: number | null;
+  source: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GarminConnection {
+  id: number;
+  userId: string;
+  sessionTokens: string;
+  garminEmail: string | null;
+  lastSyncedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EmailPreferences {
+  id: number;
+  userId: string;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DashboardSleep {
+  lastNight: { date: string; score: number; durationMinutes: number } | null;
+  weekAverage: number | null;
+}
+
+export interface DashboardCalories {
+  yesterday: number | null;
+  weekDailyAverage: number | null;
+}
+
+export interface DashboardActivities {
+  thisWeek: number;
+  kmRunThisWeek: number;
+}
+
+export interface DashboardHabitConsistency {
+  id: number;
+  name: string;
+  color: string;
+  doneLast30Days: number;
+}
+
+export interface DashboardData {
+  sleep: DashboardSleep;
+  calories: DashboardCalories;
+  activities: DashboardActivities;
+  habits: DashboardHabitConsistency[];
+}
+

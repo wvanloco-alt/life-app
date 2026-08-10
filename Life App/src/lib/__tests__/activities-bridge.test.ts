@@ -86,6 +86,7 @@ function setupTestDb(): { sqlite: InstanceType<typeof Database>; db: Db } {
       variant TEXT,
       metrics TEXT NOT NULL DEFAULT '{}',
       notes TEXT,
+      garmin_activity_id TEXT,
       user_id TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
