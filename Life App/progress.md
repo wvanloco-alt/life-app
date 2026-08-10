@@ -1,34 +1,39 @@
 # Life App 2.0 — Session Progress
 
-## 2026-08-10 — Phase 3 complete (Garmin US1)
+## 2026-08-10 — Phase 4 complete (Dashboard MVP)
 
 **Branch**: `life-app-2.0` (local only, not pushed)
 
 ### What changed
 
-- **T008–T010**: `garmin-mapping.ts`, `garmin-client.ts`, `garmin-sync.ts` + Vitest tests; `garmin-sync-apply.ts` for DB writes.
-- **T011–T013**: API routes `/api/garmin/connect`, `/api/garmin/sync`, `/api/garmin/status` (GET + DELETE).
-- **T014**: `GarminConnection` card on `/settings` — connect, MFA, sync now, disconnect.
-- Added `luxon` + type stubs for optional `garmin-connect-client` (Linux/Docker only).
+- **T015–T018**: `GET /api/sleep-logs`, `/api/daily-metrics`, `/api/dashboard` (single aggregation); `countDoneInWindow()` in `habit-streaks.ts`.
+- **T019–T021**: `/dashboard` page with sleep, calories, activity, and habit cards; loading skeleton; Connect Garmin hints; `/` redirects to dashboard; sidebar Dashboard replaces Today.
 
 ### Verification
 
-- `npm run build` — passes (Turbopack warns garmin package missing on Windows — expected).
-- `npm run test:run` — 380 tests pass.
+- `npm run build` — passes
+- `npm run test:run` — 383 tests pass
 
-### Phase 3 gate — Wim verifies in browser
+### Phase 4 gate — Wim reviews look & feel
 
-1. Restart dev server if needed (`npm run dev`).
-2. Open http://localhost:3000/settings — Garmin Connect card should appear.
-3. **Garmin connect/sync requires Linux** — on Windows native dev, connect will return 503 until you use **Docker** (`docker compose up` from `Life App/`) or test after Railway deploy.
-4. In Docker/Linux: connect your Garmin, hit **Sync now**, confirm activities/sleep/calories in DB; sync again → zero duplicate activities.
+1. Restart dev server if needed
+2. Log in → should land on **http://localhost:3000/dashboard**
+3. Without Garmin: sleep/calories/activity cards show calm **Connect Garmin** link (habits still show if you have any)
+4. With Garmin synced (Docker): metrics populate from synced data
+5. Review calm tone, typography, spacing — this is the MVP checkpoint before Phases 5–8
 
 ### Next task
 
-**T015** — Phase 4 Dashboard (`GET /api/sleep-logs`, etc.)
+**T022** — Phase 5 Habits heatmap
+
+---
+
+## 2026-08-10 — Phase 3 complete (Garmin US1)
+
+Garmin connect/sync + settings UI. See commit `0123f7e`.
 
 ---
 
 ## 2026-08-10 — Phases 1–2 complete
 
-(Foundational schema, crypto, env — see prior commit `db710ed`.)
+Foundational schema, crypto, env. See commit `db710ed`.

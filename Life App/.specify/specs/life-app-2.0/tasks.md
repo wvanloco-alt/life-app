@@ -58,13 +58,13 @@
 
 **Independent Test**: Log in → land on `/dashboard` → all five metric groups render from synced data with no manual logging; with no Garmin connection, cards show a calm "Connect Garmin" state, never an error.
 
-- [ ] T015 [P] [US2] Create `GET /api/sleep-logs` (`?from=&to=&limit=`) in `src/app/api/sleep-logs/route.ts`; auth-guarded
-- [ ] T016 [P] [US2] Create `GET /api/daily-metrics` (`?from=&to=`) in `src/app/api/daily-metrics/route.ts`; auth-guarded
-- [ ] T017 [P] [US2] Add `countDoneInWindow(logDates, days)` helper to `src/lib/habit-streaks.ts` (last-30-days count — deliberately not a streak), with test in `src/lib/__tests__/habit-streaks.test.ts`
-- [ ] T018 [US2] Create `GET /api/dashboard` in `src/app/api/dashboard/route.ts` — single aggregation per `architecture.md` JSON shape: last night's sleep + week average, yesterday's calories + week daily average, km run this ISO week (Running type), activities count this week, per-habit `doneLast30Days`; auth-guarded
-- [ ] T019 [US2] Create `src/components/dashboard/dashboard-view.tsx` + child cards `sleep-card.tsx`, `calories-card.tsx`, `activity-card.tsx`, `habit-consistency-card.tsx` — warm/calm design system (Fraunces display, OKLCH palette vars, fade-up motion), positive framing (no-data shows context, never failure)
-- [ ] T020 [US2] Create thin `src/app/dashboard/page.tsx`; change `/` redirect in `src/app/page.tsx` from `/today` to `/dashboard`; update `src/components/layout/app-sidebar.tsx` (Dashboard as anchor, remove Today entry per nav table in `architecture.md`)
-- [ ] T021 [US2] Add loading skeleton mirroring the dashboard layout and a "Connect Garmin" empty state (links to settings) in `src/components/dashboard/`
+- [x] T015 [P] [US2] Create `GET /api/sleep-logs` (`?from=&to=&limit=`) in `src/app/api/sleep-logs/route.ts`; auth-guarded
+- [x] T016 [P] [US2] Create `GET /api/daily-metrics` (`?from=&to=`) in `src/app/api/daily-metrics/route.ts`; auth-guarded
+- [x] T017 [P] [US2] Add `countDoneInWindow(logDates, days)` helper to `src/lib/habit-streaks.ts` (last-30-days count — deliberately not a streak), with test in `src/lib/__tests__/habit-streaks.test.ts`
+- [x] T018 [US2] Create `GET /api/dashboard` in `src/app/api/dashboard/route.ts` — single aggregation per `architecture.md` JSON shape: last night's sleep + week average, yesterday's calories + week daily average, km run this ISO week (Running type), activities count this week, per-habit `doneLast30Days`; auth-guarded
+- [x] T019 [US2] Create `src/components/dashboard/dashboard-view.tsx` + child cards `sleep-card.tsx`, `calories-card.tsx`, `activity-card.tsx`, `habit-consistency-card.tsx` — warm/calm design system (Fraunces display, OKLCH palette vars, fade-up motion), positive framing (no-data shows context, never failure)
+- [x] T020 [US2] Create thin `src/app/dashboard/page.tsx`; change `/` redirect in `src/app/page.tsx` from `/today` to `/dashboard`; update `src/components/layout/app-sidebar.tsx` (Dashboard as anchor, remove Today entry per nav table in `architecture.md`)
+- [x] T021 [US2] Add loading skeleton mirroring the dashboard layout and a "Connect Garmin" empty state (links to settings) in `src/components/dashboard/`
 
 **Checkpoint**: MVP — the app opens to a trophy case fed by Garmin. Deployable.
 
