@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Users, Dumbbell, Clock, Loader2, Check } from "lucide-react";
+import { GarminConnection } from "@/components/settings/garmin-connection";
 
 const SECTIONS = [
   {
@@ -88,6 +89,8 @@ export function SettingsPage() {
           </Link>
         ))}
       </div>
+
+      <GarminConnection />
 
       <div className="pt-2 border-t border-border/60">
         <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold mb-4">Change password</h2>
