@@ -40,13 +40,13 @@
 
 **Independent Test**: Connect a real Garmin account in settings, hit "Sync now", verify activities/sleep/calories rows appear in the DB; sync again and verify zero duplicates; sleep score updates if Garmin revised it.
 
-- [ ] T008 [P] [US1] Create `src/lib/garmin-mapping.ts` — Garmin activity type → app activityType name mapping (running, tennis, climbing, cycling, fallback "Other"), with test in `src/lib/__tests__/garmin-mapping.test.ts`
-- [ ] T009 [US1] Create `src/lib/garmin-client.ts` — wrapper around `garmin-connect-client`: login with email/password/MFA → session tokens; restore session from decrypted tokens; fetch activities by date range, daily sleep, daily summary (calories/steps)
-- [ ] T010 [US1] Create `src/lib/garmin-sync.ts` — pure sync logic: given fetched Garmin data + existing rows, produce inserts/upserts (activity dedup by `garmin_activity_id`, sleep + daily_metrics upsert on `(user_id, date)`, training session auto-completion when mapped type matches a session scheduled today for the same sport), with test in `src/lib/__tests__/garmin-sync.test.ts`
-- [ ] T011 [US1] Create `POST /api/garmin/connect` in `src/app/api/garmin/connect/route.ts` — takes credentials (+optional MFA code), logs in via garmin-client, stores encrypted tokens + garmin_email in `garmin_connections`, never persists the password; auth-guarded
-- [ ] T012 [US1] Create `POST /api/garmin/sync` in `src/app/api/garmin/sync/route.ts` — restores session, fetches last 7 days (configurable `?days=`), applies `garmin-sync.ts` logic, updates `last_synced_at`, returns counts; auth-guarded
-- [ ] T013 [P] [US1] Create `GET /api/garmin/status` (connection status + last sync) and `DELETE` (disconnect, wipe tokens) in `src/app/api/garmin/status/route.ts`; auth-guarded
-- [ ] T014 [US1] Create `src/components/settings/garmin-connection.tsx` — connect form (email, password, MFA field shown when required), "Connected as …" state, "Sync now" button with result feedback, disconnect; wire into `src/app/settings/page.tsx` section
+- [x] T008 [P] [US1] Create `src/lib/garmin-mapping.ts` — Garmin activity type → app activityType name mapping (running, tennis, climbing, cycling, fallback "Other"), with test in `src/lib/__tests__/garmin-mapping.test.ts`
+- [x] T009 [US1] Create `src/lib/garmin-client.ts` — wrapper around `garmin-connect-client`: login with email/password/MFA → session tokens; restore session from decrypted tokens; fetch activities by date range, daily sleep, daily summary (calories/steps)
+- [x] T010 [US1] Create `src/lib/garmin-sync.ts` — pure sync logic: given fetched Garmin data + existing rows, produce inserts/upserts (activity dedup by `garmin_activity_id`, sleep + daily_metrics upsert on `(user_id, date)`, training session auto-completion when mapped type matches a session scheduled today for the same sport), with test in `src/lib/__tests__/garmin-sync.test.ts`
+- [x] T011 [US1] Create `POST /api/garmin/connect` in `src/app/api/garmin/connect/route.ts` — takes credentials (+optional MFA code), logs in via garmin-client, stores encrypted tokens + garmin_email in `garmin_connections`, never persists the password; auth-guarded
+- [x] T012 [US1] Create `POST /api/garmin/sync` in `src/app/api/garmin/sync/route.ts` — restores session, fetches last 7 days (configurable `?days=`), applies `garmin-sync.ts` logic, updates `last_synced_at`, returns counts; auth-guarded
+- [x] T013 [P] [US1] Create `GET /api/garmin/status` (connection status + last sync) and `DELETE` (disconnect, wipe tokens) in `src/app/api/garmin/status/route.ts`; auth-guarded
+- [x] T014 [US1] Create `src/components/settings/garmin-connection.tsx` — connect form (email, password, MFA field shown when required), "Connected as …" state, "Sync now" button with result feedback, disconnect; wire into `src/app/settings/page.tsx` section
 
 **Checkpoint**: Garmin data flows into the DB end-to-end for the logged-in user.
 
