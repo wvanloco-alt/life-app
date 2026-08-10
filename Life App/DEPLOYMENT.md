@@ -42,6 +42,19 @@ Set these in the Railway dashboard under your service → **Variables**.
 | `ADMIN_USERNAME` | First deploy only | Username for the auto-bootstrapped admin account. Only used if no users exist in the database. |
 | `ADMIN_PASSWORD` | First deploy only | Password for the auto-bootstrapped admin account. Hashed with bcrypt before storage. |
 
+### Life App 2.0 variables
+
+Set these when deploying Garmin sync and the morning email digest (see `.specify/specs/life-app-2.0/architecture.md`).
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `ENCRYPTION_KEY` | Yes (2.0) | 32 random bytes, base64-encoded. Encrypts Garmin session tokens at rest. Generate with: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"` |
+| `CRON_SECRET` | Yes (2.0) | Random string. The Railway one-shot cron service sends this in a header when calling `POST /api/email/send-daily-digest`. |
+| `GMAIL_APP_PASSWORD` | Phase 8 | Gmail App Password for Nodemailer (sender account needs 2FA). |
+| `GMAIL_FROM_ADDRESS` | Phase 8 | From address for reminder emails (same Gmail account). |
+
+> **Windows local dev note**: `garmin-connect-client` depends on `node-libcurl-ja3`, which only supports Linux/macOS. `npm install` on Windows may skip this optional dependency. Garmin connect/sync works in Docker (Linux) and on Railway. Use `docker compose up` for full Garmin testing on Windows, or test Garmin in production after deploy.
+
 > After the admin account is created, `ADMIN_USERNAME` and `ADMIN_PASSWORD` can be removed from Railway variables — they are no longer needed and leaving them in is harmless but unnecessary.
 
 ---
