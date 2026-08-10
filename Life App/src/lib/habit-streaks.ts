@@ -119,3 +119,22 @@ export function computeStreaks(
 
   return { current, best };
 }
+
+/**
+ * Count how many distinct days in the last `days` calendar days (inclusive of
+ * `today`) appear in `logDates`. Deliberately not a streak — a missed day does
+ * not reset the count to zero (Life App 2.0 positive-framing requirement).
+ */
+export function countDoneInWindow(
+  logDates: string[],
+  days: number,
+  today: string,
+): number {
+  if (days <= 0) return 0;
+  const unique = new Set(logDates);
+  let count = 0;
+  for (let i = 0; i < days; i++) {
+    if (unique.has(addDays(today, -i))) count += 1;
+  }
+  return count;
+}

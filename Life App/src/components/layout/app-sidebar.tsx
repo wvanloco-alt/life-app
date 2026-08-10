@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
 import {
-  Sun,
+  LayoutDashboard,
   CalendarDays,
   CalendarRange,
   Activity,
@@ -60,7 +60,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: "Execution",
     items: [
-      { title: "Today", href: "/today", icon: Sun },
+      { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
       { title: "This Week", href: "/this-week", icon: CalendarRange },
     ],
   },
