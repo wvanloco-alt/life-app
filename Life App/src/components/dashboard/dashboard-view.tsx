@@ -10,6 +10,13 @@ import {
   type DashboardPayload,
 } from "./dashboard-cards";
 
+const SYNC_STALE_MINUTES = 30;
+
+function isStale(lastSyncedAt: string | null): boolean {
+  if (!lastSyncedAt) return true;
+  return (Date.now() - new Date(lastSyncedAt).getTime()) > SYNC_STALE_MINUTES * 60 * 1000;
+}
+
 function DashboardSkeleton() {
   return (
     <div className="space-y-6">
@@ -30,6 +37,7 @@ function DashboardSkeleton() {
 export function DashboardView() {
   const [data, setData] = useState<DashboardPayload | null>(null);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
@@ -38,16 +46,29 @@ export function DashboardView() {
     try {
       const res = await fetch("/api/dashboard");
       if (!res.ok) throw new Error("Failed to load dashboard");
-      setData((await res.json()) as DashboardPayload);
+      const payload = (await res.json()) as DashboardPayload;
+      setData(payload);
+      return payload;
     } catch {
       setError("Could not load your dashboard right now.");
+      return null;
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    void load();
+    void (async () => {
+      const payload = await load();
+      if (!payload?.garminConnected || !isStale(payload.lastSyncedAt)) return;
+      setSyncing(true);
+      try {
+        await fetch("/api/garmin/sync", { method: "POST" });
+        await load();
+      } finally {
+        setSyncing(false);
+      }
+    })();
   }, [load]);
 
   if (loading) return <DashboardSkeleton />;
@@ -67,7 +88,9 @@ export function DashboardView() {
           Dashboard
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          How your week is shaping up — no logging required.
+          {syncing
+            ? "Syncing Garmin…"
+            : "How your week is shaping up — no logging required."}
         </p>
       </div>
 

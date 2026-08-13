@@ -5,9 +5,8 @@ services:
       - "3000:3000"
     volumes:
       - life-app-data:/data
-    environment:
-      - DB_PATH=/data/life-app.db
-      - BACKUP_DIR=/data/backups
+    env_file:
+      - .env.docker
     restart: unless-stopped
 
 volumes:
