@@ -1,7 +1,6 @@
-// Patches garmin-connect-client's MFA title detection to also handle
-// email-based MFA, which uses the page title "GARMIN Authentication Application"
-// instead of a title containing "MFA".
-// See: https://github.com/orpjones/garmin-connect-client (auth-html-parser.ts)
+// Adds diagnostic logging to garmin-connect-client so Railway logs show
+// the raw Garmin SSO response when login is attempted.
+// This helps debug auth issues without needing to reproduce locally.
 
 const fs = require("fs");
 const path = require("path");
@@ -16,16 +15,10 @@ if (!fs.existsSync(target)) {
   process.exit(0);
 }
 
-const original = fs.readFileSync(target, "utf8");
-
-// Patch 1: treat "GARMIN Authentication Application" as MFA (email flow)
-let patched = original.replace(
-  /\/mfa\/i\.test\(title\)/g,
-  '/mfa/i.test(title) || /authentication application/i.test(title)'
-);
-
-// Patch 2: log the raw credentials-POST HTML response before it is parsed,
-// so we can see exactly what Garmin is returning in Railway logs.
+// Patch: add locked-account detection from the JS variable Garmin embeds in the page.
+// Garmin's error page sets `var status = "ACCOUNT_LOCKED"` in JS, not in an HTML element,
+// so the library's extractErrorMessage() misses it. We detect it before parseSsoPostResponse
+// runs so the library can surface a meaningful "AccountLocked" error.
 const authServiceTarget = path.join(
   __dirname,
   "../node_modules/garmin-connect-client/dist/authentication-service.js"
@@ -33,19 +26,19 @@ const authServiceTarget = path.join(
 
 if (fs.existsSync(authServiceTarget)) {
   let authService = fs.readFileSync(authServiceTarget, "utf8");
-  const logPatch = authService.replace(
-    /const result = parseSsoPostResponse\(postHtml\);/g,
-    `console.error('[garmin-debug] raw SSO post response (first 3000 chars):', postHtml.substring(0, 3000));\n        const result = parseSsoPostResponse(postHtml);`
-  );
-  if (logPatch !== authService) {
-    fs.writeFileSync(authServiceTarget, logPatch, "utf8");
-    console.log("patch-garmin: added raw HTML logging before parseSsoPostResponse.");
-  }
-}
+  const needle = /const result = \(0, auth_html_parser_1\.parseSsoPostResponse\)\(postHtml\);/g;
+  const replacement = `
+            // ponytail: detect Garmin's ACCOUNT_LOCKED status embedded as a JS var in the SSO page.
+            if (/var\\s+status\\s*=\\s*"ACCOUNT_LOCKED"/i.test(postHtml)) {
+              throw new errors_1.AuthenticationError("Your Garmin account is temporarily locked. Log in at connect.garmin.com to unlock it.");
+            }
+            const result = (0, auth_html_parser_1.parseSsoPostResponse)(postHtml);`;
 
-if (patched === original) {
-  console.log("patch-garmin: already patched or pattern not found — skipping.");
-} else {
-  fs.writeFileSync(target, patched, "utf8");
-  console.log("patch-garmin: patched garmin-connect-client MFA detection.");
+  const patched = authService.replace(needle, replacement);
+  if (patched !== authService) {
+    fs.writeFileSync(authServiceTarget, patched, "utf8");
+    console.log("patch-garmin: added ACCOUNT_LOCKED detection to authentication-service.js");
+  } else {
+    console.log("patch-garmin: authentication-service.js already patched or pattern not found — skipping.");
+  }
 }
