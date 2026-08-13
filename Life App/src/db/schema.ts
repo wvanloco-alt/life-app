@@ -226,9 +226,69 @@ export const activityLogs = sqliteTable("activity_logs", {
   variant: text("variant"),
   metrics: text("metrics").notNull().default("{}"),
   notes: text("notes"),
+  garminActivityId: text("garmin_activity_id"),
   userId: text("user_id").notNull().default(""),
   createdAt: timestamp(),
 });
+
+// ─── Garmin Sync (Life App 2.0) ──────────────────────────
+
+export const sleepLogs = sqliteTable(
+  "sleep_logs",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id").notNull(),
+    date: text("date").notNull(),
+    score: integer("score"),
+    durationMinutes: integer("duration_minutes"),
+    deepSleepMinutes: integer("deep_sleep_minutes"),
+    remSleepMinutes: integer("rem_sleep_minutes"),
+    lightSleepMinutes: integer("light_sleep_minutes"),
+    source: text("source").notNull().default("garmin"),
+    createdAt: timestamp(),
+  },
+  (t) => [uniqueIndex("sleep_logs_user_date_unique").on(t.userId, t.date)]
+);
+
+export const dailyMetrics = sqliteTable(
+  "daily_metrics",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id").notNull(),
+    date: text("date").notNull(),
+    caloriesTotal: integer("calories_total"),
+    caloriesActive: integer("calories_active"),
+    steps: integer("steps"),
+    source: text("source").notNull().default("garmin"),
+    createdAt: timestamp(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("daily_metrics_user_date_unique").on(t.userId, t.date)]
+);
+
+export const garminConnections = sqliteTable(
+  "garmin_connections",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id").notNull().unique(),
+    sessionTokens: text("session_tokens").notNull(),
+    garminEmail: text("garmin_email"),
+    lastSyncedAt: text("last_synced_at"),
+    createdAt: timestamp(),
+    updatedAt: updatedAt(),
+  }
+);
+
+export const emailPreferences = sqliteTable(
+  "email_preferences",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id").notNull().unique(),
+    enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
+    createdAt: timestamp(),
+    updatedAt: updatedAt(),
+  }
+);
 
 // ─── Body Metrics ────────────────────────────────────────
 

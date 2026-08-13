@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeStreaks } from "../habit-streaks";
+import { computeStreaks, countDoneInWindow } from "../habit-streaks";
 
 /**
  * Fixtures cover spec FR-014 to FR-017 and the leap-day edge case (E3).
@@ -86,5 +86,22 @@ describe("computeStreaks", () => {
   it("tolerates input in arbitrary order", () => {
     const scrambled = ["2026-05-12", "2026-05-15", "2026-05-13", "2026-05-14"];
     expect(computeStreaks(scrambled, today)).toEqual({ current: 4, best: 4 });
+  });
+});
+
+describe("countDoneInWindow", () => {
+  const today = "2026-08-10";
+
+  it("returns 0 for an empty log list", () => {
+    expect(countDoneInWindow([], 30, today)).toBe(0);
+  });
+
+  it("counts distinct days in the last N days inclusive of today", () => {
+    const dates = ["2026-08-10", "2026-08-09", "2026-08-01", "2026-07-01"];
+    expect(countDoneInWindow(dates, 30, today)).toBe(3);
+  });
+
+  it("deduplicates multiple entries on the same day", () => {
+    expect(countDoneInWindow([today, today, today], 7, today)).toBe(1);
   });
 });
