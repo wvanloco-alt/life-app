@@ -1,6 +1,6 @@
 # Stage 1: Install dependencies (including native build tools for better-sqlite3)
 FROM node:20-alpine AS deps
-RUN apk add --no-cache python3 make g++
+RUN apk add --no-cache python3 make g++ curl-dev
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
