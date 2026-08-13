@@ -1,7 +1,7 @@
 # System Overview: Life App
 
 > **Purpose**: Single authoritative reference for how the Life App works end-to-end — what pages exist, which components power them, which API routes they call, and which database tables back those routes. Use this alongside `data-model.md` (table schemas) and `contracts/api-routes.md` (route contracts) for a complete picture.
-> **Last updated**: 2026-06-04. Reflects all features through Body Metrics Guidance (PRs #52–#56).
+> **Last updated**: 2026-08-11. Reflects all features through Body Metrics Guidance (PRs #52–#56) plus Life App 2.0 additions (Dashboard, Garmin integration).
 
 ---
 
@@ -17,6 +17,7 @@ The sidebar is always visible. Sections:
 
 | Group | Page | Route |
 |---|---|---|
+| Daily Focus | **Dashboard** *(2.0 — replaces Today as entry point)* | `/dashboard` |
 | Daily Focus | Today | `/today` |
 | Daily Focus | Monthly Plan | `/monthly-plan` |
 | Life Areas | Activities | `/activities` |
@@ -40,6 +41,23 @@ A **"Log big purchase"** icon (shopping bag) lives in the sidebar header. It ope
 ## Feature Map
 
 Each entry shows: what the user sees → the primary components → the API routes → the database tables.
+
+---
+
+### Dashboard (`/dashboard`) *(Life App 2.0)*
+
+**What it does**: The primary entry point. A trophy case showing the user's week at a glance — no logging required. Replaces `/today` as the default landing page. Auto-syncs Garmin data silently on load if connected and last sync was > 30 minutes ago.
+
+**Primary components**:
+- `src/components/dashboard/dashboard-view.tsx` — main container, handles auto-sync logic
+- `src/components/dashboard/dashboard-cards.tsx` — `SleepCard`, `CaloriesCard`, `ActivityCard`, `HabitConsistencyCard`
+
+**API routes used**:
+- `GET /api/dashboard` — single aggregation endpoint (sleep, calories, activities, habits)
+- `POST /api/garmin/sync` — triggered automatically on mount if Garmin connected + stale (> 30 min)
+
+**Tables**:
+- `sleepLogs`, `dailyMetrics`, `activityLogs`, `activityTypes`, `habits`, `habitLogs`, `garminConnections`
 
 ---
 
@@ -281,6 +299,8 @@ These are the places where features share data or behaviour:
 | **Habits ↔ Today** | The Today view renders a habit completion strip using the same `GET /api/habits` response (which includes recent log dates). Checking a habit on Today calls `POST /api/habit-logs`. |
 | **Body Metrics ↔ Body Profile** | `body-metrics-feedback.tsx` reads both `allMetrics` and `profile` together. Without a profile (DOB, sex, height), the feedback cards show prompt state instead of computed values. |
 | **Activities ↔ Schedule Bridge** | When a user checks off a scheduled activity on the Today page, the app optionally creates a corresponding `activityLog` entry, linking the two systems via `activityLogs.linkedActivityId`. |
+| **Garmin ↔ ActivityLogs** | `POST /api/garmin/sync` inserts into `activityLogs` with `garminActivityId` set. Deduplication is enforced by a unique index on `garmin_activity_id`. The sync also auto-completes any matching scheduled `activities` for today. |
+| **Garmin ↔ Dashboard** | `GET /api/dashboard` reads `sleepLogs`, `dailyMetrics`, and `activityLogs` to build the dashboard payload. The dashboard auto-triggers `POST /api/garmin/sync` on mount when data is stale (> 30 min). |
 
 ---
 

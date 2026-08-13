@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { BudgetDashboard } from "./budget-dashboard";
+import { BudgetForecast } from "./budget-forecast";
 import { SpendingLog } from "./spending-log";
 import { IncomeView } from "./income-view";
 import { FixedCostsView } from "./fixed-costs-view";
@@ -22,6 +23,7 @@ function isCurrentMonth(month: string): boolean {
 
 export function BudgetPage() {
   const [month, setMonth] = useState(getCurrentMonth());
+  const [activeTab, setActiveTab] = useState("dashboard");
   const monthDate = parseISO(month + "-01");
 
   function goPrev() {
@@ -45,38 +47,41 @@ export function BudgetPage() {
             Track income, spending, and savings
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="icon" onClick={goPrev}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <div className="min-w-[160px] text-center">
-            <div className="font-[family-name:var(--font-display)] font-semibold">
-              {format(monthDate, "MMMM yyyy")}
+        {activeTab !== "forecast" && (
+          <div className="flex items-center gap-3">
+            <Button variant="outline" size="icon" onClick={goPrev}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="min-w-[160px] text-center">
+              <div className="font-[family-name:var(--font-display)] font-semibold">
+                {format(monthDate, "MMMM yyyy")}
+              </div>
+              {isCurrentMonth(month) ? (
+                <span className="text-xs text-emerald-600 font-medium">
+                  This month
+                </span>
+              ) : (
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="h-auto p-0 text-xs"
+                  onClick={goThisMonth}
+                >
+                  This month
+                </Button>
+              )}
             </div>
-            {isCurrentMonth(month) ? (
-              <span className="text-xs text-emerald-600 font-medium">
-                This month
-              </span>
-            ) : (
-              <Button
-                variant="link"
-                size="sm"
-                className="h-auto p-0 text-xs"
-                onClick={goThisMonth}
-              >
-                This month
-              </Button>
-            )}
+            <Button variant="outline" size="icon" onClick={goNext}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
-          <Button variant="outline" size="icon" onClick={goNext}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
+        )}
       </div>
 
-      <Tabs defaultValue="dashboard">
-        <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="forecast">Forecast</TabsTrigger>
           <TabsTrigger value="spending">Log Spending</TabsTrigger>
           <TabsTrigger value="income">Income</TabsTrigger>
           <TabsTrigger value="fixed">Fixed Costs</TabsTrigger>
@@ -86,6 +91,9 @@ export function BudgetPage() {
 
         <TabsContent value="dashboard" className="mt-6">
           <BudgetDashboard month={month} />
+        </TabsContent>
+        <TabsContent value="forecast" className="mt-6">
+          <BudgetForecast onSwitchTab={setActiveTab} />
         </TabsContent>
         <TabsContent value="spending" className="mt-4">
           <SpendingLog month={month} />

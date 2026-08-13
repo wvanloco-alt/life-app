@@ -9,7 +9,9 @@ describe("mapGarminActivityType", () => {
 
   it("maps tennis variants to Tennis", () => {
     expect(mapGarminActivityType("tennis")).toBe("Tennis");
+    expect(mapGarminActivityType("tennis_v2")).toBe("Tennis");
     expect(mapGarminActivityType("platform_tennis")).toBe("Tennis");
+    expect(mapGarminActivityType("hiking")).toBe("Hiking");
   });
 
   it("maps climbing variants to gym or outdoor", () => {

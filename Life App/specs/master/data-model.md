@@ -802,5 +802,107 @@ One completion record per habit per calendar day. The unique index enforces "at 
 | trainingPhases | ~10-30 | Ordered phases within training plan cycles |
 | habits | ~5-20 | Daily habits with identity framing |
 | habitLogs | ~1000-3000 | One completion entry per habit per day |
+| sleepLogs | ~365 | Nightly sleep data synced from Garmin |
+| dailyMetrics | ~365 | Daily calorie and step totals from Garmin |
+| garminConnections | 1 per user | Garmin OAuth session tokens and sync state |
+| emailPreferences | 1 per user | Per-user email reminder settings |
 
 Single user, local SQLite. Total: a few thousand rows per year.
+
+---
+
+## Life App 2.0 Additions
+
+The following were added on the `life-app-2.0` branch. All changes are **additive** — no existing tables were modified or dropped.
+
+---
+
+### ActivityLog (additive column — 2.0)
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| garminActivityId | TEXT | nullable, unique (where not null) | Garmin's internal activity ID. Set on auto-imported activities. Used for deduplication — a sync that sees this ID already in the table skips the record. Null for manually logged activities. |
+
+---
+
+### SleepLog
+
+Nightly sleep data synced from Garmin. One record per user per night.
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| id | INTEGER | PK, auto-increment | Unique identifier |
+| userId | TEXT | NOT NULL, FK → users.id | Owner |
+| date | TEXT | NOT NULL, ISO YYYY-MM-DD | Calendar date of the night (the night before waking, e.g. `2026-08-10` for the night ending on the morning of Aug 11) |
+| score | INTEGER | nullable | Garmin sleep score (0–100) |
+| durationMinutes | INTEGER | nullable | Total sleep duration |
+| deepSleepMinutes | INTEGER | nullable | Deep sleep phase |
+| remSleepMinutes | INTEGER | nullable | REM phase |
+| lightSleepMinutes | INTEGER | nullable | Light sleep phase |
+| source | TEXT | NOT NULL, default `'garmin'` | Data origin |
+| createdAt | TEXT | NOT NULL | ISO 8601 |
+
+**Unique index**: `(userId, date)` — one record per user per night. Upserted on sync (Garmin may revise scores retroactively).
+
+---
+
+### DailyMetric
+
+Daily aggregate totals from Garmin. One record per user per calendar day.
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| id | INTEGER | PK, auto-increment | Unique identifier |
+| userId | TEXT | NOT NULL, FK → users.id | Owner |
+| date | TEXT | NOT NULL, ISO YYYY-MM-DD | Calendar date |
+| caloriesTotal | INTEGER | nullable | Total calories burned (active + resting) |
+| caloriesActive | INTEGER | nullable | Active calories only |
+| steps | INTEGER | nullable | Total step count |
+| source | TEXT | NOT NULL, default `'garmin'` | Data origin |
+| createdAt | TEXT | NOT NULL | ISO 8601 |
+| updatedAt | TEXT | NOT NULL | ISO 8601 |
+
+**Unique index**: `(userId, date)` — upserted on every sync.
+
+---
+
+### GarminConnection
+
+Per-user Garmin Connect session. Stores serialised OAuth tokens and sync metadata. One row per user.
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| id | INTEGER | PK, auto-increment | Unique identifier |
+| userId | TEXT | NOT NULL, UNIQUE, FK → users.id | Owner — one connection per user |
+| sessionTokens | TEXT | NOT NULL | Serialised Garmin session (OAuth2 token + cookies). **Never expose to the client.** |
+| garminEmail | TEXT | nullable | The Garmin account email used to connect |
+| lastSyncedAt | TEXT | nullable | ISO 8601 timestamp of the last successful sync |
+| createdAt | TEXT | NOT NULL | ISO 8601 |
+| updatedAt | TEXT | NOT NULL | ISO 8601 |
+
+**Key design decisions**:
+- Session tokens are serialised by `serializeGarminSession()` / `parseGarminSession()` in `garmin-sync-apply.ts`. The format is opaque to the rest of the app.
+- Deleting this row disconnects the user from Garmin (`DELETE /api/garmin/status`).
+
+---
+
+### EmailPreferences
+
+Per-user email digest configuration. One row per user.
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| id | INTEGER | PK, auto-increment | Unique identifier |
+| userId | TEXT | NOT NULL, UNIQUE, FK → users.id | Owner |
+| enabled | INTEGER | NOT NULL, default 0 | 0 = off, 1 = on |
+| email | TEXT | nullable | Destination email address for the digest |
+| cadence | TEXT | NOT NULL, default `'daily'` | `'daily'` or `'weekly'` — weekly sends only on Mondays |
+| lastDigestSentAt | TEXT | nullable | ISO 8601 timestamp of the last successful send; used for idempotency (skip if already sent today) |
+| excludedLibraryTopics | TEXT | nullable | JSON array of topic slugs excluded from the daily concept segment, e.g. `["climbing","budget"]`. NULL or `[]` = all topics included. |
+| createdAt | TEXT | NOT NULL | ISO 8601 |
+| updatedAt | TEXT | NOT NULL | ISO 8601 |
+
+**Key design decisions**:
+- `enabled` can only be true when `email` is non-null (enforced by `PATCH /api/email-preferences`).
+- `lastDigestSentAt` is written after a successful send. The cron endpoint skips a user if this value is already today's date in Europe/Brussels timezone.
+- `excludedLibraryTopics` is a serialised JSON array to avoid a separate junction table for a low-cardinality preference.

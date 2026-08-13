@@ -481,8 +481,6 @@ const alterStatements = [
   `ALTER TABLE training_plans ADD COLUMN supplemental_sessions_per_week INTEGER`,
   `ALTER TABLE training_plans ADD COLUMN training_preferred_days TEXT DEFAULT '[]'`,
   `ALTER TABLE training_plans ADD COLUMN supplemental_preferred_days TEXT DEFAULT '[]'`,
-  `ALTER TABLE training_plans ADD COLUMN IF NOT EXISTS default_training_duration_minutes INTEGER`,
-  `ALTER TABLE training_plans ADD COLUMN IF NOT EXISTS default_supplemental_duration_minutes INTEGER`,
   `ALTER TABLE training_phases ADD COLUMN sport_focus_content TEXT`,
   `ALTER TABLE training_phases ADD COLUMN supplemental_content TEXT`,
   `ALTER TABLE training_phases ADD COLUMN mental_game_content TEXT`,
@@ -492,6 +490,10 @@ const alterStatements = [
   `ALTER TABLE habits ADD COLUMN cue_type TEXT`,
   `ALTER TABLE habits ADD COLUMN is_keystone INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE activity_logs ADD COLUMN garmin_activity_id TEXT`,
+  `ALTER TABLE email_preferences ADD COLUMN email TEXT`,
+  `ALTER TABLE email_preferences ADD COLUMN cadence TEXT NOT NULL DEFAULT 'daily'`,
+  `ALTER TABLE email_preferences ADD COLUMN last_digest_sent_at TEXT`,
+  `ALTER TABLE email_preferences ADD COLUMN excluded_library_topics TEXT`,
 ];
 
 for (const sql of alterStatements) {

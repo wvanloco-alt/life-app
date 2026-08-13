@@ -1486,3 +1486,227 @@ Simple health check endpoint.
 ```json
 { "status": "ok" }
 ```
+
+---
+
+## Life App 2.0 Routes
+
+The following routes were added on the `life-app-2.0` branch.
+
+---
+
+## Dashboard
+
+### GET /api/dashboard
+
+Single aggregation endpoint for the dashboard page. Returns all metrics in one request.
+
+**Auth**: required.
+
+**Response** `200`:
+```json
+{
+  "garminConnected": true,
+  "lastSyncedAt": "2026-08-11T08:30:00.000Z",
+  "sleep": {
+    "lastNight": { "date": "2026-08-10", "score": 78, "durationMinutes": 435 },
+    "weekAverage": 74
+  },
+  "calories": {
+    "yesterday": 2340,
+    "weekDailyAverage": 2180
+  },
+  "activities": {
+    "thisWeek": 4,
+    "kmRunThisWeek": 18.4
+  },
+  "habits": [
+    { "id": 1, "name": "Morning run", "color": "#10B981", "doneLast30Days": 22 }
+  ]
+}
+```
+
+- `lastNight` is the most recent sleep record on or before today. Null if no sleep data.
+- `weekAverage` is the average sleep score for the current ISO week. Null if no data.
+- `kmRunThisWeek` sums `distance_km` from `activity_logs` for the Running activity type within the current ISO week.
+- `habits` returns all active habits with `doneLast30Days` (count of completions in the last 30 days). Streaks are computed client-side from this count via `countDoneInWindow()`.
+
+---
+
+## Garmin Integration
+
+### GET /api/garmin/status
+
+Returns the current user's Garmin connection state.
+
+**Auth**: required.
+
+**Response** `200`:
+```json
+{
+  "connected": true,
+  "garminEmail": "wim@example.com",
+  "lastSyncedAt": "2026-08-11T08:30:00.000Z"
+}
+```
+
+When not connected: `{ "connected": false, "garminEmail": null, "lastSyncedAt": null }`.
+
+### DELETE /api/garmin/status
+
+Disconnects the current user's Garmin account (deletes the `garmin_connections` row).
+
+**Response** `200`: `{ "disconnected": true }`
+
+---
+
+### POST /api/garmin/connect
+
+Authenticates with Garmin Connect using email and password. Stores session tokens. Handles MFA.
+
+**Auth**: required.
+
+**Request body**:
+```json
+{
+  "email": "wim@garmin.com",
+  "password": "secret"
+}
+```
+
+For MFA flow — first call returns `{ "mfaRequired": true, "pendingCookies": "<string>" }`. Second call:
+```json
+{
+  "email": "wim@garmin.com",
+  "password": "",
+  "mfaCode": "123456",
+  "pendingCookies": "<string from first response>"
+}
+```
+
+**Response** `200`: `{ "connected": true, "garminEmail": "wim@garmin.com" }`
+**Response** `400`: Validation error or login failure.
+**Response** `503`: `garmin-connect-client` package unavailable (Windows local dev — only works in Docker/Railway).
+
+---
+
+### POST /api/garmin/sync
+
+Triggers a Garmin data sync for the current user. Fetches the last N days of activities, sleep, and daily metrics. Deduplicates by `garmin_activity_id`. Auto-completes any scheduled sessions that match a Garmin activity on today's date.
+
+**Auth**: required.
+**Requires**: Garmin connected (returns `400` otherwise).
+
+**Query params**:
+- `?days=7` — number of days to fetch (1–30, default 7)
+
+**Response** `200`:
+```json
+{
+  "activitiesAdded": 3,
+  "sleepRecordsUpserted": 7,
+  "dailyMetricsUpdated": 7,
+  "sessionsAutoCompleted": 1,
+  "lastSyncedAt": "2026-08-11T08:30:00.000Z"
+}
+```
+
+**Response** `400`: Garmin not connected.
+**Response** `503`: `garmin-connect-client` unavailable.
+
+---
+
+## Sleep Logs
+
+### GET /api/sleep-logs
+
+Returns sleep records for the current user.
+
+**Auth**: required.
+
+**Query params**:
+- `?from=YYYY-MM-DD` / `?to=YYYY-MM-DD` — date range (both optional)
+- `?limit=30` — max results (default 30)
+
+**Response** `200`: array of sleep log records.
+
+---
+
+## Email Preferences
+
+### GET /api/email-preferences
+
+Returns the current user's email digest configuration.
+
+**Auth**: required.
+
+**Response** `200`:
+```json
+{
+  "email": "wim@example.com",
+  "cadence": "daily",
+  "enabled": true,
+  "excludedLibraryTopics": ["climbing"]
+}
+```
+
+---
+
+### PATCH /api/email-preferences
+
+Updates the current user's email digest configuration. Upserts the row.
+
+**Auth**: required.
+
+**Request body** (all fields optional):
+```json
+{
+  "email": "wim@example.com",
+  "cadence": "daily",
+  "enabled": true,
+  "excludedLibraryTopics": ["climbing", "budget"]
+}
+```
+
+**Validation**:
+- `email` must be a valid email format if provided
+- `enabled: true` is rejected with `400` if no email is stored
+- `cadence` must be `"daily"` or `"weekly"`
+
+**Response** `200`: updated preferences in same shape as GET.
+
+---
+
+## Cron
+
+### POST /api/cron/morning-digest
+
+Sends the morning email digest to all opted-in users. Protected by a `x-cron-secret` header — not callable by regular users.
+
+**Auth**: none (uses `CRON_SECRET` header instead).
+
+**Logic**:
+1. Gate: only proceeds if current time ≥ 07:00 Europe/Brussels
+2. Syncs Garmin for each user who has Garmin connected (30s timeout per user)
+3. Assembles email content per user (daily or weekly based on cadence + day of week)
+4. Sends via Nodemailer + Gmail SMTP
+5. Writes `lastDigestSentAt` for each sent user (idempotency)
+
+**Response** `200`: `{ "sent": 2, "skipped": 1, "errors": 0 }`
+**Response** `401`: missing or incorrect `x-cron-secret`.
+
+---
+
+## Daily Metrics
+
+### GET /api/daily-metrics
+
+Returns daily calorie and step totals for the current user.
+
+**Auth**: required.
+
+**Query params**:
+- `?from=YYYY-MM-DD` / `?to=YYYY-MM-DD` — date range (both optional)
+- `?limit=30` — max results (default 30)
+
+**Response** `200`: array of daily metric records.

@@ -10,7 +10,8 @@ export default auth((req) => {
   const isPublic =
     pathname.startsWith("/api/auth") ||
     pathname === "/login" ||
-    pathname.startsWith("/api/health");
+    pathname.startsWith("/api/health") ||
+    pathname.startsWith("/api/cron");
 
   if (!req.auth && !isPublic) {
     const loginUrl = new URL("/login", req.url);

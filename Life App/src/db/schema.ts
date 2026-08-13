@@ -284,7 +284,11 @@ export const emailPreferences = sqliteTable(
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
     userId: text("user_id").notNull().unique(),
+    email: text("email"),
+    cadence: text("cadence").notNull().default("daily"),
     enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
+    lastDigestSentAt: text("last_digest_sent_at"),
+    excludedLibraryTopics: text("excluded_library_topics"),
     createdAt: timestamp(),
     updatedAt: updatedAt(),
   }
@@ -424,8 +428,6 @@ export const trainingPlans = sqliteTable("training_plans", {
   supplementalSessionsPerWeek: integer("supplemental_sessions_per_week"),
   trainingPreferredDays: text("training_preferred_days").default("[]"),
   supplementalPreferredDays: text("supplemental_preferred_days").default("[]"),
-  defaultTrainingDurationMinutes: integer("default_training_duration_minutes"),
-  defaultSupplementalDurationMinutes: integer("default_supplemental_duration_minutes"),
   userId: text("user_id").notNull().default(""),
   createdAt: timestamp(),
   updatedAt: updatedAt(),

@@ -847,6 +847,43 @@ Incidental fix: `Wallet` key added to the Library bookmarks ICON_MAP so the Budg
 
 ---
 
+---
+
+## Life App 2.0
+
+**Branch**: `life-app-2.0`  
+**Started**: 2026-08-10  
+**Status**: In progress
+
+A full UX and infrastructure overhaul. The feature set from 1.0 is preserved. The core shift: from "log your life" → "see your life." The app becomes a trophy case rather than a task tracker.
+
+See `.specify/specs/life-app-2.0/` for spec, architecture, and scope documents.
+
+### What has been built
+
+| Area | Status | Notes |
+|---|---|---|
+| **Schema** — `sleep_logs`, `daily_metrics`, `garmin_connections`, `email_preferences` | Done | Additive only — no 1.0 tables changed |
+| **`activity_logs.garmin_activity_id`** | Done | Additive column for deduplication |
+| **Garmin integration** — connect, sync, status routes | Done | `garmin-connect-client` npm package, MFA support, session token storage |
+| **Garmin settings UI** | Done | Email + password form in Settings, shows connected state |
+| **Dashboard page** (`/dashboard`) | Done | Replaces `/today` as entry point; sleep, calories, activities, habit streaks |
+| **`GET /api/dashboard`** | Done | Single aggregation endpoint for all dashboard metrics |
+| **`GET /api/sleep-logs`** | Done | Sleep history read endpoint |
+| **`GET /api/daily-metrics`** | Done | Daily calorie/steps read endpoint |
+| **Auto-sync on dashboard load** | Done | Syncs Garmin silently on mount if connected + last sync > 30 min ago |
+
+### What is next
+
+| Area | Status |
+|---|---|
+| Habits heatmap (year view, positive framing) | Planned — T022 |
+| Training "Today's Session" card | Planned |
+| Budget UI redesign (quarterly planning mode) | Planned |
+| Email morning reminder (Nodemailer + Gmail) | Planned |
+
+---
+
 ## Roadmap Principles
 
 1. **One feature at a time**: We spec, plan, build, and validate one feature before starting the next. No parallel feature development.

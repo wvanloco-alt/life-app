@@ -32,11 +32,12 @@ export async function GET() {
   const weekStart = getWeekStartDate();
 
   const garminRow = await db
-    .select({ id: garminConnections.id })
+    .select({ id: garminConnections.id, lastSyncedAt: garminConnections.lastSyncedAt })
     .from(garminConnections)
     .where(eq(garminConnections.userId, userId))
     .limit(1);
   const garminConnected = garminRow.length > 0;
+  const lastSyncedAt = garminRow[0]?.lastSyncedAt ?? null;
 
   const sleepRows = await db
     .select()
@@ -133,8 +134,9 @@ export async function GET() {
     logsByHabit.set(row.habitId, list);
   }
 
-  const payload: DashboardData & { garminConnected: boolean } = {
+  const payload: DashboardData = {
     garminConnected,
+    lastSyncedAt,
     sleep: {
       lastNight: lastNightRow
         ? {

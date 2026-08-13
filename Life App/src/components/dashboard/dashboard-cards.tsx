@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import type { DashboardData } from "@/types";
 import { Moon, Flame, Footprints, Repeat } from "lucide-react";
 
-type DashboardPayload = DashboardData & { garminConnected: boolean };
+type DashboardPayload = DashboardData;
 
 function formatHours(minutes: number): string {
   const h = Math.floor(minutes / 60);
@@ -52,10 +52,11 @@ export function SleepCard({
 }) {
   const score = sleep.lastNight?.score;
   const duration = sleep.lastNight?.durationMinutes;
+  const hasData = score != null || sleep.weekAverage != null;
 
   return (
     <MetricCard title="Sleep" icon={<Moon className="h-4 w-4" />}>
-      {!garminConnected ? (
+      {!hasData && !garminConnected ? (
         <ConnectGarminHint />
       ) : score != null ? (
         <>
@@ -89,10 +90,11 @@ export function CaloriesCard({
   garminConnected: boolean;
 }) {
   const primary = calories.yesterday ?? calories.weekDailyAverage;
+  const hasData = primary != null;
 
   return (
     <MetricCard title="Calories" icon={<Flame className="h-4 w-4" />}>
-      {!garminConnected ? (
+      {!hasData && !garminConnected ? (
         <ConnectGarminHint />
       ) : primary != null ? (
         <>
@@ -120,9 +122,11 @@ export function ActivityCard({
   activities: DashboardData["activities"];
   garminConnected: boolean;
 }) {
+  const hasData = activities.thisWeek > 0 || activities.kmRunThisWeek > 0;
+
   return (
     <MetricCard title="This week" icon={<Footprints className="h-4 w-4" />}>
-      {!garminConnected ? (
+      {!hasData && !garminConnected ? (
         <ConnectGarminHint />
       ) : (
         <>
