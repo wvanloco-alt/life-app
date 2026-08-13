@@ -15,8 +15,11 @@ const GARMIN_TYPE_TO_APP_NAME: Record<string, string> = {
   obstacle_course_racing: "Running",
 
   tennis: "Tennis",
+  tennis_v2: "Tennis",
   platform_tennis: "Tennis",
   table_tennis: "Tennis",
+
+  hiking: "Hiking",
 
   indoor_climbing: "Climbing (Gym)",
   bouldering: "Climbing (Gym)",

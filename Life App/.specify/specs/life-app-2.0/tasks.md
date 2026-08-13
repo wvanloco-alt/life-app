@@ -100,14 +100,10 @@
 
 ## Phase 7: User Story 5 — Budget Quarterly Planning (P3)
 
-**Goal**: Budget page restructured around planning sessions — fixed costs, savings goal, scenario modeling. Daily entry demoted, not removed. No schema or API changes.
+> **SUPERSEDED 2026-08-12** — do not implement T028/T029. The budget redesign was specced in full as its own feature: `.specify/specs/budget-forecasting/` (forecast tab, cash flow table, trajectory chart, scenario panel — replaces the planning canvas and `budget-scenarios.ts` planned below). Implement that feature's `tasks.md` instead.
 
-**Independent Test**: Open `/budget` → primary view is the planning canvas (income, fixed costs, savings goal, progress vs. yearly goal); model a large purchase and see the annual savings rate impact; daily expense entry still reachable but secondary.
-
-- [ ] T028 [US5] Restructure budget components in `src/components/budget/` — planning canvas as primary view (fixed costs, savings goal, progress vs. goal from existing routes), daily entry moved to a secondary section/tab
-- [ ] T029 [US5] Add scenario modeling UI in `src/components/budget/` — "what does spending X do to my annual savings rate" — pure client-side math in `src/lib/budget-scenarios.ts`, with test in `src/lib/__tests__/budget-scenarios.test.ts`
-
-**Checkpoint**: Budget is a 3-4×/year planning tool using only existing data and routes.
+- [ ] ~~T028 [US5] Restructure budget components — superseded by budget-forecasting~~
+- [ ] ~~T029 [US5] Scenario modeling UI in `budget-scenarios.ts` — superseded by budget-forecasting~~
 
 ---
 
