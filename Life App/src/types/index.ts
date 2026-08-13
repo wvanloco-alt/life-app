@@ -385,6 +385,47 @@ export interface PlannedExpense {
   updatedAt: string;
 }
 
+// ─── Budget Forecasting ─────────────────────────────────
+
+export interface MonthActuals {
+  income: number;
+  fixedCosts: number;
+  spending: number;
+  savings: number;
+}
+
+export interface ForecastPayload {
+  year: number;
+  currency: string;
+  monthlySavingsTarget: number;
+  savingsStartingBalance: number;
+  actuals: Record<string, MonthActuals>;
+  recurringIncome: number;
+  fixedCostsByMonth: Record<string, number>;
+  spendingAverage: number;
+  spendingMonthsUsed: number;
+  plannedExpensesByMonth: Record<string, number>;
+}
+
+export type ForecastRowType = "income" | "fixedCosts" | "spending";
+
+export interface ForecastMonth {
+  month: string;
+  isActual: boolean;
+  income: number;
+  fixedCosts: number;
+  spending: number;
+  savings: number;
+  cumulative: number;
+  shortfall: boolean;
+  hasOverride: boolean;
+}
+
+export interface Scenario {
+  oneTimeExpense: { amount: number; month: string } | null;
+  monthlyDelta: number | null;
+}
+
 // ─── Training Periodization (Multi-Sport) ───────────────
 
 export type TrainingSport = "climbing" | "tennis" | "running";
@@ -537,13 +578,28 @@ export interface HabitLog {
  * Wire shape returned by GET /api/habits.
  *
  * The server returns raw log dates only: deduplicated ISO YYYY-MM-DD strings,
- * sorted ascending, capped at the last 30 days. The client (HabitList) derives
- * the 14-day strip view-model and the current/best streaks locally using its
- * own "today" (per spec FR-005, FR-014). The server never decides what "today"
- * is.
+ * sorted ascending, capped at the last 365 days. The client derives streaks,
+ * the 30-day consistency count, the 3-week log calendar, and the year heatmap
+ * locally using its own "today". The server never decides what "today" is.
  */
 export interface HabitWithRecentLogs extends Habit {
   recentLogDates: string[];
+}
+
+export interface TodaySession {
+  activityId: number;
+  activityTypeId: number;
+  activityTypeName: string;
+  activityTypeIcon: string;
+  goalId: number;
+  sessionType: "training" | "supplemental";
+  durationMinutes: number;
+  isCompleted: boolean;
+  garminLinked: boolean;
+  phaseName: string;
+  phaseWeekNumber: number;
+  phaseTotalWeeks: number;
+  focusLine: string | null;
 }
 
 /** Form payload for POST /api/habits (and the body of PATCH for the same fields). */
@@ -691,11 +747,26 @@ export interface GarminConnection {
 }
 
 export interface EmailPreferences {
-  id: number;
-  userId: string;
+  email: string | null;
+  cadence: "daily" | "weekly";
   enabled: boolean;
-  createdAt: string;
-  updatedAt: string;
+  excludedLibraryTopics: string[];
+}
+
+export interface DigestContent {
+  userName: string;
+  cadence: "daily" | "weekly";
+  sleep?: { score: number; durationMinutes: number };
+  activity?: { count: number; kmRun?: number; names: string[] };
+  calories?: { total: number; active: number };
+  todaySession?: { sport: string; phaseName: string; durationMinutes: number };
+  habitHighlight?: { name: string; doneLast30: number };
+  weekSessions?: { sport: string; count: number; kmRun?: number }[];
+  weekSleepAvg?: number;
+  topHabits?: { name: string; doneLast30: number }[];
+  monthlyStats?: { activities: number; habitsLogged: number; sleepAvg?: number; avgSteps?: number };
+  librarySegment?: { topicTitle: string; itemTitle: string; what: string; how: string };
+  appUrl: string;
 }
 
 export interface DashboardSleep {
@@ -725,5 +796,7 @@ export interface DashboardData {
   calories: DashboardCalories;
   activities: DashboardActivities;
   habits: DashboardHabitConsistency[];
+  garminConnected: boolean;
+  lastSyncedAt: string | null;
 }
 

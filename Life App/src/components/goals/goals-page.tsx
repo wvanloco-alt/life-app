@@ -35,6 +35,7 @@ import { YearlyGoalCard } from "./yearly-goal-card";
 import { MonthlyGoalCard } from "./monthly-goal-card";
 import { TallyLogger } from "./tally-logger";
 import { TrainingPlanDialog } from "./training-plan-dialog";
+import { TodaySessionsSection } from "./today-sessions-section";
 import { TennisTrainingPlanDialog } from "./tennis-training-plan-dialog";
 import { RunningTrainingPlanDialog } from "./running-training-plan-dialog";
 import { format, isPast, differenceInDays } from "date-fns";
@@ -373,6 +374,8 @@ export function GoalsPage() {
           </CardContent>
         </Card>
       )}
+
+      {roles.length > 0 && <TodaySessionsSection />}
 
       {viewMode === "dashboard" && roles.length > 0 && (
         <>

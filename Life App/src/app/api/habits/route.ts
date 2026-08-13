@@ -61,9 +61,9 @@ export async function GET(request: NextRequest) {
 
   if (rows.length === 0) return NextResponse.json([]);
 
-  // Recent logs for these habits: capped at 30 days per spec FR-005.
-  // The client uses these to build the 14-day strip and run computeStreaks
-  // locally with its own "today" (per H1/H3 timezone decisions).
+  // Recent logs for these habits: last 365 days (habits-and-session-card spec FR-001).
+  // Covers the year heatmap and the 30-day consistency count across year boundaries.
+  // The client derives streaks and calendar views locally with its own "today".
   const habitIds = rows.map((h) => h.id);
   const logRows = await db
     .select({ habitId: habitLogs.habitId, date: habitLogs.date })
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
       and(
         eq(habitLogs.userId, userId),
         inArray(habitLogs.habitId, habitIds),
-        gte(habitLogs.date, sql`date('now', '-30 days')`),
+        gte(habitLogs.date, sql`date('now', '-365 days')`),
       ),
     );
 

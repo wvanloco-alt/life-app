@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,11 +9,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { buildImplementationIntention, shouldShowNeverMissTwice } from "@/lib/habit-v2-helpers";
 import { computeStreaks } from "@/lib/habit-streaks";
+import { cn } from "@/lib/utils";
 import type { HabitWithRecentLogs } from "@/types";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { format, parseISO, subDays } from "date-fns";
 import { ArchiveRestore, Gem, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { HabitCalendar } from "./habit-calendar";
+import { HabitYearHeatmap } from "./habit-year-heatmap";
 
 interface HabitRowProps {
   habit: HabitWithRecentLogs;
@@ -39,7 +43,10 @@ export function HabitRow({
   onDelete,
   onArchiveToggle,
 }: HabitRowProps) {
-  const { current: currentStreak, best: bestStreak } = computeStreaks(logDates, today);
+  const { current: currentStreak } = computeStreaks(logDates, today);
+  const thirtyDaysAgo = format(subDays(parseISO(today), 29), "yyyy-MM-dd");
+  const doneLast30 = logDates.filter((d) => d >= thirtyDaysAgo && d <= today).length;
+  const [viewMode, setViewMode] = useState<"log" | "year">("log");
   const intentionSentence = buildImplementationIntention(habit);
   const showNudge = !habit.isArchived && shouldShowNeverMissTwice(logDates, today);
 
@@ -64,7 +71,6 @@ export function HabitRow({
     >
       {/* ── Left: identity block ── */}
       <div className="w-60 shrink-0 flex flex-col gap-1 pt-1">
-        {/* Color dot + identity */}
         <div className="flex items-center gap-3">
           <div
             className="w-3 h-3 rounded-full shrink-0 mt-0.5"
@@ -87,38 +93,32 @@ export function HabitRow({
           </div>
         </div>
 
-        {/* Habit name subtitle */}
         {habit.identity && (
           <p className="text-sm text-muted-foreground pl-6 leading-snug mt-1">
             {habit.name}
           </p>
         )}
 
-        {/* Implementation intention sentence */}
         {intentionSentence && !habit.isArchived && (
           <p className="text-[11px] text-muted-foreground italic truncate pl-6 mt-0.5">
             {intentionSentence}
           </p>
         )}
 
-        {/* Streak */}
         {!habit.isArchived && (
           <div className="pl-6 mt-4">
-            <p className="text-sm font-mono font-semibold tabular-nums leading-none text-foreground/80">
-              {currentStreak}
-              <span className="text-xs text-muted-foreground font-sans font-normal ml-1">
-                d streak
-              </span>
+            <p className="font-[family-name:var(--font-display)] text-2xl font-semibold tabular-nums leading-none">
+              {doneLast30}{" "}
+              <span className="text-base font-normal text-muted-foreground">/ 30</span>
             </p>
-            {bestStreak > currentStreak && bestStreak > 1 && (
-              <p className="text-xs text-muted-foreground/60 mt-2 leading-none">
-                best {bestStreak}d
+            {currentStreak > 0 && (
+              <p className="text-[11px] text-muted-foreground/50 mt-1 font-sans">
+                {currentStreak}d streak
               </p>
             )}
           </div>
         )}
 
-        {/* Inline feedback — affirmation takes priority, then nudge, then error */}
         {!habit.isArchived && affirmation && (
           <p className="pl-6 mt-2 text-xs text-muted-foreground animate-fade-in leading-snug">
             {affirmation}
@@ -133,7 +133,6 @@ export function HabitRow({
           <p className="pl-6 mt-2 text-xs text-destructive leading-snug">{error}</p>
         )}
 
-        {/* Controls */}
         {!habit.isArchived && (
           <div className="flex items-center gap-0.5 pl-[18px] mt-4">
             <button
@@ -171,7 +170,6 @@ export function HabitRow({
           </div>
         )}
 
-        {/* Archived habit controls */}
         {habit.isArchived && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -200,17 +198,50 @@ export function HabitRow({
         )}
       </div>
 
-      {/* ── Right: 3-week calendar ── */}
       {!habit.isArchived && (
         <div className="flex-1 min-w-0">
-          <HabitCalendar
-            recentLogDates={logDates}
-            habitColor={habit.color}
-            habitCreatedAt={habit.createdAt}
-            today={today}
-            inFlightDates={inFlightDates}
-            onToggle={(date) => onToggle(habit.id, date)}
-          />
+          <div className="mb-2 flex justify-end">
+            <div className="flex rounded-md border border-border/40 text-[11px] overflow-hidden">
+              <button
+                type="button"
+                className={cn(
+                  "px-2.5 py-1",
+                  viewMode === "log" ? "bg-muted text-foreground" : "text-muted-foreground"
+                )}
+                onClick={() => setViewMode("log")}
+              >
+                Log
+              </button>
+              <button
+                type="button"
+                className={cn(
+                  "px-2.5 py-1",
+                  viewMode === "year" ? "bg-muted text-foreground" : "text-muted-foreground"
+                )}
+                onClick={() => setViewMode("year")}
+              >
+                Year
+              </button>
+            </div>
+          </div>
+
+          {viewMode === "log" ? (
+            <HabitCalendar
+              recentLogDates={logDates}
+              habitColor={habit.color}
+              habitCreatedAt={habit.createdAt}
+              today={today}
+              inFlightDates={inFlightDates}
+              onToggle={(date) => onToggle(habit.id, date)}
+            />
+          ) : (
+            <HabitYearHeatmap
+              logDates={logDates}
+              habitColor={habit.color}
+              habitCreatedAt={habit.createdAt}
+              today={today}
+            />
+          )}
         </div>
       )}
     </div>
