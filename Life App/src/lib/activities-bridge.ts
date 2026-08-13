@@ -1,5 +1,5 @@
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import { activityLogs, activityTypes } from "@/db/schema";
+import { activityLogs, activityTypes, trainingPlans } from "@/db/schema";
 import * as schema from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 
@@ -61,6 +61,7 @@ export async function applyCheckOffBridge(
     activityTypeId: number | null;
     goalId: number | null;
     activityDate: string;
+    sessionType?: string | null;
   }
 ): Promise<{ inserted: boolean; logId: number | null }> {
   if (args.activityTypeId == null) {
@@ -95,6 +96,36 @@ export async function applyCheckOffBridge(
   }
   const t = typeRows[0];
 
+  let durationMinutes = t.defaultDurationMinutes;
+
+  if (args.goalId != null) {
+    const planRows = await db
+      .select({
+        defaultTrainingDurationMinutes: trainingPlans.defaultTrainingDurationMinutes,
+        defaultSupplementalDurationMinutes: trainingPlans.defaultSupplementalDurationMinutes,
+      })
+      .from(trainingPlans)
+      .where(
+        and(
+          eq(trainingPlans.goalId, args.goalId),
+          eq(trainingPlans.userId, args.userId)
+        )
+      )
+      .limit(1);
+
+    if (planRows.length > 0) {
+      const plan = planRows[0];
+      const sessionType = args.sessionType ?? "training";
+      const planDuration =
+        sessionType === "supplemental"
+          ? plan.defaultSupplementalDurationMinutes
+          : plan.defaultTrainingDurationMinutes;
+      if (planDuration != null && planDuration > 0) {
+        durationMinutes = planDuration;
+      }
+    }
+  }
+
   const [created] = await db
     .insert(activityLogs)
     .values({
@@ -102,7 +133,7 @@ export async function applyCheckOffBridge(
       activityId: args.activityId,
       goalId: args.goalId,
       date: args.activityDate,
-      durationMinutes: t.defaultDurationMinutes,
+      durationMinutes,
       calories: t.defaultCalories,
       steps: t.defaultSteps,
       metrics: "{}",

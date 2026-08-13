@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2, AlertTriangle } from "lucide-react";
 import type { Goal } from "@/types";
 import { computeWeekN } from "@/lib/training/phase-utils";
+import { parsePreferredDays } from "@/lib/dates";
 
 const DAYS = [
   { label: "Mo", value: 1 },
@@ -73,15 +74,6 @@ interface Props {
   relaxStartDateMax?: boolean;
 }
 
-function parsePreferredDays(raw: string | null | undefined): number[] {
-  if (!raw) return [];
-  try {
-    const v = JSON.parse(raw);
-    return Array.isArray(v) ? v.filter((x): x is number => typeof x === "number") : [];
-  } catch {
-    return raw.split(",").map(Number).filter((n) => !isNaN(n) && n > 0);
-  }
-}
 
 function getDefaultStartDate(currentMonth: string): string {
   const today = new Date().toISOString().slice(0, 10);

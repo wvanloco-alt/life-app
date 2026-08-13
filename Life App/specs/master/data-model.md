@@ -674,6 +674,8 @@ A periodization plan attached to a goal. Shared across sports (climbing, tennis)
 | supplementalSessionsPerWeek | INTEGER | nullable | How many weekly sessions are **supplemental** (gym); sum with training must equal parent goal `sessions_per_week`. |
 | trainingPreferredDays | TEXT | default `'[]'` | JSON array of weekday numbers 1–7 (Mon–Sun) for scheduler bias; empty = no preference. |
 | supplementalPreferredDays | TEXT | default `'[]'` | Same, for supplemental slots. |
+| defaultTrainingDurationMinutes | INTEGER | nullable | Default log duration (minutes) for **training** check-offs on this plan's goal; null uses activity type default. |
+| defaultSupplementalDurationMinutes | INTEGER | nullable | Default log duration (minutes) for **supplemental** check-offs; null uses activity type default. |
 | createdAt | TEXT | NOT NULL, ISO 8601 | When created |
 | updatedAt | TEXT | NOT NULL, ISO 8601 | Last modification time |
 

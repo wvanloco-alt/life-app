@@ -90,6 +90,20 @@ function setupTestDb(): { sqlite: InstanceType<typeof Database>; db: Db } {
       user_id TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+    CREATE TABLE training_plans (
+      id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+      goal_id INTEGER NOT NULL UNIQUE,
+      sport TEXT NOT NULL DEFAULT 'climbing',
+      periodization_model TEXT NOT NULL DEFAULT '3-1',
+      player_level TEXT NOT NULL DEFAULT 'beginner',
+      years_experience INTEGER NOT NULL DEFAULT 0,
+      sport_profile TEXT NOT NULL DEFAULT '{}',
+      start_date TEXT NOT NULL DEFAULT '2026-01-01',
+      status TEXT NOT NULL DEFAULT 'active',
+      default_training_duration_minutes INTEGER,
+      default_supplemental_duration_minutes INTEGER,
+      user_id TEXT NOT NULL DEFAULT ''
+    );
   `);
   const db = drizzle(sqlite, { schema }) as Db;
   return { sqlite, db };
@@ -122,6 +136,39 @@ function seedActivityType(
     );
 }
 
+function seedGoal(
+  sqlite: InstanceType<typeof Database>,
+  args: { id: number; userId?: string }
+): void {
+  sqlite
+    .prepare(`INSERT INTO goals (id, title, user_id) VALUES (?, 'Test goal', ?)`)
+    .run(args.id, args.userId ?? "user-1");
+}
+
+function seedTrainingPlan(
+  sqlite: InstanceType<typeof Database>,
+  args: {
+    goalId: number;
+    defaultTrainingDurationMinutes?: number | null;
+    defaultSupplementalDurationMinutes?: number | null;
+    userId?: string;
+  }
+): void {
+  sqlite
+    .prepare(
+      `INSERT INTO training_plans
+       (goal_id, sport, periodization_model, player_level, years_experience, sport_profile, start_date,
+        default_training_duration_minutes, default_supplemental_duration_minutes, user_id)
+       VALUES (?, 'climbing', '3-1', 'beginner', 1, '{}', '2026-01-01', ?, ?, ?)`
+    )
+    .run(
+      args.goalId,
+      args.defaultTrainingDurationMinutes ?? null,
+      args.defaultSupplementalDurationMinutes ?? null,
+      args.userId ?? "user-1"
+    );
+}
+
 function seedActivity(
   sqlite: InstanceType<typeof Database>,
   args: {
@@ -131,13 +178,14 @@ function seedActivity(
     isCompleted?: boolean;
     userId?: string;
     activityDate?: string;
+    sessionType?: string;
   }
 ): void {
   sqlite
     .prepare(
       `INSERT INTO activities
-       (id, title, activity_date, start_time, end_time, activity_type_id, goal_id, is_completed, user_id)
-       VALUES (?, ?, ?, '09:00', '10:00', ?, ?, ?, ?)`
+       (id, title, activity_date, start_time, end_time, activity_type_id, goal_id, is_completed, session_type, user_id)
+       VALUES (?, ?, ?, '09:00', '10:00', ?, ?, ?, ?, ?)`
     )
     .run(
       args.id,
@@ -146,6 +194,7 @@ function seedActivity(
       args.activityTypeId,
       args.goalId ?? null,
       args.isCompleted ? 1 : 0,
+      args.sessionType ?? "training",
       args.userId ?? "user-1"
     );
 }
@@ -417,6 +466,80 @@ describe("applyCheckOffBridge", () => {
 
     expect(result.inserted).toBe(true);
     expect(countLogs(sqlite, { activityId: 1 })).toBe(2);
+  });
+
+  it("uses defaultTrainingDurationMinutes when sessionType is training", async () => {
+    seedActivityType(sqlite, { id: 7, name: "Climbing", durationMinutes: 60 });
+    seedGoal(sqlite, { id: 42 });
+    seedTrainingPlan(sqlite, {
+      goalId: 42,
+      defaultTrainingDurationMinutes: 120,
+      defaultSupplementalDurationMinutes: 45,
+    });
+    seedActivity(sqlite, { id: 1, activityTypeId: 7, goalId: 42, sessionType: "training" });
+
+    const result = await applyCheckOffBridge(db, {
+      activityId: 1,
+      userId: "user-1",
+      activityTypeId: 7,
+      goalId: 42,
+      activityDate: "2026-03-15",
+      sessionType: "training",
+    });
+
+    expect(result.inserted).toBe(true);
+    const row = sqlite
+      .prepare(`SELECT duration_minutes FROM activity_logs WHERE id = ?`)
+      .get(result.logId) as { duration_minutes: number };
+    expect(row.duration_minutes).toBe(120);
+  });
+
+  it("uses defaultSupplementalDurationMinutes when sessionType is supplemental", async () => {
+    seedActivityType(sqlite, { id: 7, name: "Climbing", durationMinutes: 60 });
+    seedGoal(sqlite, { id: 42 });
+    seedTrainingPlan(sqlite, {
+      goalId: 42,
+      defaultTrainingDurationMinutes: 120,
+      defaultSupplementalDurationMinutes: 45,
+    });
+    seedActivity(sqlite, { id: 1, activityTypeId: 7, goalId: 42, sessionType: "supplemental" });
+
+    const result = await applyCheckOffBridge(db, {
+      activityId: 1,
+      userId: "user-1",
+      activityTypeId: 7,
+      goalId: 42,
+      activityDate: "2026-03-15",
+      sessionType: "supplemental",
+    });
+
+    expect(result.inserted).toBe(true);
+    const row = sqlite
+      .prepare(`SELECT duration_minutes FROM activity_logs WHERE id = ?`)
+      .get(result.logId) as { duration_minutes: number };
+    expect(row.duration_minutes).toBe(45);
+  });
+
+  it("falls back to activity type default when plan duration fields are null", async () => {
+    seedActivityType(sqlite, { id: 7, name: "Climbing", durationMinutes: 90 });
+    seedGoal(sqlite, { id: 42 });
+    seedTrainingPlan(sqlite, { goalId: 42 });
+    seedActivity(sqlite, { id: 1, activityTypeId: 7, goalId: 42 });
+
+    const result = await applyCheckOffBridge(db, {
+      activityId: 1,
+      userId: "user-1",
+      activityTypeId: 7,
+      goalId: 42,
+      activityDate: "2026-03-15",
+      sessionType: "training",
+    });
+
+    expect(result.inserted).toBe(true);
+    const row = sqlite
+      .prepare(`SELECT duration_minutes FROM activity_logs WHERE id = ?`)
+      .get(result.logId) as { duration_minutes: number };
+    expect(row.duration_minutes).toBe(90);
   });
 });
 

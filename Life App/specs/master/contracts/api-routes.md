@@ -271,18 +271,12 @@ Aggregated activities dashboard data. Accepts `?weeks=8` (default 8). Renamed fr
   "latestBodyMetrics": {
     "weight": { "value": 75.5, "unit": "kg", "date": "2026-03-04", "trend": -0.5 }
   },
-  "activityByType": [
-    { "name": "Running", "count": 8 },
-    { "name": "Tennis", "count": 4 }
-  ],
   "recentActivityLogs": [],
   "totalActivityLogs": 42,
   "totalMinutes": 2100,
   "totalCalories": 18500
 }
 ```
-
-`activityByType` provides a breakdown of activity log counts per activity type for the current month, used by the Activities Dashboard bar chart.
 
 ---
 
@@ -396,6 +390,28 @@ Returns progress for a goal. Behavior depends on goal type:
 ```
 
 `paceStatus` and `elapsedPercentage` are only present for goals with `horizon = 'yearly'`. `paceStatus` is one of: `'ahead'` | `'on_track'` | `'behind'` | `'no_data'`.
+
+### GET /api/goals/:id/log
+
+Returns the most recent progress entries for a goal — session logs or tally entries depending on goal type (`activityTypeId != null` → session logs).
+
+**Query params**:
+- `?limit=10` — max entries (default 10, max 50)
+
+**Response** `200`:
+```json
+[
+  {
+    "type": "session",
+    "date": "2026-06-20",
+    "value": 90,
+    "valueLabel": "90 min",
+    "notes": "Good session"
+  }
+]
+```
+
+**Response** `404`: Goal not found or not owned by the current user.
 
 ### GET /api/goals/:id/children `[Goals V2]`
 
@@ -1034,12 +1050,14 @@ Creates a plan for `goalId` (409 if one already exists). Body includes `sport`, 
 | `supplementalSessionsPerWeek` | No* | See above. If omitted, server uses `defaultSplit(goal.sessionsPerWeek)`. |
 | `trainingPreferredDays` | No | `number[]`, weekday 1–7. |
 | `supplementalPreferredDays` | No | `number[]`. |
+| `defaultTrainingDurationMinutes` | No | Positive integer or omit/null for activity-type fallback on training check-offs. |
+| `defaultSupplementalDurationMinutes` | No | Positive integer or omit/null for activity-type fallback on supplemental check-offs. |
 
 For **climbing**, inserted phases include `sportFocusContent`, `supplementalContent`, `mentalGameContent` when generated; tennis/running phases leave those columns null and use `description` only.
 
 ### PATCH /api/training-plans/:id
 
-Updates split and/or preferred days only (does not regenerate phases). Body: optional `trainingSessionsPerWeek`, `supplementalSessionsPerWeek` (must be sent together and sum to goal `sessionsPerWeek`), `trainingPreferredDays`, `supplementalPreferredDays`. Returns the updated plan with parsed day arrays.
+Updates split, preferred days, and/or default session durations (does not regenerate phases). Body: optional `trainingSessionsPerWeek`, `supplementalSessionsPerWeek` (must be sent together and sum to goal `sessionsPerWeek`), `trainingPreferredDays`, `supplementalPreferredDays`, `defaultTrainingDurationMinutes`, `defaultSupplementalDurationMinutes`. Returns the updated plan with parsed day arrays.
 
 ### DELETE /api/training-plans/:id
 

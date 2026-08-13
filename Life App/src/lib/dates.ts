@@ -155,6 +155,28 @@ export function getDayOfWeek(date: Date | string): number {
 }
 
 /**
+ * Parse a preferred-days value into a number[] (1=Mon … 7=Sun).
+ *
+ * Handles two storage formats (BR-003):
+ *   - JSON array string  →  "[1,3,5]"  (trainingPlans.*PreferredDays)
+ *   - Comma-separated    →  "1,3,5"    (goals.preferredDays)
+ *
+ * Keeping both parsers here prevents encoding drift (the bug introduced in PR #71).
+ */
+export function parsePreferredDays(raw: string | null | undefined): number[] {
+  if (!raw) return [];
+  try {
+    const v = JSON.parse(raw);
+    return Array.isArray(v) ? v.filter((x): x is number => typeof x === "number") : [];
+  } catch {
+    return raw
+      .split(",")
+      .map(Number)
+      .filter((n) => !isNaN(n) && n > 0);
+  }
+}
+
+/**
  * Convert an ISO date or ISO datetime string to the user-facing DD-MM-YYYY display format.
  *
  * Used by the Habits feature per spec FR-019. Storage and API wire format stay

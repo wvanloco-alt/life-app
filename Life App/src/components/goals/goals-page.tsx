@@ -759,6 +759,8 @@ export function GoalsPage() {
           onClose={() => setTrainingPlanGoal(null)}
           goalId={trainingPlanGoal.id}
           goalTitle={trainingPlanGoal.title}
+          goalSessionsPerWeek={trainingPlanGoal.sessionsPerWeek}
+          goalPreferredDays={trainingPlanGoal.preferredDays}
           onCreated={() => fetchData()}
         />
       )}
@@ -768,6 +770,8 @@ export function GoalsPage() {
           onClose={() => setTrainingPlanGoal(null)}
           goalId={trainingPlanGoal.id}
           goalTitle={trainingPlanGoal.title}
+          goalSessionsPerWeek={trainingPlanGoal.sessionsPerWeek}
+          goalPreferredDays={trainingPlanGoal.preferredDays}
           onCreated={() => fetchData()}
         />
       )}

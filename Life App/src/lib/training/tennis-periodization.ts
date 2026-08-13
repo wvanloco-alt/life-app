@@ -99,6 +99,37 @@ const PHASE_CONTENT: Record<TennisPhaseType, PhaseContent> = {
   },
 };
 
+/**
+ * Returns the three scheduler layer columns for a tennis phase.
+ *
+ * Mirrors buildPhaseDescription but returns the strings separately so the
+ * scheduler can assign distinct notes to training vs supplemental sessions.
+ */
+export function buildTennisPhaseContent(
+  phaseType: TennisPhaseType,
+  playingStyle: TennisPlayingStyle,
+  level: TennisPlayerLevel
+): { sportFocusContent: string; supplementalContent: string; mentalGameContent: string } {
+  const content = PHASE_CONTENT[phaseType];
+  const isBeginner = level === "beginner";
+
+  const sportFocusContent =
+    isBeginner && content.onCourtBeginner
+      ? content.onCourtBeginner
+      : content.onCourt[playingStyle];
+
+  const supplementalContent =
+    isBeginner && content.supplementalBeginner
+      ? content.supplementalBeginner
+      : content.supplemental;
+
+  return {
+    sportFocusContent,
+    supplementalContent,
+    mentalGameContent: content.mentalGame,
+  };
+}
+
 export function buildPhaseDescription(
   phaseType: TennisPhaseType,
   playingStyle: TennisPlayingStyle,
@@ -330,6 +361,7 @@ export function generateTennisPhases(
     const weeks = weekDurations[i];
     const phaseStart = format(currentDate, "yyyy-MM-dd");
     const phaseEnd = format(addWeeks(currentDate, weeks), "yyyy-MM-dd");
+    const layers = buildTennisPhaseContent(t.type, playingStyle, level);
 
     phases.push({
       phaseType: t.type,
@@ -339,6 +371,7 @@ export function generateTennisPhases(
       endDate: phaseEnd,
       description: buildPhaseDescription(t.type, playingStyle, level),
       limitationNotes: buildLimitationNotes(t.type, physicalLimitations),
+      ...layers,
     });
 
     currentDate = addWeeks(currentDate, weeks);
