@@ -40,11 +40,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/migrations ./migrations
 COPY --chown=nextjs:nodejs apply-schema.js ./apply-schema.js
 COPY --chown=nextjs:nodejs scripts ./scripts
 
-# Copy native addons compiled against glibc
-COPY --from=deps /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3
-COPY --from=deps /app/node_modules/bindings ./node_modules/bindings
-COPY --from=deps /app/node_modules/file-uri-to-path ./node_modules/file-uri-to-path
-COPY --from=deps /app/node_modules/bcryptjs ./node_modules/bcryptjs
+# Copy all node_modules from deps stage — ensures native addons (better-sqlite3,
+# garmin-connect-client → node-libcurl-ja3 → deasync) and all serverExternalPackages
+# are available at runtime. Image is slightly larger but avoids fragile per-package COPYs.
+COPY --from=deps /app/node_modules ./node_modules
 
 RUN mkdir -p /data
 
