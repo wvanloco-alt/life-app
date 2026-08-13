@@ -242,7 +242,7 @@ export function GarminConnection() {
                   autoComplete="one-time-code"
                   value={mfaCode}
                   onChange={(e) => setMfaCode(e.target.value)}
-                  placeholder="6-digit code from your authenticator"
+                  placeholder="Code from your authenticator app or email"
                   className="w-full rounded-[0.625rem] border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
                 <p className="text-xs text-muted-foreground">
