@@ -507,6 +507,8 @@ export interface TrainingPlan {
   supplementalSessionsPerWeek: number | null;
   trainingPreferredDays: number[];
   supplementalPreferredDays: number[];
+  defaultTrainingDurationMinutes: number | null;
+  defaultSupplementalDurationMinutes: number | null;
   createdAt: string;
   updatedAt: string;
   phases?: TrainingPhase[];
