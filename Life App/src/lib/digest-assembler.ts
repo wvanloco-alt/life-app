@@ -468,10 +468,17 @@ export async function buildWeeklyContent(
   const partial = { weekSessions, weekSleepAvg, topHabits, todaySession };
   if (!hasWeeklyBody(partial)) return null;
 
+  const monthlyStats = await queryMonthlyStats(db, userId, today);
+  const weekActivityNames = [...new Set(weekActivityRows.map((r) => r.sport))];
+  const habitConsistencyLow = topHabits.length > 0 && topHabits[0].doneLast30 < 10;
+  const librarySegment = await queryLibrarySegment(db, userId, weekActivityNames, topHabits.length > 0, habitConsistencyLow);
+
   return {
     userName,
     cadence: "weekly",
     appUrl,
+    monthlyStats,
+    librarySegment,
     ...partial,
   };
 }

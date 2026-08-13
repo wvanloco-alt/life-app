@@ -52,7 +52,7 @@ async function ensureActivityType(userId: string, name: string): Promise<number>
     .insert(activityTypes)
     .values({
       name,
-      type: isFallbackActivityType(name) ? "cardio" : "cardio",
+      type: "cardio",
       icon: "activity",
       isTracked: true,
       metricsConfig: "[]",
