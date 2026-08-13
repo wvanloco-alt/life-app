@@ -19,9 +19,10 @@ if (!fs.existsSync(target)) {
 const original = fs.readFileSync(target, "utf8");
 
 // Patch 1: treat "GARMIN Authentication Application" as MFA (email flow)
+// The compiled JS uses the full module reference pattern.
 let patched = original.replace(
-  /\/mfa\/i\.test\(title\)/g,
-  '/mfa/i.test(title) || /authentication application/i.test(title)'
+  /if \(title && \/mfa\/i\.test\(title\)\)/g,
+  'if (title && (/mfa/i.test(title) || /authentication application/i.test(title)))'
 );
 
 // Patch 2: log the raw credentials-POST HTML response before it is parsed,
@@ -34,8 +35,8 @@ const authServiceTarget = path.join(
 if (fs.existsSync(authServiceTarget)) {
   let authService = fs.readFileSync(authServiceTarget, "utf8");
   const logPatch = authService.replace(
-    /const result = parseSsoPostResponse\(postHtml\);/g,
-    `console.error('[garmin-debug] raw SSO post response (first 3000 chars):', postHtml.substring(0, 3000));\n        const result = parseSsoPostResponse(postHtml);`
+    /const result = \(0, auth_html_parser_1\.parseSsoPostResponse\)\(postHtml\);/g,
+    `console.error('[garmin-debug] raw SSO post response (first 3000 chars):', postHtml.substring(0, 3000));\n            const result = (0, auth_html_parser_1.parseSsoPostResponse)(postHtml);`
   );
   if (logPatch !== authService) {
     fs.writeFileSync(authServiceTarget, logPatch, "utf8");
