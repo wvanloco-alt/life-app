@@ -1,5 +1,37 @@
 # Life App 2.0 — Session Progress
 
+## 2026-08-13 — Life App 2.0 shipped to production
+
+**Branch**: `life-app-2.0` merged to `master` via PR #94 → #100
+
+### What shipped
+
+All Life App 2.0 features are now live in production:
+- Dashboard as homepage with auto Garmin sync
+- Habits year heatmap + X/30 consistency metric
+- Today's Session card on Goals page
+- Budget forecasting tab (year-at-a-glance, savings trajectory, scenario panel)
+- Morning email digest (daily/weekly, library concepts, monthly stats)
+- Settings tab refactor (Garmin, Email digest, Password as top-level tabs)
+
+### Deployment fixes required (lessons learned)
+
+Several issues had to be resolved before Railway would build successfully:
+
+1. **Stacked PRs don't auto-land on master** — PRs #89–93 merged into each other's feature branches. Required a final PR #94 from `life-app-2.0` → `master`.
+2. **Merge conflict resolution dropped schema columns** — `defaultTrainingDurationMinutes` and `defaultSupplementalDurationMinutes` were lost from `schema.ts` and `types/index.ts` when resolving conflicts with `git checkout --ours`. Fixed in PR #100.
+3. **`npm ci` lock file mismatch** — Local npm v11 (Node 24) generates a lockfile incompatible with npm v10 (Node 20 in Docker). Fixed by switching to `npm install` in the Dockerfile (PR #99).
+4. **`garmin-connect-client` bundled by Turbopack** — Next.js tried to statically bundle `garmin-connect-client` → `deasync` (native addon). Fixed by adding all three packages to `serverExternalPackages` in `next.config.ts` (PR #100).
+5. **Alpine → Debian slim** — `node-libcurl-ja3` (dep of `garmin-connect-client`) needs glibc. Alpine uses musl libc and couldn't run the prebuilt binaries. Switched base image to `node:20-slim`; replaced `su-exec` with `gosu` (PR #97, kept in #100).
+
+### Current state
+
+- `master` is deployed and live
+- All Railway env vars set: `ENCRYPTION_KEY`, `CRON_SECRET`, `GMAIL_USER`, `GMAIL_APP_PASSWORD`, `AUTH_TRUST_HOST`
+- Railway cron for morning digest still needs to be configured (separate cron service — see DEPLOYMENT.md)
+
+---
+
 ## 2026-08-11 — Auto-sync on dashboard load
 
 **Branch**: `life-app-2.0`
