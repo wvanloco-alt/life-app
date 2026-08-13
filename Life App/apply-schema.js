@@ -490,6 +490,10 @@ const alterStatements = [
   `ALTER TABLE habits ADD COLUMN cue_type TEXT`,
   `ALTER TABLE habits ADD COLUMN is_keystone INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE activity_logs ADD COLUMN garmin_activity_id TEXT`,
+  `ALTER TABLE email_preferences ADD COLUMN email TEXT`,
+  `ALTER TABLE email_preferences ADD COLUMN cadence TEXT NOT NULL DEFAULT 'daily'`,
+  `ALTER TABLE email_preferences ADD COLUMN last_digest_sent_at TEXT`,
+  `ALTER TABLE email_preferences ADD COLUMN excluded_library_topics TEXT`,
 ];
 
 for (const sql of alterStatements) {
