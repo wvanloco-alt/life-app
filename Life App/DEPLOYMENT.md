@@ -44,18 +44,53 @@ Set these in the Railway dashboard under your service → **Variables**.
 
 ### Life App 2.0 variables
 
-Set these when deploying Garmin sync and the morning email digest (see `.specify/specs/life-app-2.0/architecture.md`).
+Set these when deploying Garmin sync and the morning email digest.
 
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `ENCRYPTION_KEY` | Yes (2.0) | 32 random bytes, base64-encoded. Encrypts Garmin session tokens at rest. Generate with: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"` |
-| `CRON_SECRET` | Yes (2.0) | Random string. The Railway one-shot cron service sends this in a header when calling `POST /api/email/send-daily-digest`. |
-| `GMAIL_APP_PASSWORD` | Phase 8 | Gmail App Password for Nodemailer (sender account needs 2FA). |
-| `GMAIL_FROM_ADDRESS` | Phase 8 | From address for reminder emails (same Gmail account). |
+| `CRON_SECRET` | Yes (2.0) | Random string. The Railway cron service sends this in the `x-cron-secret` header when calling `POST /api/cron/morning-digest`. |
+| `GMAIL_USER` | Yes (digest) | Gmail address used as the sender (`"Life App" <you@gmail.com>`). |
+| `GMAIL_APP_PASSWORD` | Yes (digest) | Gmail App Password for Nodemailer — not your regular Gmail password. |
 
 > **Windows local dev note**: `garmin-connect-client` depends on `node-libcurl-ja3`, which only supports Linux/macOS. `npm install` on Windows may skip this optional dependency. Garmin connect/sync works in Docker (Linux) and on Railway. Use `docker compose up` for full Garmin testing on Windows, or test Garmin in production after deploy.
 
 > After the admin account is created, `ADMIN_USERNAME` and `ADMIN_PASSWORD` can be removed from Railway variables — they are no longer needed and leaving them in is harmless but unnecessary.
+
+### Gmail setup (morning digest)
+
+1. Enable 2-Step Verification on the Gmail account you will send from.
+2. Go to Google Account → **Security** → **2-Step Verification** → **App passwords**.
+3. Create an app password for **Mail** / **Other** (name it "Life App").
+4. Set `GMAIL_USER` to that Gmail address and `GMAIL_APP_PASSWORD` to the 16-character app password.
+
+### Morning digest cron (Railway dashboard)
+
+Railway cron is a **separate service** — do **not** add a cron schedule to `railway.toml` (the web service never exits, so Railway would skip cron runs forever).
+
+1. In the same Railway project, create a **new service** (no repo — start command only):
+   ```bash
+   curl -fsS -X POST https://<public-app-url>/api/cron/morning-digest -H "x-cron-secret: $CRON_SECRET"
+   ```
+   Use your **public** app URL — a separate container cannot reach the web service via `localhost`.
+2. Set **Cron Schedule** to `0 5,6 * * *` (05:00 and 06:00 UTC daily).
+3. Add env var `CRON_SECRET` on the cron service — same value as the web service.
+
+**Why two UTC runs:** Brussels is UTC+1 in winter and UTC+2 in summer. The endpoint only sends when local time is ≥ 07:00, and `last_digest_sent_at` prevents double-sends:
+
+| Season | 05:00 UTC | 06:00 UTC |
+|--------|-----------|-----------|
+| Summer (CEST) | 07:00 Brussels → sends | 08:00 → no-op (already sent) |
+| Winter (CET) | 06:00 → gate rejects | 07:00 → sends |
+
+### Testing the digest manually
+
+```bash
+curl -fsS -X POST https://your-app.railway.app/api/cron/morning-digest \
+  -H "x-cron-secret: YOUR_CRON_SECRET"
+```
+
+Locally (Docker), call `http://localhost:3000/api/cron/morning-digest` with the same header. The Brussels time gate applies — before 07:00 Brussels you get `{ "sent": 0, "skipped": "too early" }`.
 
 ---
 

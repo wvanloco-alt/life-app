@@ -8,6 +8,9 @@ const SETTINGS_NAV = [
   { title: "Roles", href: "/settings/roles" },
   { title: "Activity Types", href: "/settings/activity-types" },
   { title: "Scheduler", href: "/settings/scheduler" },
+  { title: "Garmin", href: "/settings/garmin" },
+  { title: "Email digest", href: "/settings/email" },
+  { title: "Password", href: "/settings/password" },
 ];
 
 export default function SettingsLayout({

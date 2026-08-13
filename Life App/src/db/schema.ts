@@ -284,7 +284,11 @@ export const emailPreferences = sqliteTable(
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
     userId: text("user_id").notNull().unique(),
+    email: text("email"),
+    cadence: text("cadence").notNull().default("daily"),
     enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
+    lastDigestSentAt: text("last_digest_sent_at"),
+    excludedLibraryTopics: text("excluded_library_topics"),
     createdAt: timestamp(),
     updatedAt: updatedAt(),
   }
