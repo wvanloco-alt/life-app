@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY package.json package-lock.json ./
+COPY scripts ./scripts
 RUN npm install
 
 # Stage 2: Build the Next.js standalone application
