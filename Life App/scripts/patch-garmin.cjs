@@ -25,27 +25,29 @@ const authServiceTarget = path.join(
   "../node_modules/garmin-connect-client/dist/authentication-service.js"
 );
 
-// Patch 2: make ActivityTypeKeySchema coerce unknown values to "other".
-// Garmin introduces _v2 variants (tennis_v2, kayaking_v2, etc.) that aren't in
-// the library's Zod enum. Adding .catch("other") makes the schema accept any string.
-const indexTarget = path.join(
+// Patch 2: accept unknown activityType.typeKey values (e.g. tennis_v2).
+// Garmin introduces _v2 variants that aren't in the library's nativeEnum.
+// v2.0.0 validates via ActivityTypeSchema in dist/types.js, not index.js.
+const typesTarget = path.join(
   __dirname,
-  "../node_modules/garmin-connect-client/dist/index.js"
+  "../node_modules/garmin-connect-client/dist/types.js"
 );
 
-if (fs.existsSync(indexTarget)) {
-  let indexJs = fs.readFileSync(indexTarget, "utf8");
-  // The compiled enum export looks like: exports.ActivityTypeKeySchema = z_1.z.enum([...]);
-  // We append .catch("other") so unknown typeKeys fall through gracefully.
-  const typeKeyPatch = indexJs.replace(
-    /(exports\.ActivityTypeKeySchema\s*=\s*[^;]+);/,
-    "$1.catch(\"other\");"
+if (fs.existsSync(typesTarget)) {
+  let typesJs = fs.readFileSync(typesTarget, "utf8");
+  const typeKeyPatch = typesJs.replace(
+    /typeKey:\s*zod_1\.z\.nativeEnum\(ActivityTypeKey\)/,
+    "typeKey: zod_1.z.string()"
   );
-  if (typeKeyPatch !== indexJs) {
-    fs.writeFileSync(indexTarget, typeKeyPatch, "utf8");
-    console.log("patch-garmin: patched ActivityTypeKeySchema to coerce unknown typeKeys to 'other'.");
+  if (typeKeyPatch !== typesJs) {
+    fs.writeFileSync(typesTarget, typeKeyPatch, "utf8");
+    console.log(
+      "patch-garmin: patched ActivityTypeSchema.typeKey to accept any string."
+    );
+  } else if (/typeKey:\s*zod_1\.z\.string\(\)/.test(typesJs)) {
+    console.log("patch-garmin: ActivityTypeSchema.typeKey already patched — skipping.");
   } else {
-    console.log("patch-garmin: ActivityTypeKeySchema already patched or pattern not found — skipping.");
+    console.log("patch-garmin: ActivityTypeSchema pattern not found — skipping.");
   }
 }
 

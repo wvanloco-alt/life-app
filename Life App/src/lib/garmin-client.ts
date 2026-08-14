@@ -112,6 +112,67 @@ async function garminApiGet<T>(session: GarminPersistedSession, url: string): Pr
   return (await res.json()) as T;
 }
 
+type RawGarminActivity = {
+  activityId: number;
+  activityType: { typeKey: string };
+  startTimeLocal: string;
+  duration: number;
+  calories?: number;
+  steps?: number;
+  distance?: number;
+};
+
+/** Fetch activities via Garmin API directly — bypasses library Zod validation for unknown typeKeys like tennis_v2. */
+async function fetchActivities(
+  session: GarminPersistedSession,
+  start: number,
+  limit: number
+): Promise<RawGarminActivity[]> {
+  const url = `https://connectapi.garmin.com/activitylist-service/activities/search/activities?start=${start}&limit=${limit}`;
+  const raw = await garminApiGet<unknown>(session, url);
+  if (!Array.isArray(raw)) return [];
+
+  return raw
+    .map((item): RawGarminActivity | null => {
+      if (!item || typeof item !== "object") return null;
+      const activity = item as Record<string, unknown>;
+      const activityType = activity.activityType;
+      const typeKey =
+        activityType &&
+        typeof activityType === "object" &&
+        "typeKey" in activityType &&
+        typeof (activityType as { typeKey?: unknown }).typeKey === "string"
+          ? (activityType as { typeKey: string }).typeKey
+          : "other";
+
+      const activityId = Number(activity.activityId);
+      const startTimeLocal =
+        typeof activity.startTimeLocal === "string" ? activity.startTimeLocal : "";
+      const duration = Number(activity.duration ?? 0);
+      if (!Number.isFinite(activityId) || !startTimeLocal) return null;
+
+      return {
+        activityId,
+        activityType: { typeKey },
+        startTimeLocal,
+        duration,
+        calories:
+          activity.calories != null && Number.isFinite(Number(activity.calories))
+            ? Number(activity.calories)
+            : undefined,
+        steps:
+          activity.steps != null && Number.isFinite(Number(activity.steps))
+            ? Number(activity.steps)
+            : undefined,
+        distance:
+          activity.distance != null && Number.isFinite(Number(activity.distance))
+            ? Number(activity.distance)
+            : undefined,
+      };
+    })
+    .filter((activity): activity is RawGarminActivity => activity != null);
+}
+
 async function fetchDailySummary(
   session: GarminPersistedSession,
   displayName: string,
@@ -209,7 +270,7 @@ export async function fetchGarminData(
   const endDate = new Date();
 
   const limit = Math.min(200, days * 10);
-  const rawActivities = await client.getActivities(0, limit);
+  const rawActivities = await fetchActivities(mergedSession, 0, limit);
   const startIso = format(startDate, "yyyy-MM-dd");
   const endIso = format(endDate, "yyyy-MM-dd");
 
