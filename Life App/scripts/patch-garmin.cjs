@@ -1,6 +1,7 @@
-// Adds diagnostic logging to garmin-connect-client so Railway logs show
-// the raw Garmin SSO response when login is attempted.
-// This helps debug auth issues without needing to reproduce locally.
+// Patches to garmin-connect-client:
+// 1. ACCOUNT_LOCKED detection in the SSO auth flow
+// 2. Coerce unknown activityType.typeKey values (e.g. tennis_v2) to "other"
+//    instead of throwing a ZodError — Garmin adds _v2 variants over time.
 
 const fs = require("fs");
 const path = require("path");
@@ -23,6 +24,30 @@ const authServiceTarget = path.join(
   __dirname,
   "../node_modules/garmin-connect-client/dist/authentication-service.js"
 );
+
+// Patch 2: make ActivityTypeKeySchema coerce unknown values to "other".
+// Garmin introduces _v2 variants (tennis_v2, kayaking_v2, etc.) that aren't in
+// the library's Zod enum. Adding .catch("other") makes the schema accept any string.
+const indexTarget = path.join(
+  __dirname,
+  "../node_modules/garmin-connect-client/dist/index.js"
+);
+
+if (fs.existsSync(indexTarget)) {
+  let indexJs = fs.readFileSync(indexTarget, "utf8");
+  // The compiled enum export looks like: exports.ActivityTypeKeySchema = z_1.z.enum([...]);
+  // We append .catch("other") so unknown typeKeys fall through gracefully.
+  const typeKeyPatch = indexJs.replace(
+    /(exports\.ActivityTypeKeySchema\s*=\s*[^;]+);/,
+    "$1.catch(\"other\");"
+  );
+  if (typeKeyPatch !== indexJs) {
+    fs.writeFileSync(indexTarget, typeKeyPatch, "utf8");
+    console.log("patch-garmin: patched ActivityTypeKeySchema to coerce unknown typeKeys to 'other'.");
+  } else {
+    console.log("patch-garmin: ActivityTypeKeySchema already patched or pattern not found — skipping.");
+  }
+}
 
 if (fs.existsSync(authServiceTarget)) {
   let authService = fs.readFileSync(authServiceTarget, "utf8");
