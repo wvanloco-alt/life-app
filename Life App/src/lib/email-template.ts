@@ -118,7 +118,8 @@ function buildYesterdaySection(content: DigestContent): string {
 
   if (!rows) return "";
 
-  return sectionLabel("Yesterday") + divider() + rows;
+  const sectionTitle = content.bodySectionLabel ?? "Yesterday";
+  return sectionLabel(sectionTitle) + divider() + rows;
 }
 
 function buildMonthlySection(content: DigestContent, today: string): string {
@@ -244,7 +245,10 @@ function buildPlainText(content: DigestContent): string {
 
   if (content.cadence === "daily") {
     lines.push(`Good morning, ${content.userName} ✦`, "");
-    lines.push("─── Yesterday ───────────────────");
+    const bodyLabel = content.bodySectionLabel ?? "Yesterday";
+    if (content.sleep || content.calories || content.activity) {
+      lines.push(`─── ${bodyLabel} ───────────────────`);
+    }
     if (content.sleep) {
       lines.push(`😴 Sleep: ${formatSleepDuration(content.sleep.durationMinutes)} · Score ${content.sleep.score}`);
     }

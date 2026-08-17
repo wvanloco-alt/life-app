@@ -758,6 +758,8 @@ export interface EmailPreferences {
 export interface DigestContent {
   userName: string;
   cadence: "daily" | "weekly";
+  /** Section heading for sleep/activity/calories block when not all from yesterday. */
+  bodySectionLabel?: "Yesterday" | "Recent";
   sleep?: { score: number; durationMinutes: number };
   activity?: { count: number; kmRun?: number; names: string[] };
   calories?: { total: number; active: number };
