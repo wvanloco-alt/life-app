@@ -148,6 +148,152 @@ async function queryHabitCounts(
     .map((row) => ({ name: row.name, doneLast30: row.done }));
 }
 
+const RECENT_LOOKBACK_DAYS = 14;
+
+type SleepRow = { score: number | null; durationMinutes: number | null };
+
+function rowToSleep(row: SleepRow | undefined): DigestContent["sleep"] | undefined {
+  if (!row || (row.score == null && row.durationMinutes == null)) return undefined;
+  return {
+    score: row.score ?? 0,
+    durationMinutes: row.durationMinutes ?? 0,
+  };
+}
+
+async function querySleepForDate(
+  db: AppDb,
+  userId: string,
+  date: string
+): Promise<DigestContent["sleep"] | undefined> {
+  const rows = await db
+    .select({ score: sleepLogs.score, durationMinutes: sleepLogs.durationMinutes })
+    .from(sleepLogs)
+    .where(and(eq(sleepLogs.userId, userId), eq(sleepLogs.date, date)))
+    .limit(1);
+  return rowToSleep(rows[0]);
+}
+
+async function queryMostRecentSleepBefore(
+  db: AppDb,
+  userId: string,
+  beforeDate: string
+): Promise<DigestContent["sleep"] | undefined> {
+  const lookbackStart = format(
+    subDays(parseISO(beforeDate), RECENT_LOOKBACK_DAYS),
+    "yyyy-MM-dd"
+  );
+  const rows = await db
+    .select({ score: sleepLogs.score, durationMinutes: sleepLogs.durationMinutes })
+    .from(sleepLogs)
+    .where(
+      and(
+        eq(sleepLogs.userId, userId),
+        lte(sleepLogs.date, beforeDate),
+        gte(sleepLogs.date, lookbackStart)
+      )
+    )
+    .orderBy(desc(sleepLogs.date))
+    .limit(1);
+  return rowToSleep(rows[0]);
+}
+
+function buildActivityFromRows(
+  activityRows: { metrics: string; typeName: string }[]
+): DigestContent["activity"] | undefined {
+  if (activityRows.length === 0) return undefined;
+  let kmRun = 0;
+  for (const row of activityRows) {
+    kmRun += parseDistanceKm(row.metrics);
+  }
+  const names = [...new Set(activityRows.map((r) => r.typeName))];
+  return {
+    count: activityRows.length,
+    names,
+    ...(kmRun > 0 ? { kmRun: Math.round(kmRun * 10) / 10 } : {}),
+  };
+}
+
+async function queryActivityForDate(
+  db: AppDb,
+  userId: string,
+  date: string
+): Promise<DigestContent["activity"] | undefined> {
+  const activityRows = await db
+    .select({ metrics: activityLogs.metrics, typeName: activityTypes.name })
+    .from(activityLogs)
+    .innerJoin(activityTypes, eq(activityLogs.activityTypeId, activityTypes.id))
+    .where(and(eq(activityLogs.userId, userId), eq(activityLogs.date, date)));
+  return buildActivityFromRows(activityRows);
+}
+
+async function queryMostRecentActivityBefore(
+  db: AppDb,
+  userId: string,
+  beforeDate: string
+): Promise<DigestContent["activity"] | undefined> {
+  const lookbackStart = format(
+    subDays(parseISO(beforeDate), RECENT_LOOKBACK_DAYS),
+    "yyyy-MM-dd"
+  );
+  const latest = await db
+    .select({ date: activityLogs.date })
+    .from(activityLogs)
+    .where(
+      and(
+        eq(activityLogs.userId, userId),
+        lte(activityLogs.date, beforeDate),
+        gte(activityLogs.date, lookbackStart)
+      )
+    )
+    .orderBy(desc(activityLogs.date))
+    .limit(1);
+
+  if (!latest[0]) return undefined;
+  return queryActivityForDate(db, userId, latest[0].date);
+}
+
+async function queryCaloriesForDate(
+  db: AppDb,
+  userId: string,
+  date: string
+): Promise<DigestContent["calories"] | undefined> {
+  const rows = await db
+    .select({ total: dailyMetrics.caloriesTotal, active: dailyMetrics.caloriesActive })
+    .from(dailyMetrics)
+    .where(and(eq(dailyMetrics.userId, userId), eq(dailyMetrics.date, date)))
+    .limit(1);
+  const row = rows[0];
+  if (row?.total == null && row?.active == null) return undefined;
+  return { total: row?.total ?? 0, active: row?.active ?? 0 };
+}
+
+async function queryMostRecentCaloriesBefore(
+  db: AppDb,
+  userId: string,
+  beforeDate: string
+): Promise<DigestContent["calories"] | undefined> {
+  const lookbackStart = format(
+    subDays(parseISO(beforeDate), RECENT_LOOKBACK_DAYS),
+    "yyyy-MM-dd"
+  );
+  const rows = await db
+    .select({ total: dailyMetrics.caloriesTotal, active: dailyMetrics.caloriesActive })
+    .from(dailyMetrics)
+    .where(
+      and(
+        eq(dailyMetrics.userId, userId),
+        lte(dailyMetrics.date, beforeDate),
+        gte(dailyMetrics.date, lookbackStart),
+        or(isNotNull(dailyMetrics.caloriesTotal), isNotNull(dailyMetrics.caloriesActive))
+      )
+    )
+    .orderBy(desc(dailyMetrics.date))
+    .limit(1);
+  const row = rows[0];
+  if (!row) return undefined;
+  return { total: row.total ?? 0, active: row.active ?? 0 };
+}
+
 function hasDailyBody(content: {
   sleep?: DigestContent["sleep"];
   activity?: DigestContent["activity"];
@@ -162,6 +308,35 @@ function hasDailyBody(content: {
       content.todaySession ||
       content.habitHighlight
   );
+}
+
+function hasSendableDailyDigest(content: {
+  sleep?: DigestContent["sleep"];
+  activity?: DigestContent["activity"];
+  calories?: DigestContent["calories"];
+  todaySession?: DigestContent["todaySession"];
+  habitHighlight?: DigestContent["habitHighlight"];
+  monthlyStats?: DigestContent["monthlyStats"];
+  librarySegment?: DigestContent["librarySegment"];
+}): boolean {
+  if (hasDailyBody(content)) return true;
+  if (content.librarySegment) return true;
+  if (content.monthlyStats) return true;
+  return false;
+}
+
+function hasSendableWeeklyDigest(content: {
+  weekSessions?: DigestContent["weekSessions"];
+  weekSleepAvg?: number;
+  topHabits?: DigestContent["topHabits"];
+  todaySession?: DigestContent["todaySession"];
+  monthlyStats?: DigestContent["monthlyStats"];
+  librarySegment?: DigestContent["librarySegment"];
+}): boolean {
+  if (hasWeeklyBody(content)) return true;
+  if (content.librarySegment) return true;
+  if (content.monthlyStats) return true;
+  return false;
 }
 
 function hasWeeklyBody(content: {
@@ -324,49 +499,24 @@ export async function buildDailyContent(
   const userName = await getUserName(db, userId);
   const appUrl = process.env.NEXTAUTH_URL ?? "";
 
-  // Sleep
-  const sleepRow = await db
-    .select({ score: sleepLogs.score, durationMinutes: sleepLogs.durationMinutes })
-    .from(sleepLogs)
-    .where(and(eq(sleepLogs.userId, userId), eq(sleepLogs.date, yesterday)))
-    .limit(1);
+  let usedRecentFallback = false;
 
-  let sleep: DigestContent["sleep"];
-  const sleepData = sleepRow[0];
-  if (sleepData?.score != null && sleepData.durationMinutes != null) {
-    sleep = { score: sleepData.score, durationMinutes: sleepData.durationMinutes };
+  let sleep = await querySleepForDate(db, userId, yesterday);
+  if (!sleep) {
+    sleep = await queryMostRecentSleepBefore(db, userId, yesterday);
+    if (sleep) usedRecentFallback = true;
   }
 
-  // Activities (always, independent of sleep)
-  let activity: DigestContent["activity"];
-  const activityRows = await db
-    .select({ metrics: activityLogs.metrics, typeName: activityTypes.name, calories: activityLogs.calories })
-    .from(activityLogs)
-    .innerJoin(activityTypes, eq(activityLogs.activityTypeId, activityTypes.id))
-    .where(and(eq(activityLogs.userId, userId), eq(activityLogs.date, yesterday)));
-
-  if (activityRows.length > 0) {
-    let kmRun = 0;
-    for (const row of activityRows) {
-      kmRun += parseDistanceKm(row.metrics);
-    }
-    const names = [...new Set(activityRows.map((r) => r.typeName))];
-    activity = {
-      count: activityRows.length,
-      names,
-      ...(kmRun > 0 ? { kmRun: Math.round(kmRun * 10) / 10 } : {}),
-    };
+  let activity = await queryActivityForDate(db, userId, yesterday);
+  if (!activity) {
+    activity = await queryMostRecentActivityBefore(db, userId, yesterday);
+    if (activity) usedRecentFallback = true;
   }
 
-  // Calories from daily_metrics
-  let calories: DigestContent["calories"];
-  const calorieRow = await db
-    .select({ total: dailyMetrics.caloriesTotal, active: dailyMetrics.caloriesActive })
-    .from(dailyMetrics)
-    .where(and(eq(dailyMetrics.userId, userId), eq(dailyMetrics.date, yesterday)))
-    .limit(1);
-  if (calorieRow[0]?.total != null && calorieRow[0]?.active != null) {
-    calories = { total: calorieRow[0].total, active: calorieRow[0].active };
+  let calories = await queryCaloriesForDate(db, userId, yesterday);
+  if (!calories) {
+    calories = await queryMostRecentCaloriesBefore(db, userId, yesterday);
+    if (calories) usedRecentFallback = true;
   }
 
   const todaySession = await queryTodaySession(db, userId, today);
@@ -377,10 +527,16 @@ export async function buildDailyContent(
 
   const activityNames = activity?.names ?? [];
   const habitConsistencyLow = habitHighlight ? habitHighlight.doneLast30 < 10 : false;
-  const librarySegment = await queryLibrarySegment(db, userId, activityNames, !!habitHighlight, habitConsistencyLow);
+  const librarySegment = await queryLibrarySegment(
+    db,
+    userId,
+    activityNames,
+    !!habitHighlight,
+    habitConsistencyLow
+  );
 
   const partial = { sleep, activity, calories, todaySession, habitHighlight };
-  if (!hasDailyBody(partial)) return null;
+  if (!hasSendableDailyDigest({ ...partial, monthlyStats, librarySegment })) return null;
 
   return {
     userName,
@@ -388,6 +544,7 @@ export async function buildDailyContent(
     appUrl,
     monthlyStats,
     librarySegment,
+    ...(usedRecentFallback ? { bodySectionLabel: "Recent" as const } : {}),
     ...partial,
   };
 }
@@ -465,13 +622,19 @@ export async function buildWeeklyContent(
   const topHabits = await queryHabitCounts(db, userId, today, 2);
   const todaySession = await queryTodaySession(db, userId, today);
 
-  const partial = { weekSessions, weekSleepAvg, topHabits, todaySession };
-  if (!hasWeeklyBody(partial)) return null;
-
   const monthlyStats = await queryMonthlyStats(db, userId, today);
   const weekActivityNames = [...new Set(weekActivityRows.map((r) => r.sport))];
   const habitConsistencyLow = topHabits.length > 0 && topHabits[0].doneLast30 < 10;
-  const librarySegment = await queryLibrarySegment(db, userId, weekActivityNames, topHabits.length > 0, habitConsistencyLow);
+  const librarySegment = await queryLibrarySegment(
+    db,
+    userId,
+    weekActivityNames,
+    topHabits.length > 0,
+    habitConsistencyLow
+  );
+
+  const partial = { weekSessions, weekSleepAvg, topHabits, todaySession };
+  if (!hasSendableWeeklyDigest({ ...partial, monthlyStats, librarySegment })) return null;
 
   return {
     userName,
