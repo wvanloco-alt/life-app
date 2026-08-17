@@ -1,6 +1,61 @@
 import nodemailer from "nodemailer";
 
+const SEND_TIMEOUT_MS = 15_000;
+
 let transport: nodemailer.Transporter | null = null;
+
+function getFromAddress(): string {
+  const from = process.env.EMAIL_FROM?.trim();
+  if (from) return from;
+
+  const user = process.env.GMAIL_USER?.trim();
+  if (user) return `"Life App" <${user}>`;
+
+  throw new Error("EMAIL_FROM or GMAIL_USER must be configured for email sending");
+}
+
+async function sendViaResend(opts: {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+}): Promise<void> {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  if (!apiKey) throw new Error("RESEND_API_KEY not configured");
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), SEND_TIMEOUT_MS);
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: getFromAddress(),
+        to: [opts.to],
+        subject: opts.subject,
+        html: opts.html,
+        text: opts.text,
+      }),
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`Resend API ${res.status}: ${body.slice(0, 300)}`);
+    }
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error("Resend API connection timed out");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 function getMailer(): nodemailer.Transporter {
   if (!transport) {
@@ -12,9 +67,27 @@ function getMailer(): nodemailer.Transporter {
     transport = nodemailer.createTransport({
       service: "gmail",
       auth: { user, pass },
+      connectionTimeout: SEND_TIMEOUT_MS,
+      greetingTimeout: SEND_TIMEOUT_MS,
+      socketTimeout: SEND_TIMEOUT_MS,
     });
   }
   return transport;
+}
+
+async function sendViaGmail(opts: {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+}): Promise<void> {
+  await getMailer().sendMail({
+    from: getFromAddress(),
+    to: opts.to,
+    subject: opts.subject,
+    html: opts.html,
+    text: opts.text,
+  });
 }
 
 export async function sendMail(opts: {
@@ -23,14 +96,9 @@ export async function sendMail(opts: {
   html: string;
   text: string;
 }): Promise<void> {
-  const fromUser = process.env.GMAIL_USER;
-  if (!fromUser) throw new Error("GMAIL_USER not configured");
-
-  await getMailer().sendMail({
-    from: `"Life App" <${fromUser}>`,
-    to: opts.to,
-    subject: opts.subject,
-    html: opts.html,
-    text: opts.text,
-  });
+  if (process.env.RESEND_API_KEY?.trim()) {
+    await sendViaResend(opts);
+    return;
+  }
+  await sendViaGmail(opts);
 }

@@ -50,19 +50,31 @@ Set these when deploying Garmin sync and the morning email digest.
 |----------|----------|-------------|
 | `ENCRYPTION_KEY` | Yes (2.0) | 32 random bytes, base64-encoded. Encrypts Garmin session tokens at rest. Generate with: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"` |
 | `CRON_SECRET` | Yes (2.0) | Random string. The Railway cron service sends this in the `x-cron-secret` header when calling `POST /api/cron/morning-digest`. |
-| `GMAIL_USER` | Yes (digest) | Gmail address used as the sender (`"Life App" <you@gmail.com>`). |
-| `GMAIL_APP_PASSWORD` | Yes (digest) | Gmail App Password for Nodemailer — not your regular Gmail password. |
+| `RESEND_API_KEY` | Yes (digest on Railway) | [Resend](https://resend.com) API key. **Required on Railway Free/Hobby** — outbound SMTP is blocked; Resend sends over HTTPS. |
+| `EMAIL_FROM` | Yes (with Resend) | Verified sender, e.g. `Life App <digest@yourdomain.com>`. Must match a domain verified in Resend. |
+| `GMAIL_USER` | Local dev only | Gmail address for Nodemailer SMTP when `RESEND_API_KEY` is not set (Docker/local). |
+| `GMAIL_APP_PASSWORD` | Local dev only | Gmail App Password for Nodemailer when `RESEND_API_KEY` is not set. |
 
-> **Windows local dev note**: `garmin-connect-client` depends on `node-libcurl-ja3`, which only supports Linux/macOS. `npm install` on Windows may skip this optional dependency. Garmin connect/sync works in Docker (Linux) and on Railway. Use `docker compose up` for full Garmin testing on Windows, or test Garmin in production after deploy.
+> **Railway SMTP note:** Gmail SMTP (`smtp.gmail.com`) times out on Railway Free, Trial, and Hobby plans because outbound SMTP is disabled. Production must use `RESEND_API_KEY` + `EMAIL_FROM`. Keep Gmail vars for local Docker dev only.
 
-> After the admin account is created, `ADMIN_USERNAME` and `ADMIN_PASSWORD` can be removed from Railway variables — they are no longer needed and leaving them in is harmless but unnecessary.
+### Resend setup (production morning digest)
 
-### Gmail setup (morning digest)
+1. Create a free account at [resend.com](https://resend.com).
+2. Add and verify your sending domain (DNS records in Resend dashboard).
+3. Create an API key → set `RESEND_API_KEY` on the **web** Railway service.
+4. Set `EMAIL_FROM` to a verified address, e.g. `Life App <digest@yourdomain.com>`.
+5. Redeploy, then test: `curl -X POST …/api/cron/morning-digest -H "x-cron-secret: …"`
+
+### Gmail setup (local Docker dev only)
 
 1. Enable 2-Step Verification on the Gmail account you will send from.
 2. Go to Google Account → **Security** → **2-Step Verification** → **App passwords**.
 3. Create an app password for **Mail** / **Other** (name it "Life App").
 4. Set `GMAIL_USER` to that Gmail address and `GMAIL_APP_PASSWORD` to the 16-character app password.
+
+> **Windows local dev note**: `garmin-connect-client` depends on `node-libcurl-ja3`, which only supports Linux/macOS. `npm install` on Windows may skip this optional dependency. Garmin connect/sync works in Docker (Linux) and on Railway. Use `docker compose up` for full Garmin testing on Windows, or test Garmin in production after deploy.
+
+> After the admin account is created, `ADMIN_USERNAME` and `ADMIN_PASSWORD` can be removed from Railway variables — they are no longer needed and leaving them in is harmless but unnecessary.
 
 ### Morning digest cron (Railway dashboard)
 
