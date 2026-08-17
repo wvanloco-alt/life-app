@@ -1,7 +1,7 @@
 # System Overview: Life App
 
 > **Purpose**: Single authoritative reference for how the Life App works end-to-end — what pages exist, which components power them, which API routes they call, and which database tables back those routes. Use this alongside `data-model.md` (table schemas) and `contracts/api-routes.md` (route contracts) for a complete picture.
-> **Last updated**: 2026-08-11. Reflects all features through Body Metrics Guidance (PRs #52–#56) plus Life App 2.0 additions (Dashboard, Garmin integration).
+> **Last updated**: 2026-08-17. Reflects all features through Life App 2.0 (merged to `master`).
 
 ---
 
@@ -17,9 +17,9 @@ The sidebar is always visible. Sections:
 
 | Group | Page | Route |
 |---|---|---|
-| Daily Focus | **Dashboard** *(2.0 — replaces Today as entry point)* | `/dashboard` |
-| Daily Focus | Today | `/today` |
-| Daily Focus | Monthly Plan | `/monthly-plan` |
+| Execution | **Dashboard** *(default landing page)* | `/dashboard` |
+| Execution | This Week | `/this-week` |
+| Planning | Monthly Plan | `/monthly-plan` |
 | Life Areas | Activities | `/activities` |
 | Life Areas | Budget | `/budget` |
 | Life Areas | Goals | `/goals` |
@@ -156,12 +156,14 @@ The Activities page has multiple tabs. Each tab is its own major feature.
 
 **Primary components**:
 - `src/components/budget/budget-dashboard.tsx`
+- `src/components/budget/budget-forecast.tsx` — Forecast tab (table, chart, scenario panel)
 - `src/components/budget/budget-targets-panel.tsx`
 - `src/components/budget/budget-buckets-panel.tsx`
 - `src/components/budget/log-big-purchase-dialog.tsx` (accessible from sidebar)
 
 **API routes used**:
 - `GET /api/budget/summary` — monthly overview (income, fixed costs, spent, remaining)
+- `GET /api/budget/forecast` — 12-month forecast payload (Forecast tab)
 - `GET/PATCH /api/budget-settings` — global budget config (income, currency, savings goal, moment threshold)
 - `GET/POST /api/spending-categories` — category list
 - `PATCH/DELETE /api/spending-categories/:id` — manage individual categories
@@ -180,11 +182,14 @@ The Activities page has multiple tabs. Each tab is its own major feature.
 **What it does**: Long-term goal management. Goals are standalone, optionally linked to one or more roles (life areas). A "weekly focus" mechanism lets the user pick which goals to work on each week. Goals can have tally-based or session-based progress tracking, and can have an attached training plan (periodization).
 
 **Primary components**:
-- `src/components/goals/goals-view.tsx` — goal list (Eisenhower matrix quadrants)
+- `src/components/goals/goals-page.tsx` — goal list with Eisenhower quadrants + **Today's Session** section
+- `src/components/goals/today-sessions-section.tsx` — scheduled training sessions for today
+- `src/components/goals/today-session-card.tsx` — single session card (phase, focus, mark done)
 - `src/components/goals/goal-detail.tsx` — per-goal detail with progress, sessions, tallies
 - `src/components/goals/training-plan-view.tsx` — phase-based periodization
 
 **API routes used**:
+- `GET /api/today/sessions` — today's scheduled training sessions (for session cards)
 - `GET/POST /api/goals` — goal list and creation
 - `GET/PATCH/DELETE /api/goals/:id` — individual goal management
 - `GET/POST /api/roles` — life area roles
@@ -204,10 +209,12 @@ The Activities page has multiple tabs. Each tab is its own major feature.
 
 ### Habits (`/habits`)
 
-**What it does**: Lightweight daily habit tracking using an identity-first frame from Atomic Habits. Each habit has an identity ("I am someone who…"), a name, an optional cue, and an optional minimum version. A 7-day strip shows recent completion. Habits can be reordered by drag-and-drop and archived.
+**What it does**: Daily habit tracking with positive framing. Each habit shows a **year heatmap** of logged days and an **X/30 consistency** metric (not a guilt-based streak). Identity-first copy from Atomic Habits. Drag-and-drop reorder and archive supported.
 
 **Primary components**:
-- `src/components/habits/habits-view.tsx` — main list with strip and log actions
+- `src/components/habits/habits-view.tsx` — main list
+- `src/components/habits/habit-row.tsx` — identity block + heatmap + consistency count
+- `src/components/habits/habit-year-heatmap.tsx` — GitHub-style year grid (warm tones, neutral empty cells)
 - `src/components/habits/habit-walkthrough-dialog.tsx` — guided creation flow
 - `src/components/habits/habit-quick-add-dialog.tsx` — one-step creation for returning users
 
@@ -252,20 +259,29 @@ The Activities page has multiple tabs. Each tab is its own major feature.
 
 ### Settings (`/settings`)
 
-**What it does**: User-level settings hub. The main page has a password-change form and links to three sub-sections: Roles (`/settings/roles`), Activity Types (`/settings/activity-types`), and Scheduler (`/settings/scheduler`).
+**What it does**: Settings hub with tabbed sub-pages. Overview card grid links to dedicated pages for each area.
+
+**Sub-pages** (via `src/app/settings/layout.tsx` tab nav):
+
+| Tab | Route | Purpose |
+|---|---|---|
+| Roles | `/settings/roles` | Life area roles |
+| Activity Types | `/settings/activity-types` | Sport/activity definitions |
+| Scheduler | `/settings/scheduler` | Rest days, horizon, blackout dates |
+| Garmin | `/settings/garmin` | Connect account, sync now, disconnect |
+| Email digest | `/settings/email` | Cadence, address, topic exclusions, enable toggle |
+| Password | `/settings/password` | Change password |
 
 **Primary components**:
-- `src/components/settings/settings-page.tsx` — password change + sub-section links
-- `src/components/settings/scheduler-rules-page.tsx` — scheduler sub-section
+- `src/components/settings/settings-page.tsx` — overview card grid
+- `src/components/settings/garmin-connection.tsx`
+- `src/components/settings/email-digest-settings.tsx`
+- `src/components/settings/scheduler-rules-page.tsx`
 
 **API routes used**:
-- `PATCH /api/user/password` — change the current user's password
-- `GET/POST /api/roles`, `PATCH/DELETE /api/roles/:id` — via the Roles sub-section
-- `GET/POST /api/activity-types`, `PATCH/DELETE /api/activity-types/:id` — via Activity Types sub-section
-- `GET/PATCH /api/scheduler-settings`, `GET/POST/DELETE /api/blackout-dates` — via Scheduler sub-section
-
-**Tables**:
-- `users` (password update), `roles`, `activityTypes`, `schedulerSettings`, `schedulerBlackoutDates`
+- `PATCH /api/user/password`
+- `GET/POST /api/garmin/*`, `GET|PATCH /api/email-preferences`
+- Roles, activity types, scheduler routes (via sub-pages)
 
 ---
 
@@ -301,6 +317,8 @@ These are the places where features share data or behaviour:
 | **Activities ↔ Schedule Bridge** | When a user checks off a scheduled activity on the Today page, the app optionally creates a corresponding `activityLog` entry, linking the two systems via `activityLogs.linkedActivityId`. |
 | **Garmin ↔ ActivityLogs** | `POST /api/garmin/sync` inserts into `activityLogs` with `garminActivityId` set. Deduplication is enforced by a unique index on `garmin_activity_id`. The sync also auto-completes any matching scheduled `activities` for today. |
 | **Garmin ↔ Dashboard** | `GET /api/dashboard` reads `sleepLogs`, `dailyMetrics`, and `activityLogs` to build the dashboard payload. The dashboard auto-triggers `POST /api/garmin/sync` on mount when data is stale (> 30 min). |
+| **Email digest ↔ Garmin** | `POST /api/cron/morning-digest` syncs each connected user's Garmin data before composing and sending the digest. Protected by `CRON_SECRET` header. |
+| **Library ↔ Email digest** | Digest includes a random library concept matched to yesterday's sport; users can exclude topics via `email_preferences.excluded_library_topics`. |
 
 ---
 

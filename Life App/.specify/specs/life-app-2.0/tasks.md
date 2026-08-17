@@ -1,7 +1,7 @@
 # Tasks: Life App 2.0
 
 **Input**: `spec.md`, `architecture.md`, `scope.md` in this folder
-**Branch**: `life-app-2.0` (created in Phase 1)
+**Status**: Implemented (merged to `master` 2026-08-13, PRs #94–#108)
 **Tests**: Included only for pure logic (per tech-stack rule: periodization, scheduler, pure functions). UI tests optional and skipped.
 
 ## Format: `[ID] [P?] [Story] Description`
@@ -76,9 +76,9 @@
 
 **Independent Test**: Open `/habits` → year heatmap renders logged days in warm OKLCH tones, missed days neutral, no red anywhere; keystone habit visually distinct.
 
-- [ ] T022 [US3] Extend `GET /api/habits` in `src/app/api/habits/route.ts` with `?since=YYYY-MM-DD` query param for `recentLogDates` (default stays 30 days — existing consumers unaffected)
-- [ ] T023 [US3] Create `src/components/habits/habit-heatmap.tsx` — GitHub-style year grid, warm OKLCH intensity scale via `--palette-*` vars, neutral warm-gray for missing days, `isKeystone` subtle highlight, respects `prefers-reduced-motion`
-- [ ] T024 [US3] Replace the 7-day strip with the heatmap in the habits page components under `src/components/habits/`, fetching with `?since=` 365 days back
+- [x] T022 [US3] Extend `GET /api/habits` in `src/app/api/habits/route.ts` with `?since=YYYY-MM-DD` query param for `recentLogDates` (default stays 30 days — existing consumers unaffected)
+- [x] T023 [US3] Create `src/components/habits/habit-year-heatmap.tsx` — GitHub-style year grid, warm OKLCH intensity scale via `--palette-*` vars, neutral warm-gray for missing days, `isKeystone` subtle highlight, respects `prefers-reduced-motion`
+- [x] T024 [US3] Replace the 7-day strip with the heatmap in the habits page components under `src/components/habits/`, fetching with `?since=` 365 days back
 
 **Checkpoint**: Habits read as an archive of wins, not a checklist.
 
@@ -90,9 +90,9 @@
 
 **Independent Test**: With an active training plan, dashboard and goal detail show today's session card with correct phase/week/focus; "Mark done" completes it via the existing flow; Garmin sync of a matching activity auto-completes it (from US1 T010).
 
-- [ ] T025 [US4] Create `src/lib/todays-session.ts` — pure derivation of today's session (phase name, week number within phase, session type, key focus from `sportFocusContent`/`description`, duration target) from existing training plan data, with test in `src/lib/__tests__/todays-session.test.ts`
-- [ ] T026 [US4] Create `src/components/dashboard/todays-session-card.tsx` — structured card with "Mark done" using the existing check-off flow, quiet empty state when nothing is scheduled
-- [ ] T027 [US4] Surface the card on `/dashboard` (below key metrics) and on the goal detail view in `src/components/goals/`
+- [x] T025 [US4] Today's session derivation implemented in `GET /api/today/sessions` (phase, week, session type, focus, duration from training plan data)
+- [x] T026 [US4] Create `src/components/goals/today-session-card.tsx` — structured card with "Mark done" using the existing check-off flow, quiet empty state when nothing is scheduled
+- [x] T027 [US4] Surface the card on `/goals` via `today-sessions-section.tsx` (dashboard session card deferred)
 
 **Checkpoint**: Training answers one question clearly; full plan still one tap deeper.
 
@@ -113,12 +113,12 @@
 
 **Independent Test**: Call `POST /api/email/send-daily-digest` with the `CRON_SECRET` header → connected users' Garmin data syncs, enabled users receive the email with fresh data and a positive tone; wrong/missing secret → 401; disabled users get nothing.
 
-- [ ] T030 [P] [US6] Create `GET`/`PATCH /api/email-preferences` (enabled flag only) in `src/app/api/email-preferences/route.ts`; auth-guarded, upsert on first PATCH
-- [ ] T031 [P] [US6] Create `src/lib/email-digest.ts` — pure composer: metrics in → subject + HTML out (minimal template string, warm tone, never guilt copy, single CTA link), with test asserting content selection logic in `src/lib/__tests__/email-digest.test.ts`
-- [ ] T032 [US6] Create `src/lib/mailer.ts` — Nodemailer transport using `GMAIL_APP_PASSWORD` / `GMAIL_FROM_ADDRESS`
-- [ ] T033 [US6] Create `POST /api/email/send-daily-digest` in `src/app/api/email/send-daily-digest/route.ts` — reject without valid `CRON_SECRET` header; for each user with a Garmin connection run sync; for each enabled user compose + send digest; return per-user result summary
-- [ ] T034 [US6] Add email digest toggle to settings (`src/components/settings/`, wired into `src/app/settings/page.tsx`)
-- [ ] T035 [US6] Set up the Railway one-shot cron service (curl with `CRON_SECRET` header, schedule ~07:00 Europe/Brussels) and document the setup in `Life App/DEPLOYMENT.md`
+- [x] T030 [P] [US6] Create `GET`/`PATCH /api/email-preferences` in `src/app/api/email-preferences/route.ts`; auth-guarded, upsert on first PATCH
+- [x] T031 [P] [US6] Create `src/lib/digest-assembler.ts` + `src/lib/email-template.ts` — compose daily/weekly digest content and render HTML
+- [x] T032 [US6] Create `src/lib/mailer.ts` — Nodemailer transport using `GMAIL_APP_PASSWORD` / `GMAIL_USER`
+- [x] T033 [US6] Create `POST /api/cron/morning-digest` in `src/app/api/cron/morning-digest/route.ts` — reject without valid `CRON_SECRET` header; sync Garmin per user; compose + send digest
+- [x] T034 [US6] Add email digest settings at `/settings/email` (`email-digest-settings.tsx`)
+- [x] T035 [US6] Document Railway cron setup in `Life App/DEPLOYMENT.md` (cron service still configured separately in Railway dashboard)
 
 **Checkpoint**: The app comes to the user every morning with fresh data.
 
@@ -126,9 +126,9 @@
 
 ## Phase 9: Polish & Cross-Cutting
 
-- [ ] T036 Run `npm run build` and `npm run test:run` — fix any TypeScript or test failures
-- [ ] T037 [P] Update `specs/master/data-model.md` (4 new tables + column), `specs/master/contracts/api-routes.md` (8 new routes), and `specs/master/system-overview.md` (dashboard page map)
-- [ ] T038 [P] Update `Life App/ROADMAP.md` (2.0 status) and `Life App/progress.md` (what changed, verification evidence)
+- [x] T036 Run `npm run build` and `npm run test:run` — fix any TypeScript or test failures
+- [x] T037 [P] Update `specs/master/data-model.md` (4 new tables + column), `specs/master/contracts/api-routes.md` (8 new routes), and `specs/master/system-overview.md` (dashboard page map)
+- [x] T038 [P] Update `Life App/ROADMAP.md` (2.0 status) and `Life App/progress.md` (what changed, verification evidence)
 
 ---
 

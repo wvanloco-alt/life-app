@@ -1,5 +1,27 @@
 # Life App 2.0 — Session Progress
 
+## 2026-08-17 — Documentation updated post-merge
+
+**Context**: Life App 2.0 fully merged to `master` and live in production. PR #109 fixed Garmin sync for newer activity type keys (`tennis_v2`).
+
+**Docs updated**: `AGENT-ONBOARDING.md`, `ROADMAP.md`, `specs/master/feature-specs.md`, `specs/master/system-overview.md`, `specs/master/tasks.md`, `.specify/specs/life-app-2.0/spec.md`.
+
+**Key facts for new agents**:
+- Default landing page is `/dashboard`, not `/today`
+- Garmin issues are contained in `src/lib/garmin-client.ts` + `scripts/patch-garmin.cjs`
+- Settings uses tabbed sub-pages under `/settings/*`
+- Morning digest cron: `POST /api/cron/morning-digest` with `x-cron-secret` header
+
+---
+
+## 2026-08-14 — Garmin `tennis_v2` sync fix (PR #109)
+
+**Problem**: PR #108's postinstall patch targeted `dist/index.js`, but `garmin-connect-client` v2.0.0 validates `activityType.typeKey` in `dist/types.js`. Tennis activities recorded with `tennis_v2` caused Zod `invalid_enum_value` errors on sync.
+
+**Fix**: Fetch activities via Garmin API directly in `garmin-client.ts` (bypasses library Zod validation). Updated `patch-garmin.cjs` to patch `types.js` as a fallback.
+
+---
+
 ## 2026-08-13 — Life App 2.0 shipped to production
 
 **Branch**: `life-app-2.0` merged to `master` via PR #94 → #100

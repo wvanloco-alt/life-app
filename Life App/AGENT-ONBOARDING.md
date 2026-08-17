@@ -1,7 +1,7 @@
 # Life App -- Agent Onboarding Document
 
 > **Purpose**: Get a new AI agent up to speed on the Life App project quickly.
-> **Last updated**: 2026-06-05
+> **Last updated**: 2026-08-17 (Life App 2.0 merged to production)
 
 ---
 
@@ -10,21 +10,25 @@
 Before doing anything, read these documents in order:
 
 1. **Constitution** -- `Life App/.specify/memory/constitution.md` (governing principles)
-2. **Roadmap** -- `Life App/ROADMAP.md` (feature status, tech stack, what's built)
+2. **Roadmap** -- `Life App/ROADMAP.md` (feature status, tech stack, what's built — **Life App 2.0 is complete on `master`**)
 3. **System Overview** -- `Life App/specs/master/system-overview.md` (page → component → route → table map; cross-feature interactions; architectural patterns)
 4. **Feature Specs Registry** -- `Life App/specs/master/feature-specs.md` (locked decisions and technical footprint for every feature in one file)
-5. **Data Model** -- `Life App/specs/master/data-model.md` (database tables and relationships)
-6. **API Contracts** -- `Life App/specs/master/contracts/api-routes.md` (all REST endpoints)
+5. **Data Model** -- `Life App/specs/master/data-model.md` (database tables and relationships — includes 2.0 tables: `sleep_logs`, `daily_metrics`, `garmin_connections`, `email_preferences`)
+6. **API Contracts** -- `Life App/specs/master/contracts/api-routes.md` (all REST endpoints — includes Garmin, dashboard, email digest, budget forecast)
 7. **Tasks Log** -- `Life App/specs/master/tasks.md` (completed work and architectural iterations)
-8. **Goals V2 Spec** -- `Life App/.specify/specs/goals-v2/spec.md` (goal hierarchy, tallies, pace tracking)
-9. **Deployment Guide** -- `Life App/DEPLOYMENT.md` (Railway setup, env vars, how apply-schema.js works, troubleshooting)
+8. **Life App 2.0 Spec** -- `Life App/.specify/specs/life-app-2.0/spec.md` (dashboard, Garmin, habits redesign, session card, budget forecast, email digest — **merged PRs #94–#108**)
+9. **Deployment Guide** -- `Life App/DEPLOYMENT.md` (Railway setup, env vars, Gmail cron, Docker/Garmin notes, troubleshooting)
 
 Then familiarize yourself with the codebase structure:
 
 - `src/db/schema.ts` -- Drizzle ORM schema (all tables)
 - `src/types/index.ts` -- TypeScript interfaces
-- `src/components/layout/app-sidebar.tsx` -- Navigation structure
-- `src/app/layout.tsx` -- Root layout and providers
+- `src/components/layout/app-sidebar.tsx` -- Navigation structure (Execution / Planning / Life Areas)
+- `src/lib/garmin-client.ts` -- **Single swap point** for unofficial Garmin API (library issues stay here)
+- `src/lib/garmin-sync.ts` -- Pure sync/dedup/auto-complete logic (tested)
+- `src/components/dashboard/dashboard-view.tsx` -- Homepage trophy case + silent Garmin auto-sync
+- `src/app/settings/layout.tsx` -- Settings tab nav (Roles, Activity Types, Scheduler, Garmin, Email digest, Password)
+- `scripts/patch-garmin.cjs` -- Postinstall patch for `garmin-connect-client` (patches `dist/types.js` for unknown activity type keys like `tennis_v2`)
 
 ---
 
@@ -54,7 +58,9 @@ These are the rules for working on this project. They come from the constitution
 - **Desktop only.** No mobile app.
 - **The user has other projects running.** Do not touch ports 8000 or 5173, or modify anything outside the `Life App/` folder.
 - **Production migrations via `apply-schema.js` only.** Never use `npx drizzle-kit migrate` in production. Every schema change must be reflected in `apply-schema.js` using `CREATE TABLE IF NOT EXISTS` / `ALTER TABLE ADD COLUMN IF NOT EXISTS`. Test changes against a fresh DB before deploying.
-- **Container runs as `nextjs` (UID 1001) at app runtime.** The Dockerfile starts as root to `chown` the Railway volume, then drops to the unprivileged `nextjs` user via `su-exec` before running any app code.
+- **Garmin sync requires Linux.** `garmin-connect-client` depends on native addons that do not install on Windows. Use `docker compose up` for local Garmin testing, or test in production/Railway.
+- **Garmin library issues stay in one file.** Do not spread workarounds for `garmin-connect-client` across the codebase — contain them in `src/lib/garmin-client.ts` and `scripts/patch-garmin.cjs`. See `.specify/specs/life-app-2.0/HANDOFF.md`.
+- **Container runs as `nextjs` (UID 1001) at app runtime.** The Dockerfile starts as root to `chown` the Railway volume, then drops to the unprivileged `nextjs` user via `gosu` before running any app code. Base image is `node:20-slim` (Debian/glibc — required for native addons).
 
 ---
 
@@ -64,13 +70,16 @@ These are the rules for working on this project. They come from the constitution
 |-------|------------|
 | Framework | Next.js 16.x (App Router, Turbopack) |
 | Language | TypeScript 5.x |
-| Styling | Tailwind CSS v4 (oklch theme variables) |
-| Components | shadcn/ui |
+| Styling | Tailwind CSS v4 (OKLCH theme variables) |
+| Components | shadcn/ui + Lucide icons |
 | Typography | Plus Jakarta Sans (body), Fraunces (display), JetBrains Mono (code) |
 | Database | SQLite via Drizzle ORM + better-sqlite3 |
+| Auth | NextAuth.js v5 (Credentials provider, JWT sessions) |
 | Charts | Recharts |
 | Drag & Drop | @dnd-kit/core |
-| Date utils | date-fns |
+| Date utils | date-fns, Luxon (Garmin sleep dates) |
+| Email | Nodemailer + Gmail SMTP (morning digest) |
+| Garmin | `garmin-connect-client` (unofficial Connect API, optional dep) |
 | Theming | next-themes (light/dark) |
 | Testing | Vitest + React Testing Library |
 
@@ -117,9 +126,22 @@ These are the rules for working on this project. They come from the constitution
 | UI Refinements March (trimming, DnD, training display) | Complete |
 | UI Design Overhaul (typography, colors, motion, card redesign) | Complete |
 | Friend Release (multi-user auth, per-user isolation, admin UI, Railway) | Complete |
-| Container security hardening (su-exec privilege drop, error log cleanup) | Complete |
+| Container security hardening (gosu privilege drop, Debian slim base) | Complete |
+| **Life App 2.0** — Dashboard homepage, Garmin auto-sync, habits year heatmap, Today's Session card, budget forecast tab, morning email digest, settings tab refactor | Complete (merged to `master` 2026-08-13, PRs #94–#108; Garmin `tennis_v2` fix PR #109) |
 
-See `ROADMAP.md` for full details on what each feature includes.
+**Life App 2.0 highlights** (all live in production):
+
+| Area | What shipped |
+|------|--------------|
+| Dashboard (`/dashboard`) | Default landing page; sleep, calories, activities, habit consistency; silent Garmin sync if stale (> 30 min) |
+| Garmin | Per-user connect/sync/disconnect; encrypted session tokens; activity dedup; sleep/daily metrics upsert; auto-completes matching training sessions |
+| Habits | Year heatmap + "X/30 days" consistency metric (no guilt framing); streak is secondary |
+| Goals | Today's Session card(s) on Goals page — phase, focus, mark done |
+| Budget | Forecast tab — 12-month cash flow table, savings trajectory chart, scenario panel |
+| Email digest | Opt-in daily/weekly morning email; sync-then-send cron; library concept section; per-topic exclusions |
+| Settings | Tabbed sub-pages: Roles, Activity Types, Scheduler, Garmin, Email digest, Password |
+
+See `ROADMAP.md` and `progress.md` for full details and deployment lessons learned.
 
 ---
 
@@ -142,10 +164,12 @@ git push origin master
 - **Database**: SQLite at `/data/life-app.db` on a persistent Railway volume. Data survives redeploys and restarts.
 - **Schema migrations**: `apply-schema.js` runs automatically at container startup (before the Next.js server starts). It is idempotent — safe to run repeatedly.
 - **Admin bootstrap**: On a fresh database, `apply-schema.js` creates the admin account from `ADMIN_USERNAME` + `ADMIN_PASSWORD` env vars. Only fires once (when the `users` table is empty).
-- **Container security**: Container starts as root to fix volume permissions (`chown /data`), then drops to `nextjs` (UID 1001) via `su-exec` before running any app code.
-- **Required env vars**: `AUTH_SECRET`, `DB_PATH=/data/life-app.db`, `NEXTAUTH_URL`, `AUTH_TRUST_HOST=true`, `PORT=3000`.
+- **Container security**: Container starts as root to fix volume permissions (`chown /data`), then drops to `nextjs` (UID 1001) via `gosu` before running any app code.
+- **Required env vars (auth)**: `AUTH_SECRET`, `DB_PATH=/data/life-app.db`, `NEXTAUTH_URL`, `AUTH_TRUST_HOST=true`, `PORT=3000`, `ADMIN_USERNAME`, `ADMIN_PASSWORD` (bootstrap only).
+- **Required env vars (Life App 2.0)**: `ENCRYPTION_KEY` (Garmin token encryption), `GMAIL_USER`, `GMAIL_APP_PASSWORD`, `CRON_SECRET` (morning digest cron endpoint).
+- **Morning digest cron**: Separate Railway cron service hits `POST /api/cron/morning-digest` at 07:00 Europe/Brussels. See `DEPLOYMENT.md` for DST notes.
 
-For the full deployment reference (first-deploy steps, troubleshooting, local vs. production differences), see **`DEPLOYMENT.md`**.
+For the full deployment reference (first-deploy steps, Docker on Windows, troubleshooting), see **`DEPLOYMENT.md`**.
 
 ---
 
@@ -156,11 +180,17 @@ cd "Life App"
 npm run dev
 ```
 
-The app runs at **http://localhost:3000**. It redirects `/` to `/today`.
+The app runs at **http://localhost:3000**. It redirects `/` to `/dashboard`.
+
+**Garmin on Windows**: `npm run dev` works for most features, but Garmin connect/sync requires Docker (native addon). For full 2.0 testing:
+
+```bash
+docker compose up --build
+```
 
 Other commands:
 - `npm run build` -- production build
-- `npm run test` -- run Vitest tests
+- `npm run test` -- run Vitest tests (watch)
 - `npm run test:run` -- run tests once (no watch)
 
 ---
@@ -264,15 +294,17 @@ I am going to use you to continue development on the Life App. Please read
 these files to get up to speed:
 
 1. Life App/AGENT-ONBOARDING.md (this document -- read first)
-2. Life App/ROADMAP.md
-3. Life App/.specify/memory/constitution.md
-4. Life App/specs/master/system-overview.md
-5. Life App/specs/master/feature-specs.md
-6. Life App/specs/master/data-model.md
-7. Life App/specs/master/contracts/api-routes.md
-8. Life App/specs/master/tasks.md
-9. Life App/DEPLOYMENT.md
+2. Life App/ROADMAP.md (Life App 2.0 section at bottom)
+3. Life App/progress.md (deployment lessons from 2.0 ship)
+4. Life App/.specify/memory/constitution.md
+5. Life App/.specify/specs/life-app-2.0/spec.md
+6. Life App/specs/master/system-overview.md
+7. Life App/specs/master/feature-specs.md
+8. Life App/specs/master/data-model.md
+9. Life App/specs/master/contracts/api-routes.md
+10. Life App/specs/master/tasks.md
+11. Life App/DEPLOYMENT.md
 
-Then explore the codebase: schema, types, components, and API routes.
+Then explore: schema, types, dashboard + Garmin + settings components, and API routes under `src/app/api/garmin/`, `src/app/api/cron/`, `src/app/api/dashboard/`.
 Let me know when you're ready and if you have any questions.
 ```

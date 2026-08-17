@@ -4,7 +4,7 @@
 >
 > **What this is NOT**: a concatenation of all specs. Aggregating 4,000+ lines of user stories here would make this file harder to navigate than reading the individual files. Keep heavy detail there; keep decisions here.
 >
-> **Last updated**: 2026-06-07. Covers all features through Planning / Execution Redesign (PRs #64–#66).
+> **Last updated**: 2026-08-17. Covers all features through Life App 2.0 (merged to `master` 2026-08-13).
 
 ---
 
@@ -25,6 +25,7 @@
 13. [Habit Tracking V2](#13-habit-tracking-v2)
 14. [Body Metrics Guidance](#14-body-metrics-guidance)
 15. [Planning / Execution Redesign](#15-planning--execution-redesign)
+16. [Life App 2.0](#16-life-app-20)
 
 ---
 
@@ -457,3 +458,45 @@ Four improvements to the planning and execution surface. No new database tables 
 **New files**: `src/app/this-week/page.tsx`, `src/components/monthly-plan/this-week-view.tsx`
 
 **Modified files**: `src/components/layout/app-sidebar.tsx`, `src/components/monthly-plan/schedule-preferences-dialog.tsx`, `src/components/monthly-plan/weekly-plan-view.tsx`
+
+---
+
+## 16. Life App 2.0
+
+**Spec**: `.specify/specs/life-app-2.0/spec.md` (+ sub-specs below)
+**Status**: Built (merged to `master` 2026-08-13, PRs #94–#108; Garmin type-key fix PR #109)
+**Feature ID**: `life-app-2.0`
+
+Shift from passive logging to a daily companion: dashboard homepage, Garmin auto-sync, positive-framing habits, training session clarity, budget forecasting, and optional morning email digest. All additive on 1.0.
+
+### Sub-features
+
+| Sub-spec | What shipped |
+|---|---|
+| `life-app-2.0` (core) | Dashboard, Garmin connect/sync, schema, deployment hardening |
+| `habits-and-session-card` | Year heatmap, X/30 consistency metric, Today's Session card on Goals |
+| `budget-forecasting` | Budget Forecast tab — table, chart, scenario panel |
+| `email-morning-digest` | Email preferences, HTML digest, cron endpoint, settings UI |
+
+### Key Design Decisions
+
+| Decision | Rationale |
+|---|---|
+| Garmin via unofficial Connect API | Official Health API not accessible; risk contained in `garmin-client.ts` |
+| App fully usable without Garmin | Manual logging unchanged; dashboard shows calm "Connect Garmin" states |
+| Activities fetched via raw API | Library Zod schema rejects new Garmin type keys (`tennis_v2`); mapping layer handles them |
+| Positive framing everywhere | Missing days neutral; no red guilt states on habits or dashboard |
+| Sync-then-send for email digest | 07:00 email must include last night's Garmin data before anyone opens the app |
+| Settings as tabbed sub-pages | Garmin and email digest are first-class settings, not buried cards |
+
+### Technical Footprint
+
+**New tables**: `sleep_logs`, `daily_metrics`, `garmin_connections`, `email_preferences`
+
+**Modified columns**: `activity_logs.garmin_activity_id`
+
+**Key routes**: `POST /api/garmin/connect`, `POST /api/garmin/sync`, `GET|DELETE /api/garmin/status`, `GET /api/dashboard`, `GET /api/sleep-logs`, `GET /api/daily-metrics`, `GET|PATCH /api/email-preferences`, `POST /api/cron/morning-digest`, `GET /api/budget/forecast`, `GET /api/today/sessions`
+
+**Key libraries**: `src/lib/garmin-client.ts`, `src/lib/garmin-sync.ts`, `src/lib/garmin-mapping.ts`, `src/lib/budget-forecast.ts`, `src/lib/digest-assembler.ts`, `src/lib/email-template.ts`, `src/lib/mailer.ts`
+
+**Infrastructure**: `scripts/patch-garmin.cjs` (postinstall), `node:20-slim` Docker base, `serverExternalPackages` for native Garmin deps
