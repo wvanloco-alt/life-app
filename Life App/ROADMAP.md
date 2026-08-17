@@ -1,6 +1,6 @@
 ﻿# Life App -- Feature Roadmap
 
-> Last updated: 2026-06-05.
+> Last updated: 2026-08-17.
 
 ## Product Vision
 
@@ -851,36 +851,39 @@ Incidental fix: `Wallet` key added to the Library bookmarks ICON_MAP so the Budg
 
 ## Life App 2.0
 
-**Branch**: `life-app-2.0`  
+**Branch**: merged to `master` (PRs #94–#108, plus post-ship fix PR #109)  
 **Started**: 2026-08-10  
-**Status**: In progress
+**Completed**: 2026-08-13 (production); Garmin `tennis_v2` fix 2026-08-14 (PR #109)  
+**Status**: Complete
 
 A full UX and infrastructure overhaul. The feature set from 1.0 is preserved. The core shift: from "log your life" → "see your life." The app becomes a trophy case rather than a task tracker.
 
-See `.specify/specs/life-app-2.0/` for spec, architecture, and scope documents.
+See `.specify/specs/life-app-2.0/` for spec, architecture, and scope documents. Sub-feature specs: `habits-and-session-card/`, `budget-forecasting/`, `email-morning-digest/`.
 
-### What has been built
+### What shipped
 
 | Area | Status | Notes |
 |---|---|---|
 | **Schema** — `sleep_logs`, `daily_metrics`, `garmin_connections`, `email_preferences` | Done | Additive only — no 1.0 tables changed |
 | **`activity_logs.garmin_activity_id`** | Done | Additive column for deduplication |
-| **Garmin integration** — connect, sync, status routes | Done | `garmin-connect-client` npm package, MFA support, session token storage |
-| **Garmin settings UI** | Done | Email + password form in Settings, shows connected state |
-| **Dashboard page** (`/dashboard`) | Done | Replaces `/today` as entry point; sleep, calories, activities, habit streaks |
-| **`GET /api/dashboard`** | Done | Single aggregation endpoint for all dashboard metrics |
-| **`GET /api/sleep-logs`** | Done | Sleep history read endpoint |
-| **`GET /api/daily-metrics`** | Done | Daily calorie/steps read endpoint |
-| **Auto-sync on dashboard load** | Done | Syncs Garmin silently on mount if connected + last sync > 30 min ago |
+| **Garmin integration** — connect, sync, status routes | Done | `garmin-connect-client` npm package, MFA support, encrypted session tokens; activities fetched via raw API in `garmin-client.ts` to handle new type keys (`tennis_v2`, etc.) |
+| **Garmin settings UI** | Done | Dedicated `/settings/garmin` tab |
+| **Dashboard page** (`/dashboard`) | Done | Default landing page; sleep, calories, activities, habit consistency |
+| **`GET /api/dashboard`** | Done | Single aggregation endpoint |
+| **`GET /api/sleep-logs`**, **`GET /api/daily-metrics`** | Done | Read endpoints for synced Garmin data |
+| **Auto-sync on dashboard load** | Done | Silent sync if connected + last sync > 30 min ago |
+| **Habits year heatmap + X/30 consistency** | Done | Replaces guilt-based streak UI; see `habits-and-session-card` spec |
+| **Today's Session card** | Done | On Goals page; phase, focus, mark done |
+| **Budget Forecast tab** | Done | 12-month table, trajectory chart, scenario panel; see `budget-forecasting` spec |
+| **Morning email digest** | Done | Daily/weekly cadence, sync-then-send cron, library concepts; see `email-morning-digest` spec |
+| **Settings tab refactor** | Done | Roles, Activity Types, Scheduler, Garmin, Email digest, Password as top-level tabs |
+| **Deployment hardening** | Done | Debian slim base, `gosu`, `serverExternalPackages`, `npm install` in Docker, `patch-garmin.cjs` postinstall |
 
-### What is next
+### Operational follow-ups
 
-| Area | Status |
+| Item | Status |
 |---|---|
-| Habits heatmap (year view, positive framing) | Planned — T022 |
-| Training "Today's Session" card | Planned |
-| Budget UI redesign (quarterly planning mode) | Planned |
-| Email morning reminder (Nodemailer + Gmail) | Planned |
+| Railway cron for morning digest | Documented in `DEPLOYMENT.md` — configure separately if not yet live |
 
 ---
 

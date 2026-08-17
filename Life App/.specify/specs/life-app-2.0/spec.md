@@ -1,8 +1,6 @@
 # Life App 2.0 — Feature Specification
 
-> **Status**: Draft  
-> **Created**: 2026-08-10  
-> **Author**: Wim Van Loock + Agent  
+> **Status**: Implemented (merged to `master` 2026-08-13)
 
 ---
 
