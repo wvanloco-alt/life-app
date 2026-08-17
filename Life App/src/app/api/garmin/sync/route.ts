@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { garminConnections } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { GarminClientUnavailableError } from "@/lib/garmin-client";
+import { GarminClientUnavailableError, GarminSessionExpiredError } from "@/lib/garmin-client";
 import {
   parseGarminSession,
   runGarminSyncForUser,
@@ -57,6 +57,12 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     if (err instanceof GarminClientUnavailableError) {
       return NextResponse.json({ error: err.message }, { status: 503 });
+    }
+    if (err instanceof GarminSessionExpiredError) {
+      return NextResponse.json(
+        { error: err.message, code: "garmin_session_expired" },
+        { status: 401 }
+      );
     }
     const message = err instanceof Error ? err.message : "Garmin sync failed";
     return NextResponse.json({ error: message }, { status: 500 });

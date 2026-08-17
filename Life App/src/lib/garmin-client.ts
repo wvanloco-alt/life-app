@@ -15,6 +15,37 @@ export class GarminClientUnavailableError extends Error {
   }
 }
 
+export class GarminSessionExpiredError extends Error {
+  constructor(
+    message = "Your Garmin session has expired. Disconnect and reconnect in Settings to sync again."
+  ) {
+    super(message);
+    this.name = "GarminSessionExpiredError";
+  }
+}
+
+type GarminConnectClient = Awaited<ReturnType<typeof restoreGarminClient>>;
+
+function isGarminAuthFailure(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  const name = err instanceof Error ? err.name : "";
+  return /401|403|unauthorized|notauthenticated|oauthtoken|oauth token/i.test(
+    `${name} ${message}`
+  );
+}
+
+/** Run a lightweight library call so HttpClient can refresh expired OAuth tokens. */
+async function warmGarminSession(client: GarminConnectClient): Promise<void> {
+  try {
+    await client.getActivities(0, 1);
+  } catch (err) {
+    if (isGarminAuthFailure(err)) {
+      throw new GarminSessionExpiredError();
+    }
+    // Zod or other parse errors mean HTTP succeeded — session tokens may still be refreshed.
+  }
+}
+
 type GarminModule = typeof import("garmin-connect-client");
 
 async function loadGarminModule(): Promise<GarminModule> {
@@ -106,6 +137,9 @@ async function garminApiGet<T>(session: GarminPersistedSession, url: string): Pr
   if (session.cookies) headers.Cookie = session.cookies;
 
   const res = await fetch(url, { headers });
+  if (res.status === 401 || res.status === 403) {
+    throw new GarminSessionExpiredError();
+  }
   if (!res.ok) {
     throw new Error(`Garmin API ${res.status}: ${url}`);
   }
@@ -257,10 +291,12 @@ export async function fetchGarminData(
   days: number
 ): Promise<GarminFetchResult> {
   const client = await restoreGarminClient(session);
-  const updatedSession = client.getSession() as GarminPersistedSession;
+  await warmGarminSession(client);
+
+  const refreshed = client.getSession() as GarminPersistedSession;
   const mergedSession: GarminPersistedSession = {
-    ...updatedSession,
-    displayName: session.displayName ?? updatedSession.displayName,
+    ...refreshed,
+    displayName: session.displayName ?? refreshed.displayName,
   };
 
   const displayName = mergedSession.displayName ?? (await fetchDisplayName(mergedSession));
@@ -270,7 +306,12 @@ export async function fetchGarminData(
   const endDate = new Date();
 
   const limit = Math.min(200, days * 10);
-  const rawActivities = await fetchActivities(mergedSession, 0, limit);
+  const liveSession = client.getSession() as GarminPersistedSession;
+  const rawActivities = await fetchActivities(
+    { ...liveSession, displayName: mergedSession.displayName ?? liveSession.displayName },
+    0,
+    limit
+  );
   const startIso = format(startDate, "yyyy-MM-dd");
   const endIso = format(endDate, "yyyy-MM-dd");
 
@@ -293,17 +334,27 @@ export async function fetchGarminData(
     }
 
     if (displayName) {
-      const summary = await fetchDailySummary(mergedSession, displayName, dateStr);
+      const liveSession = client.getSession() as GarminPersistedSession;
+      const summary = await fetchDailySummary(
+        { ...liveSession, displayName: mergedSession.displayName ?? liveSession.displayName },
+        displayName,
+        dateStr
+      );
       if (summary) dailyMetrics.push(summary);
     }
 
     cursor = addDays(cursor, 1);
   }
 
+  const latestSession = client.getSession() as GarminPersistedSession;
+
   return {
     activities,
     sleep,
     dailyMetrics,
-    session: mergedSession,
+    session: {
+      ...latestSession,
+      displayName: mergedSession.displayName ?? latestSession.displayName,
+    },
   };
 }
