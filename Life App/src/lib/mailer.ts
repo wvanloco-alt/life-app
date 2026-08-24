@@ -100,5 +100,13 @@ export async function sendMail(opts: {
     await sendViaResend(opts);
     return;
   }
+
+  // Railway blocks outbound SMTP — never fall back to Gmail in production.
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "RESEND_API_KEY is not set on this server. Add RESEND_API_KEY and EMAIL_FROM to the web service Variables, redeploy, and remove reliance on Gmail SMTP."
+    );
+  }
+
   await sendViaGmail(opts);
 }

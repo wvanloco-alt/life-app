@@ -108,6 +108,7 @@ export async function POST(request: NextRequest) {
   let sent = 0;
   let skipped = 0;
   let errors = 0;
+  const details: string[] = [];
 
   for (const recipient of recipients) {
     try {
@@ -145,9 +146,16 @@ export async function POST(request: NextRequest) {
       sent += 1;
     } catch (err) {
       errors += 1;
+      const message = err instanceof Error ? err.message : String(err);
+      details.push(message);
       console.error(`[morning-digest] Failed for ${recipient.userId}:`, err);
     }
   }
 
-  return NextResponse.json({ sent, skipped, errors });
+  return NextResponse.json({
+    sent,
+    skipped,
+    errors,
+    ...(details.length > 0 ? { details } : {}),
+  });
 }

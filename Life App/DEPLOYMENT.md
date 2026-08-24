@@ -55,7 +55,7 @@ Set these when deploying Garmin sync and the morning email digest.
 | `GMAIL_USER` | Local dev only | Gmail address for Nodemailer SMTP when `RESEND_API_KEY` is not set (Docker/local). |
 | `GMAIL_APP_PASSWORD` | Local dev only | Gmail App Password for Nodemailer when `RESEND_API_KEY` is not set. |
 
-> **Railway SMTP note:** Gmail SMTP (`smtp.gmail.com`) times out on Railway Free, Trial, and Hobby plans because outbound SMTP is disabled. Production must use `RESEND_API_KEY` + `EMAIL_FROM`. Keep Gmail vars for local Docker dev only.
+> **Railway SMTP note:** Gmail SMTP (`smtp.gmail.com`) times out on Railway Free, Trial, and Hobby plans because outbound SMTP is disabled. Production must use `RESEND_API_KEY` + `EMAIL_FROM`. Keep Gmail vars for local Docker dev only. If Resend Logs stay empty, the web service is not receiving `RESEND_API_KEY` at runtime — check the variable is on **life-app-production** (not the cron service) and redeploy after saving.
 
 ### Resend setup (production morning digest)
 
