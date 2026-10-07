@@ -62,6 +62,7 @@ interface SummaryData {
     activityTypeIcon: string;
     date: string;
     durationMinutes: number;
+    source?: string;
     calories: number | null;
   }[];
   totalWorkouts: number;
@@ -335,6 +336,7 @@ export function ActivitiesDashboard() {
             ) : (
               <div className="space-y-2">
                 {data.recentWorkouts.map((w) => {
+                  const isChecked = w.source === "calendar" && w.durationMinutes === 0;
                   const hrs = Math.floor(w.durationMinutes / 60);
                   const mins = w.durationMinutes % 60;
                   return (
@@ -350,8 +352,7 @@ export function ActivitiesDashboard() {
                       </div>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0">
                         <Clock className="h-3 w-3" />
-                        {hrs > 0 ? `${hrs}h ` : ""}
-                        {mins}m
+                        {isChecked ? "Checked" : `${hrs > 0 ? `${hrs}h ` : ""}${mins}m`}
                       </div>
                       <span className="text-xs text-muted-foreground shrink-0">
                         {format(

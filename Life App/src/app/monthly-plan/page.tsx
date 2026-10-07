@@ -1,5 +1,5 @@
-import { WeeklyPlanView } from "@/components/monthly-plan/weekly-plan-view";
+import { CalendarView } from "@/components/calendar/calendar-view";
 
 export default function MonthlyPlanPage() {
-  return <WeeklyPlanView />;
+  return <CalendarView mode="month" />;
 }

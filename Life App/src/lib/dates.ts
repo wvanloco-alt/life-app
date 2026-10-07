@@ -66,6 +66,16 @@ export function toISODate(date: Date): string {
   return format(date, "yyyy-MM-dd");
 }
 
+/** Today's calendar date in Europe/Brussels (YYYY-MM-DD). */
+export function brusselsToday(): string {
+  return new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Brussels" });
+}
+
+/** Monday (ISO week) for a YYYY-MM-DD date string. */
+export function weekStartMondayFromIso(isoDate: string): string {
+  return getWeekStartDate(parseISO(isoDate));
+}
+
 /**
  * Get the week start date for the next week.
  */

@@ -10,11 +10,12 @@ import {
   sleepLogs,
 } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { getWeekStartDate, toISODate } from "@/lib/dates";
+import { brusselsToday, weekStartMondayFromIso } from "@/lib/dates";
+import { countDistinctActivityDays } from "@/lib/calendar-summary";
 import { countDoneInWindow } from "@/lib/habit-streaks";
 import { safeParseMetrics } from "@/lib/activity-metrics";
 import { and, eq, gte, inArray } from "drizzle-orm";
-import { format, subDays } from "date-fns";
+import { format, parseISO, subDays } from "date-fns";
 import type { DashboardData } from "@/types";
 
 function average(nums: number[]): number | null {
@@ -27,9 +28,9 @@ export async function GET() {
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const userId = session.user.id;
 
-  const today = toISODate(new Date());
-  const yesterday = format(subDays(new Date(), 1), "yyyy-MM-dd");
-  const weekStart = getWeekStartDate();
+  const today = brusselsToday();
+  const yesterday = format(subDays(parseISO(today), 1), "yyyy-MM-dd");
+  const weekStart = weekStartMondayFromIso(today);
 
   const garminRow = await db
     .select({ id: garminConnections.id, lastSyncedAt: garminConnections.lastSyncedAt })
@@ -111,7 +112,7 @@ export async function GET() {
     .where(and(eq(habits.userId, userId), eq(habits.isArchived, false)));
 
   const habitIds = activeHabits.map((h) => h.id);
-  const since30 = format(subDays(new Date(), 29), "yyyy-MM-dd");
+  const since30 = format(subDays(parseISO(today), 29), "yyyy-MM-dd");
 
   const habitLogRows =
     habitIds.length === 0
@@ -152,7 +153,9 @@ export async function GET() {
       weekDailyAverage: average(weekCalories),
     },
     activities: {
-      thisWeek: weekLogs.length,
+      thisWeek: countDistinctActivityDays(
+        weekLogs.filter((log) => log.date <= today)
+      ),
       kmRunThisWeek,
     },
     habits: activeHabits.map((h) => ({

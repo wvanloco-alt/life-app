@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { activityTypes } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { DEFAULT_ACTIVITY_TYPES } from "@/lib/defaults";
+import { defaultCalendarColor } from "@/lib/calendar-colors";
 import { auth } from "@/lib/auth";
 
 async function seedDefaultActivityTypes(userId: string) {
@@ -10,18 +11,30 @@ async function seedDefaultActivityTypes(userId: string) {
   if (existing.length > 0) return;
 
   for (const at of DEFAULT_ACTIVITY_TYPES) {
-    await db.insert(activityTypes).values({
-      name: at.name,
-      type: at.type,
-      icon: at.icon,
-      isTracked: at.isTracked,
-      defaultCalories: at.defaultCalories,
-      defaultSteps: at.defaultSteps,
-      metricsConfig: JSON.stringify(at.metricsConfig),
-      variants: at.variants ? JSON.stringify(at.variants) : null,
-      gradeSystem: at.gradeSystem,
-      userId,
-    });
+    const [created] = await db
+      .insert(activityTypes)
+      .values({
+        name: at.name,
+        type: at.type,
+        icon: at.icon,
+        isTracked: at.isTracked,
+        defaultCalories: at.defaultCalories,
+        defaultSteps: at.defaultSteps,
+        metricsConfig: JSON.stringify(at.metricsConfig),
+        variants: at.variants ? JSON.stringify(at.variants) : null,
+        gradeSystem: at.gradeSystem,
+        calendarVisible: true,
+        calendarColor: defaultCalendarColor(at.name, 0),
+        userId,
+      })
+      .returning({ id: activityTypes.id });
+
+    if (created) {
+      await db
+        .update(activityTypes)
+        .set({ calendarColor: defaultCalendarColor(at.name, created.id) })
+        .where(eq(activityTypes.id, created.id));
+    }
   }
 }
 
@@ -76,8 +89,17 @@ export async function POST(request: NextRequest) {
     metricsConfig: JSON.stringify(metricsConfig ?? []),
     variants: variants ? JSON.stringify(variants) : null,
     gradeSystem: gradeSystem ?? null,
+    calendarVisible: true,
+    calendarColor: defaultCalendarColor(name.trim(), 0),
     userId,
   }).returning();
+
+  if (created) {
+    await db
+      .update(activityTypes)
+      .set({ calendarColor: defaultCalendarColor(name.trim(), created.id) })
+      .where(eq(activityTypes.id, created.id));
+  }
 
   return NextResponse.json({ ...created, metricsConfig: JSON.parse(created.metricsConfig), variants: created.variants ? JSON.parse(created.variants) : null }, { status: 201 });
 }

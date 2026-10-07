@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { activityTypes } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
+import { isPaletteColorName } from "@/lib/calendar-colors";
 
 export async function PATCH(
   request: NextRequest,
@@ -31,6 +32,13 @@ export async function PATCH(
   if (body.metricsConfig !== undefined) updates.metricsConfig = JSON.stringify(body.metricsConfig);
   if (body.variants !== undefined) updates.variants = body.variants ? JSON.stringify(body.variants) : null;
   if (body.gradeSystem !== undefined) updates.gradeSystem = body.gradeSystem;
+  if (body.calendarVisible !== undefined) updates.calendarVisible = Boolean(body.calendarVisible);
+  if (body.calendarColor !== undefined) {
+    if (!isPaletteColorName(body.calendarColor)) {
+      return NextResponse.json({ error: "calendarColor must be a palette name" }, { status: 400 });
+    }
+    updates.calendarColor = body.calendarColor;
+  }
 
   const [updated] = await db.update(activityTypes).set(updates).where(and(eq(activityTypes.id, parseInt(id)), eq(activityTypes.userId, userId))).returning();
   if (!updated) return NextResponse.json({ error: "Activity type not found" }, { status: 404 });

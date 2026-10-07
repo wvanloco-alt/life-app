@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { roles, activityTypes, spendingCategories, schedulerSettings } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { DEFAULT_ROLES, DEFAULT_ACTIVITY_TYPES, DEFAULT_SPENDING_CATEGORIES } from "@/lib/defaults";
+import { defaultCalendarColor } from "@/lib/calendar-colors";
 
 /**
  * Seeds default data for a new user on their first login.
@@ -26,18 +27,30 @@ export async function seedUserDefaults(userId: string): Promise<void> {
 
   // Activity types
   for (const at of DEFAULT_ACTIVITY_TYPES) {
-    await db.insert(activityTypes).values({
-      name: at.name,
-      type: at.type,
-      icon: at.icon,
-      isTracked: at.isTracked,
-      defaultCalories: at.defaultCalories,
-      defaultSteps: at.defaultSteps,
-      metricsConfig: JSON.stringify(at.metricsConfig),
-      variants: at.variants ? JSON.stringify(at.variants) : null,
-      gradeSystem: at.gradeSystem,
-      userId,
-    });
+    const [created] = await db
+      .insert(activityTypes)
+      .values({
+        name: at.name,
+        type: at.type,
+        icon: at.icon,
+        isTracked: at.isTracked,
+        defaultCalories: at.defaultCalories,
+        defaultSteps: at.defaultSteps,
+        metricsConfig: JSON.stringify(at.metricsConfig),
+        variants: at.variants ? JSON.stringify(at.variants) : null,
+        gradeSystem: at.gradeSystem,
+        calendarVisible: true,
+        calendarColor: defaultCalendarColor(at.name, 0),
+        userId,
+      })
+      .returning({ id: activityTypes.id });
+
+    if (created) {
+      await db
+        .update(activityTypes)
+        .set({ calendarColor: defaultCalendarColor(at.name, created.id) })
+        .where(eq(activityTypes.id, created.id));
+    }
   }
 
   // Spending categories

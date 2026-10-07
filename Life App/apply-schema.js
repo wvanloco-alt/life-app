@@ -494,7 +494,23 @@ const alterStatements = [
   `ALTER TABLE email_preferences ADD COLUMN cadence TEXT NOT NULL DEFAULT 'daily'`,
   `ALTER TABLE email_preferences ADD COLUMN last_digest_sent_at TEXT`,
   `ALTER TABLE email_preferences ADD COLUMN excluded_library_topics TEXT`,
+  `ALTER TABLE activity_types ADD COLUMN calendar_visible INTEGER NOT NULL DEFAULT 1`,
+  `ALTER TABLE activity_types ADD COLUMN calendar_color TEXT NOT NULL DEFAULT 'blue'`,
+  `ALTER TABLE activity_logs ADD COLUMN source TEXT NOT NULL DEFAULT 'manual'`,
 ];
+
+const activityTypesColsBeforeMigration = db
+  .prepare(`PRAGMA table_info(activity_types)`)
+  .all();
+const activityLogsColsBeforeMigration = db
+  .prepare(`PRAGMA table_info(activity_logs)`)
+  .all();
+const calendarColorColumnWasAbsent = !activityTypesColsBeforeMigration.some(
+  (c) => c.name === "calendar_color"
+);
+const activityLogSourceColumnWasAbsent = !activityLogsColsBeforeMigration.some(
+  (c) => c.name === "source"
+);
 
 for (const sql of alterStatements) {
   run(sql);
@@ -760,6 +776,44 @@ try {
 // The library_topics UPDATE runs after the seed (step 7) so it covers both
 // fresh DBs (seed just inserted the row with 'Volleyball') and existing DBs.
 db.exec(`UPDATE library_topics SET icon = 'TennisRacket' WHERE slug = 'tennis' AND icon = 'Volleyball'`);
+
+// ─── 9. Activity calendar — one-shot color map and source backfill ─────────────
+// Runs only on the boot where the column was absent (PRAGMA snapshot before ALTER).
+// Never rewrites calendar_color on later boots; never touches calendar-source rows.
+
+if (calendarColorColumnWasAbsent) {
+  const colorByName = [
+    ["Climbing (Gym)", "red"],
+    ["Climbing (Outdoor)", "red"],
+    ["Running", "blue"],
+    ["Tennis", "lime"],
+    ["Hiking", "emerald"],
+    ["Reading", "amber"],
+    ["Meditation", "purple"],
+    ["Journaling", "pink"],
+    ["Social Event", "cyan"],
+  ];
+  for (const [name, color] of colorByName) {
+    db.prepare(
+      "UPDATE activity_types SET calendar_color = ? WHERE name = ?"
+    ).run(color, name);
+  }
+  console.log("apply-schema: activity calendar color map applied (one-shot).");
+}
+
+if (activityLogSourceColumnWasAbsent) {
+  db.exec(
+    `UPDATE activity_logs SET source = 'garmin' WHERE garmin_activity_id IS NOT NULL`
+  );
+  db.exec(
+    `UPDATE activity_logs SET source = 'manual' WHERE garmin_activity_id IS NULL AND (source IS NULL OR source = '')`
+  );
+  console.log("apply-schema: activity_logs source backfill applied (one-shot).");
+}
+
+db.exec(
+  `UPDATE activity_logs SET source = 'garmin' WHERE garmin_activity_id IS NOT NULL AND source != 'garmin' AND source != 'calendar'`
+);
 
 db.close();
 console.log("\napply-schema: done.");

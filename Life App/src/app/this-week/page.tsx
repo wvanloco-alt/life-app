@@ -1,5 +1,5 @@
-import { ThisWeekView } from "@/components/monthly-plan/this-week-view";
+import { CalendarView } from "@/components/calendar/calendar-view";
 
 export default function ThisWeekPage() {
-  return <ThisWeekView />;
+  return <CalendarView mode="week" />;
 }

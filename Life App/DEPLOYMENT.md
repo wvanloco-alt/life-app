@@ -42,6 +42,8 @@ Set these in the Railway dashboard under your service → **Variables**.
 | `ADMIN_USERNAME` | First deploy only | Username for the auto-bootstrapped admin account. Only used if no users exist in the database. |
 | `ADMIN_PASSWORD` | First deploy only | Password for the auto-bootstrapped admin account. Hashed with bcrypt before storage. |
 
+**Do not set on production (web service):** `DISABLE_AUTH`, `NEXT_PUBLIC_DISABLE_AUTH`, or `DEV_AUTH_USERNAME`. Those exist for **local Docker only** (`docker-compose.yml`). Production must keep normal NextAuth login; bypass requires both `DISABLE_AUTH=true` and a localhost `NEXTAUTH_URL` (`src/lib/auth-disabled.ts`).
+
 ### Life App 2.0 variables
 
 Set these when deploying Garmin sync and the morning email digest.

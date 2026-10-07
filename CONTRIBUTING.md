@@ -66,11 +66,27 @@ Keep the message short (under 72 characters). If you need more detail, add a bla
 
 ## Pull Requests
 
-1. Push your branch to GitHub
-2. Open a Pull Request (PR) against `master`
-3. Write a short description: what you built and why
-4. Request a review from the other person
-5. Only merge after approval — no self-merging
+### Release workflow (required)
+
+Do these steps **in order**. Do not push the branch until Bugbot has run on the full branch diff.
+
+1. **Finish the feature** on a branch (not `master`). Test locally (Docker on port 3000 is preferred for parity with Railway).
+2. **Bugbot review (before push)** — In Cursor, run a Bugbot review on **branch changes** (committed + uncommitted). Fix or consciously accept anything high/critical before you continue.
+3. **Push** the branch to GitHub.
+4. **Open a PR** against `master` with the template below. Note in the PR that Bugbot already ran pre-push.
+5. **Human review** — Request review from the other person.
+6. **Merge** only after approval — no self-merging.
+7. **Production** — Merging to `master` triggers an automatic Railway redeploy. Smoke-test the live app after deploy.
+
+### Production authentication (non-negotiable)
+
+Login and per-user data isolation **must stay enabled** on Railway.
+
+- **Never** set `DISABLE_AUTH` or `NEXT_PUBLIC_DISABLE_AUTH` on the production web service.
+- Production `NEXTAUTH_URL` must be the public HTTPS app URL (not `localhost`).
+- Local auth bypass is gated in code (`src/lib/auth-disabled.ts`): both `DISABLE_AUTH=true` **and** a localhost `NEXTAUTH_URL` are required. Docker Compose may use this for dev only — see `Life App/.env.example`.
+
+If a PR touches auth, middleware, or env examples, call out in the PR checklist that Railway variables were **not** changed to disable auth.
 
 ### PR description template
 
@@ -85,9 +101,11 @@ Keep the message short (under 72 characters). If you need more detail, add a bla
 [Steps to manually verify it works]
 
 ## Checklist
+- [ ] Bugbot review run on branch changes **before** push
 - [ ] Tested locally
 - [ ] No console errors
 - [ ] No .env secrets committed
+- [ ] Production auth unchanged (`DISABLE_AUTH` not set on Railway)
 ```
 
 ---
