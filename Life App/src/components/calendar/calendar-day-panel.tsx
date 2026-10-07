@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Switch } from "@/components/ui/switch";
-import { ActivityMark } from "@/components/calendar/activity-mark";
 import { usePalette } from "@/hooks/use-palette";
+import { celebrationEmojiCharacter } from "@/lib/celebration-emojis";
+import { getLucideIcon } from "@/lib/icons";
 import type { PaletteColor } from "@/lib/palette";
 import { brusselsToday } from "@/lib/dates";
 import type { CalendarActivity, CalendarDayCompletion } from "@/types";
@@ -17,91 +17,6 @@ interface CalendarDayPanelProps {
   onToggle: (activityTypeId: number, checked: boolean) => Promise<void>;
 }
 
-const NAMED_CELEBRATIONS: Record<string, string> = {
-  Running: "sweep",
-  Hiking: "rise",
-  Tennis: "bloom",
-  "Climbing (Gym)": "climb",
-  "Climbing (Outdoor)": "peak",
-  Reading: "open",
-  Meditation: "still",
-  Journaling: "ink",
-  "Social Event": "gather",
-};
-
-const FALLBACK_CELEBRATIONS = ["sweep", "rise", "bloom", "climb", "still", "ink", "gather", "open", "peak"];
-
-function celebrationFor(activity: CalendarActivity): string {
-  return NAMED_CELEBRATIONS[activity.name] ?? FALLBACK_CELEBRATIONS[activity.id % FALLBACK_CELEBRATIONS.length];
-}
-
-function Celebration({ kind, color }: { kind: string; color: string }) {
-  if (kind === "sweep") {
-    return (
-      <span
-        className="calendar-celebrate-motion pointer-events-none absolute inset-y-0 left-0 w-1/3 rounded-lg"
-        style={{ backgroundColor: color, animation: "calendar-sweep 700ms var(--ease-out-quart) both" }}
-      />
-    );
-  }
-  if (kind === "rise") {
-    return (
-      <span
-        className="calendar-celebrate-motion pointer-events-none absolute left-4 top-1/2 h-8 w-8 -translate-y-1/2 rounded-md"
-        style={{ backgroundColor: color, animation: "calendar-rise 700ms var(--ease-out-quart) both" }}
-      />
-    );
-  }
-  if (kind === "bloom" || kind === "open") {
-    return (
-      <span
-        className="calendar-celebrate-motion pointer-events-none absolute left-6 top-1/2 h-10 w-10 -translate-y-1/2 rounded-full"
-        style={{ backgroundColor: color, animation: "calendar-bloom 650ms var(--ease-out-quart) both" }}
-      />
-    );
-  }
-  if (kind === "climb" || kind === "peak") {
-    return (
-      <span
-        className="calendar-celebrate-motion pointer-events-none absolute left-3 top-1/2 h-7 w-7 -translate-y-1/2 rounded-sm"
-        style={{
-          backgroundColor: color,
-          animation: "calendar-rise 800ms var(--ease-out-quart) both",
-          borderRadius: kind === "peak" ? "999px 999px 2px 2px" : undefined,
-        }}
-      />
-    );
-  }
-  if (kind === "still") {
-    return (
-      <span
-        className="calendar-celebrate-motion pointer-events-none absolute left-3 top-1/2 h-9 w-9 -translate-y-1/2 rounded-full border-2"
-        style={{ borderColor: color, animation: "calendar-ring 900ms var(--ease-out-quart) both" }}
-      />
-    );
-  }
-  if (kind === "ink") {
-    return (
-      <span
-        className="calendar-celebrate-motion pointer-events-none absolute bottom-1 left-3 right-3 h-0.5 origin-left"
-        style={{ backgroundColor: color, animation: "calendar-ink 600ms var(--ease-out-quart) both" }}
-      />
-    );
-  }
-  return (
-    <>
-      <span
-        className="calendar-celebrate-motion pointer-events-none absolute left-8 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full"
-        style={{ backgroundColor: color, animation: "calendar-ripple 700ms var(--ease-out-quart) both" }}
-      />
-      <span
-        className="calendar-celebrate-motion pointer-events-none absolute left-8 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full"
-        style={{ backgroundColor: color, animation: "calendar-ripple 700ms var(--ease-out-quart) 120ms both" }}
-      />
-    </>
-  );
-}
-
 export function CalendarDayPanel({
   date,
   activities,
@@ -113,7 +28,10 @@ export function CalendarDayPanel({
   const isFuture = date > today;
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<Set<number>>(new Set());
-  const [celebratingId, setCelebratingId] = useState<number | null>(null);
+  const [celebration, setCelebration] = useState<{
+    activityId: number;
+    character: string;
+  } | null>(null);
   const [reduceMotion, setReduceMotion] = useState(false);
 
   useEffect(() => {
@@ -138,6 +56,41 @@ export function CalendarDayPanel({
 
   const heading = format(parseISO(date), "EEEE, MMMM d");
 
+  function clearCelebration() {
+    setCelebration(null);
+  }
+
+  async function handleToggle(activity: CalendarActivity, currentlyChecked: boolean) {
+    const next = !currentlyChecked;
+    setError(null);
+    if (!next) clearCelebration();
+
+    setPending((s) => new Set(s).add(activity.id));
+    try {
+      await onToggle(activity.id, next);
+      if (next && activity.celebration) {
+        const character = celebrationEmojiCharacter(activity.celebration);
+        if (character) {
+          setCelebration({ activityId: activity.id, character });
+          window.setTimeout(() => {
+            setCelebration((current) =>
+              current?.activityId === activity.id ? null : current
+            );
+          }, 1300);
+        }
+      }
+    } catch {
+      clearCelebration();
+      setError("Could not save. Try again.");
+    } finally {
+      setPending((s) => {
+        const n = new Set(s);
+        n.delete(activity.id);
+        return n;
+      });
+    }
+  }
+
   if (ordered.length === 0) {
     return (
       <div className="rounded-[0.625rem] border border-border/60 bg-card p-6">
@@ -147,29 +100,6 @@ export function CalendarDayPanel({
         </p>
       </div>
     );
-  }
-
-  async function handleToggle(activityId: number, next: boolean) {
-    setError(null);
-    if (next && !reduceMotion) {
-      setCelebratingId(activityId);
-      window.setTimeout(() => {
-        setCelebratingId((current) => (current === activityId ? null : current));
-      }, 900);
-    }
-    setPending((s) => new Set(s).add(activityId));
-    try {
-      await onToggle(activityId, next);
-    } catch {
-      setCelebratingId((current) => (current === activityId ? null : current));
-      setError("Could not save. Try again.");
-    } finally {
-      setPending((s) => {
-        const n = new Set(s);
-        n.delete(activityId);
-        return n;
-      });
-    }
   }
 
   return (
@@ -185,36 +115,106 @@ export function CalendarDayPanel({
           const completion = completionMap.get(activity.id);
           const checked = Boolean(completion);
           const locked = completion?.locked ?? false;
-          const disabled = isFuture || locked || pending.has(activity.id);
+          const busy = pending.has(activity.id);
+          const canEdit = !isFuture && !locked && !busy;
           const color = palette.color(activity.color as PaletteColor);
-          const celebrating = !reduceMotion && celebratingId === activity.id;
+          const Icon = getLucideIcon(activity.icon);
+          const showEmoji =
+            celebration?.activityId === activity.id && celebration.character;
+
+          if (locked) {
+            return (
+              <li
+                key={activity.id}
+                className="relative flex flex-col gap-1 rounded-lg px-3 py-2.5 text-white"
+                style={{ backgroundColor: color }}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  {Icon ? (
+                    <Icon className="h-4 w-4 shrink-0 text-white" aria-hidden />
+                  ) : (
+                    <span className="text-sm font-semibold">{activity.name.slice(0, 1)}</span>
+                  )}
+                  <span className="text-sm font-medium truncate">{activity.name}</span>
+                </div>
+                <span className="text-[11px] text-white/85 leading-snug pl-7">
+                  Logged in detail or from Garmin — cannot remove from here
+                </span>
+              </li>
+            );
+          }
 
           return (
-            <li
-              key={activity.id}
-              className={cn(
-                "relative flex items-center justify-between gap-4 overflow-hidden rounded-lg border border-border/40 px-3 py-2.5",
-                celebrating && "calendar-celebrate-icon"
-              )}
-              style={celebrating ? { animation: "calendar-lift 500ms var(--ease-out-quart)" } : undefined}
-            >
-              {celebrating && <Celebration kind={celebrationFor(activity)} color={color} />}
-              <div className="relative flex items-center gap-3 min-w-0">
-                <ActivityMark activity={activity} size="sm" className="w-8" />
-                <span className="text-sm font-medium truncate">{activity.name}</span>
-              </div>
-              <div className="relative flex flex-col items-end gap-1">
-                <Switch
-                  checked={checked}
-                  disabled={disabled}
-                  onCheckedChange={(value) => void handleToggle(activity.id, value)}
-                />
-                {locked && (
-                  <span className="text-[11px] text-muted-foreground max-w-[12rem] text-right leading-snug">
-                    Logged in detail or from Garmin — cannot remove from here
+            <li key={activity.id} className="relative">
+              <button
+                type="button"
+                disabled={!canEdit}
+                aria-pressed={checked}
+                onClick={() => void handleToggle(activity, checked)}
+                onKeyDown={(e) => {
+                  if (!canEdit) {
+                    if (e.key === "Enter" || e.key === " ") e.preventDefault();
+                    return;
+                  }
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    void handleToggle(activity, checked);
+                  }
+                }}
+                className={cn(
+                  "relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors",
+                  checked
+                    ? "text-white shadow-sm"
+                    : "border border-border/40 bg-transparent hover:bg-muted/40",
+                  !canEdit && !checked && "opacity-60 cursor-not-allowed",
+                  canEdit && "cursor-pointer"
+                )}
+                style={checked ? { backgroundColor: color } : undefined}
+              >
+                {checked ? (
+                  Icon ? (
+                    <Icon className="h-4 w-4 shrink-0 text-white" aria-hidden />
+                  ) : (
+                    <span className="text-sm font-semibold text-white">
+                      {activity.name.slice(0, 1)}
+                    </span>
+                  )
+                ) : Icon ? (
+                  <span
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border/30 bg-card"
+                    aria-hidden
+                  >
+                    <Icon className="h-4 w-4" style={{ color }} />
+                  </span>
+                ) : (
+                  <span
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border/30 text-sm font-semibold"
+                    style={{ color }}
+                    aria-hidden
+                  >
+                    {activity.name.slice(0, 1)}
                   </span>
                 )}
-              </div>
+                <span
+                  className={cn(
+                    "text-sm font-medium truncate",
+                    checked ? "text-white" : "text-foreground"
+                  )}
+                >
+                  {activity.name}
+                </span>
+              </button>
+              {showEmoji && (
+                <span
+                  className={cn(
+                    "pointer-events-none absolute left-1/2 top-full z-10 -translate-x-1/2 text-2xl",
+                    reduceMotion ? "calendar-emoji-fade" : "calendar-emoji-rise"
+                  )}
+                  aria-hidden
+                >
+                  {celebration.character}
+                </span>
+              )}
             </li>
           );
         })}

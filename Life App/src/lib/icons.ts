@@ -183,3 +183,7 @@ export const ACTIVITY_TYPE_ICONS: IconDef[] = [
   { name: "leaf", label: "Nature / Outdoors" },
   { name: "zap", label: "Power / Explosive" },
 ];
+
+export function isActivityIconName(name: string): boolean {
+  return ACTIVITY_TYPE_ICONS.some((icon) => icon.name === name);
+}

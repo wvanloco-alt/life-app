@@ -496,6 +496,7 @@ const alterStatements = [
   `ALTER TABLE email_preferences ADD COLUMN excluded_library_topics TEXT`,
   `ALTER TABLE activity_types ADD COLUMN calendar_visible INTEGER NOT NULL DEFAULT 1`,
   `ALTER TABLE activity_types ADD COLUMN calendar_color TEXT NOT NULL DEFAULT 'blue'`,
+  `ALTER TABLE activity_types ADD COLUMN calendar_celebration TEXT`,
   `ALTER TABLE activity_logs ADD COLUMN source TEXT NOT NULL DEFAULT 'manual'`,
 ];
 

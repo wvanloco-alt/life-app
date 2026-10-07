@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { activityLogs, activityTypes } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { buildCalendarDays } from "@/lib/calendar-build";
+import { normalizeCelebrationEmoji } from "@/lib/celebration-emojis";
 import type { CalendarActivity, CalendarResponse } from "@/types";
 import { and, eq, gte, lte } from "drizzle-orm";
 import { format, parseISO } from "date-fns";
@@ -41,6 +42,7 @@ export async function GET(request: NextRequest) {
     icon: row.icon,
     color: row.calendarColor,
     visible: row.calendarVisible,
+    celebration: normalizeCelebrationEmoji(row.calendarCelebration),
   }));
 
   const visibleIds = new Set(

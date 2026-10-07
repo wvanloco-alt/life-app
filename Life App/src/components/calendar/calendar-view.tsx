@@ -9,7 +9,10 @@ import {
   startOfMonth,
   startOfWeek,
 } from "date-fns";
-import { CalendarConfigure } from "@/components/calendar/calendar-configure";
+import {
+  CalendarConfigure,
+  type CalendarConfigurePatch,
+} from "@/components/calendar/calendar-configure";
 import { CalendarDayPanel } from "@/components/calendar/calendar-day-panel";
 import { CalendarLegend } from "@/components/calendar/calendar-legend";
 import { CalendarMonth } from "@/components/calendar/calendar-month";
@@ -139,7 +142,7 @@ export function CalendarView({ mode }: CalendarViewProps) {
 
   async function handleConfigureChange(
     activityId: number,
-    patch: { calendarVisible?: boolean; calendarColor?: string; icon?: string }
+    patch: CalendarConfigurePatch
   ) {
     const res = await fetch(`/api/activity-types/${activityId}`, {
       method: "PATCH",
@@ -147,6 +150,20 @@ export function CalendarView({ mode }: CalendarViewProps) {
       body: JSON.stringify(patch),
     });
     if (!res.ok) throw new Error("configure failed");
+    await load();
+  }
+
+  async function handleCreateActivity(name: string) {
+    const res = await fetch("/api/activity-types", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    if (res.status === 409) {
+      throw new Error(body.error ?? "That name is already used.");
+    }
+    if (!res.ok) throw new Error(body.error ?? "Could not add activity.");
     await load();
   }
 
@@ -192,6 +209,7 @@ export function CalendarView({ mode }: CalendarViewProps) {
         <CalendarConfigure
           activities={data.activities}
           onChange={handleConfigureChange}
+          onCreate={handleCreateActivity}
           onClose={() => setConfigureOpen(false)}
         />
       )}
