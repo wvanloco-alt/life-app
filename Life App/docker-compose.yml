@@ -1,6 +1,11 @@
 services:
   life-app:
-    build: .
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_DISABLE_AUTH: "true"
+        NEXT_PUBLIC_DEV_AUTH_USERNAME: admin
+        NEXT_PUBLIC_DEV_AUTH_PASSWORD: admin123
     ports:
       - "3000:3000"
     volumes:

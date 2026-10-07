@@ -592,7 +592,11 @@ export function DailyView() {
                             {log.activityTypeName ?? "Activity"}
                           </div>
                           <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                            <span>{formatDuration(log.durationMinutes)}</span>
+                            <span>
+                              {log.source === "calendar" && log.durationMinutes === 0
+                                ? "Checked"
+                                : formatDuration(log.durationMinutes)}
+                            </span>
                           </div>
                           {log.notes && (
                             <p className="text-xs text-muted-foreground mt-1">

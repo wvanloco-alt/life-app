@@ -499,6 +499,8 @@ Defines an activity type the user does (e.g., Running, Tennis, Reading, Meditati
 | defaultCalories | INTEGER | nullable | Auto-fill for untracked activities |
 | defaultSteps | INTEGER | nullable | Auto-fill for untracked activities |
 | defaultDurationMinutes | INTEGER | NOT NULL, default 60 | Used by the schedule-to-log bridge as the `durationMinutes` for an auto-created activity log when a scheduled activity is checked off. Edited via the activity-type editor. Activities Refactoring V1. |
+| calendarVisible | INTEGER | NOT NULL, default 1 | Activity Calendar (006): `1` = shown on the week/month grid and day checklist; `0` = hidden (marks omitted; still configurable). |
+| calendarColor | TEXT | NOT NULL, default `'blue'` | Activity Calendar (006): palette name for month/week marks (`red`, `blue`, `lime`, etc.). User edits persist; one-shot name→color map only when the column is first added. |
 | metricsConfig | TEXT | NOT NULL, default '[]' | JSON array of `MetricField` objects defining type-specific log fields |
 | variants | TEXT | nullable | JSON array of `ActivityVariant` objects (e.g., singles/doubles for tennis) |
 | gradeSystem | TEXT | nullable | Grade system identifier (e.g., 'french' for climbing) |
@@ -528,6 +530,8 @@ An individual logged activity session. Linked to an activity type for type-speci
 | variant | TEXT | nullable | Activity variant key (e.g., 'singles', 'doubles') |
 | metrics | TEXT | NOT NULL, default '{}' | JSON object with type-specific data (e.g., `{"distance_km":5.2,"pace":"5:30"}`) |
 | notes | TEXT | nullable | Free-form notes |
+| garminActivityId | TEXT | nullable, unique when set | Garmin sync idempotency key |
+| source | TEXT | NOT NULL, default `'manual'` | Activity Calendar (006): `'manual'` (default inserts), `'garmin'` (Garmin sync), `'calendar'` (check-off from `/this-week` or `/monthly-plan`). Multiple logs per user/type/date are allowed for real sessions; calendar check is idempotent (insert only if none exists). Uncheck removes only `calendar` rows. |
 | createdAt | TEXT | NOT NULL, ISO 8601 | When logged |
 
 ---

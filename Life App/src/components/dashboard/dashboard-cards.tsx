@@ -122,21 +122,39 @@ export function ActivityCard({
   activities: DashboardData["activities"];
   garminConnected: boolean;
 }) {
-  const hasData = activities.thisWeek > 0 || activities.kmRunThisWeek > 0;
+  const hasKm = activities.kmRunThisWeek > 0;
+  const count = activities.thisWeek;
 
   return (
     <MetricCard title="This week" icon={<Footprints className="h-4 w-4" />}>
-      {!hasData && !garminConnected ? (
-        <ConnectGarminHint />
+      {hasKm ? (
+        <>
+          <p className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight">
+            {activities.kmRunThisWeek} km
+          </p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Run · {count} activities total
+          </p>
+        </>
       ) : (
         <>
           <p className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight">
-            {activities.kmRunThisWeek > 0 ? `${activities.kmRunThisWeek} km` : activities.thisWeek}
+            {count}
           </p>
           <p className="text-sm text-muted-foreground mt-1">
-            {activities.kmRunThisWeek > 0
-              ? `Run · ${activities.thisWeek} activities total`
-              : `${activities.thisWeek} activities logged`}
+            {count === 0 ? (
+              <>
+                Activities this week ·{" "}
+                <Link href="/this-week" className="underline underline-offset-2 hover:text-foreground">
+                  Check off your week
+                </Link>
+              </>
+            ) : (
+              `${count} activities logged`
+            )}
+            {!garminConnected && count === 0 && (
+              <span className="block mt-1 text-xs">Sleep and calories still need Garmin.</span>
+            )}
           </p>
         </>
       )}

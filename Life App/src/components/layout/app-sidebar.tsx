@@ -67,7 +67,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: "Planning",
     items: [
-      { title: "Monthly Plan", href: "/monthly-plan", icon: CalendarDays },
+      { title: "Month", href: "/monthly-plan", icon: CalendarDays },
     ],
   },
   {

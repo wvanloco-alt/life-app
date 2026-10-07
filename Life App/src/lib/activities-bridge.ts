@@ -138,6 +138,7 @@ export async function applyCheckOffBridge(
       steps: t.defaultSteps,
       metrics: "{}",
       notes: null,
+      source: "manual",
       userId: args.userId,
     })
     .returning({ id: activityLogs.id });

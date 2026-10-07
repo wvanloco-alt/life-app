@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
       activityTypeId: activityLogs.activityTypeId,
       date: activityLogs.date,
       durationMinutes: activityLogs.durationMinutes,
+      source: activityLogs.source,
       calories: activityLogs.calories,
       activityTypeName: activityTypes.name,
       activityTypeIcon: activityTypes.icon,

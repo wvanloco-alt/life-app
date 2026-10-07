@@ -151,6 +151,8 @@ The app is live at `https://life-app-production-938a.up.railway.app`.
 
 ### How Deployment Works
 
+Before opening a PR: run **Bugbot** on branch changes in Cursor and fix high/critical findings. See `CONTRIBUTING.md` (release workflow).
+
 Pushing to `master` on GitHub triggers an automatic Railway redeploy. No manual steps needed.
 
 ```bash
@@ -165,7 +167,7 @@ git push origin master
 - **Schema migrations**: `apply-schema.js` runs automatically at container startup (before the Next.js server starts). It is idempotent — safe to run repeatedly.
 - **Admin bootstrap**: On a fresh database, `apply-schema.js` creates the admin account from `ADMIN_USERNAME` + `ADMIN_PASSWORD` env vars. Only fires once (when the `users` table is empty).
 - **Container security**: Container starts as root to fix volume permissions (`chown /data`), then drops to `nextjs` (UID 1001) via `gosu` before running any app code.
-- **Required env vars (auth)**: `AUTH_SECRET`, `DB_PATH=/data/life-app.db`, `NEXTAUTH_URL`, `AUTH_TRUST_HOST=true`, `PORT=3000`, `ADMIN_USERNAME`, `ADMIN_PASSWORD` (bootstrap only).
+- **Required env vars (auth)**: `AUTH_SECRET`, `DB_PATH=/data/life-app.db`, `NEXTAUTH_URL`, `AUTH_TRUST_HOST=true`, `PORT=3000`, `ADMIN_USERNAME`, `ADMIN_PASSWORD` (bootstrap only). **Never** set `DISABLE_AUTH` on Railway — login stays required in production.
 - **Required env vars (Life App 2.0)**: `ENCRYPTION_KEY` (Garmin token encryption), `CRON_SECRET` (morning digest cron endpoint). Production email: `RESEND_API_KEY` + `EMAIL_FROM` (Railway blocks SMTP). Local Docker: `GMAIL_USER` + `GMAIL_APP_PASSWORD`.
 - **Morning digest cron**: Separate Railway cron service hits `POST /api/cron/morning-digest` at 07:00 Europe/Brussels. See `DEPLOYMENT.md` for DST notes.
 

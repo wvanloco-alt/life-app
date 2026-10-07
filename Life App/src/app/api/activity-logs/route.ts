@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
       variant: activityLogs.variant,
       metrics: activityLogs.metrics,
       notes: activityLogs.notes,
+      source: activityLogs.source,
       createdAt: activityLogs.createdAt,
       activityTypeName: activityTypes.name,
       activityTypeIcon: activityTypes.icon,
@@ -86,6 +87,7 @@ export async function POST(request: NextRequest) {
     variant: variant ?? null,
     metrics: JSON.stringify(metrics ?? {}),
     notes: notes?.trim() || null,
+    source: "manual",
     userId,
   }).returning();
 

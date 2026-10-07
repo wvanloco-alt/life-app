@@ -17,6 +17,7 @@ import {
   type GarminSyncPlan,
 } from "@/lib/garmin-sync";
 import { DEFAULT_ACTIVITY_TYPES } from "@/lib/defaults";
+import { defaultCalendarColor } from "@/lib/calendar-colors";
 import { and, eq } from "drizzle-orm";
 import { format } from "date-fns";
 
@@ -42,9 +43,15 @@ async function ensureActivityType(userId: string, name: string): Promise<number>
         metricsConfig: JSON.stringify(defaultType.metricsConfig),
         variants: defaultType.variants ? JSON.stringify(defaultType.variants) : null,
         gradeSystem: defaultType.gradeSystem,
+        calendarVisible: true,
+        calendarColor: defaultCalendarColor(defaultType.name, 0),
         userId,
       })
       .returning({ id: activityTypes.id });
+    await db
+      .update(activityTypes)
+      .set({ calendarColor: defaultCalendarColor(defaultType.name, created.id) })
+      .where(eq(activityTypes.id, created.id));
     return created.id;
   }
 
@@ -56,9 +63,15 @@ async function ensureActivityType(userId: string, name: string): Promise<number>
       icon: "activity",
       isTracked: true,
       metricsConfig: "[]",
+      calendarVisible: true,
+      calendarColor: defaultCalendarColor(name, 0),
       userId,
     })
     .returning({ id: activityTypes.id });
+  await db
+    .update(activityTypes)
+    .set({ calendarColor: defaultCalendarColor(name, created.id) })
+    .where(eq(activityTypes.id, created.id));
   return created.id;
 }
 
@@ -81,6 +94,7 @@ export async function applyGarminSyncPlan(
       steps: insert.steps,
       metrics: JSON.stringify(insert.metrics),
       garminActivityId: insert.garminActivityId,
+      source: "garmin",
       userId,
     });
     activitiesAdded += 1;

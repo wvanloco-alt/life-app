@@ -205,6 +205,8 @@ export const activityTypes = sqliteTable("activity_types", {
   metricsConfig: text("metrics_config").notNull().default("[]"),
   variants: text("variants"),
   gradeSystem: text("grade_system"),
+  calendarVisible: integer("calendar_visible", { mode: "boolean" }).notNull().default(true),
+  calendarColor: text("calendar_color").notNull().default("blue"),
   userId: text("user_id").notNull().default(""),
   createdAt: timestamp(),
   updatedAt: updatedAt(),
@@ -227,6 +229,7 @@ export const activityLogs = sqliteTable("activity_logs", {
   metrics: text("metrics").notNull().default("{}"),
   notes: text("notes"),
   garminActivityId: text("garmin_activity_id"),
+  source: text("source").notNull().default("manual"),
   userId: text("user_id").notNull().default(""),
   createdAt: timestamp(),
 });

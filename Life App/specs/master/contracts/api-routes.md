@@ -68,9 +68,33 @@ Create a new activity type.
 
 Update an activity type. Accepts any subset of fields. When `defaultDurationMinutes` is provided it must be a positive integer.
 
+**Activity Calendar (006)** optional fields: `calendarVisible` (boolean), `calendarColor` (palette name — invalid values return `400`), `icon` (activity icon key). Response includes `calendarVisible` and `calendarColor`.
+
 ### DELETE /api/activity-types/:id
 
 Delete an activity type.
+
+---
+
+## Activity Calendar (006)
+
+Week/month check-off views at `/this-week` and `/monthly-plan`. Contract detail: `specs/006-activity-calendar/contracts/calendar-api.md`.
+
+### GET /api/calendar?from=YYYY-MM-DD&to=YYYY-MM-DD
+
+Returns visible and hidden activity types (for configure) plus per-day completions for visible types in the inclusive date range. Each completion includes `activityTypeId` and `locked` (`true` when a manual or Garmin log exists for that type and date).
+
+**Response** `400`: missing or invalid `from`/`to`, or `from` after `to`.
+
+### PUT /api/calendar/check
+
+**Request**: `{ "date": "YYYY-MM-DD", "activityTypeId": number, "checked": boolean }`
+
+- `checked: true` — insert `source = 'calendar'` log only if no log exists for that user, type, and date.
+- `checked: false` — delete only `calendar` logs; manual/Garmin rows remain and keep the day locked.
+- Date must not be after today in `Europe/Brussels`. Hidden or foreign activity types are rejected.
+
+**Response** `200`: `{ "date", "activityTypeId", "checked", "locked" }`.
 
 ---
 
@@ -1528,6 +1552,7 @@ Single aggregation endpoint for the dashboard page. Returns all metrics in one r
 
 - `lastNight` is the most recent sleep record on or before today. Null if no sleep data.
 - `weekAverage` is the average sleep score for the current ISO week. Null if no data.
+- `activities.thisWeek` (Activity Calendar 006) counts **distinct** activity-type-and-date pairs from Monday of the current week through today in `Europe/Brussels`, not raw log rows. Digest totals and goal session counts are unchanged.
 - `kmRunThisWeek` sums `distance_km` from `activity_logs` for the Running activity type within the current ISO week.
 - `habits` returns all active habits with `doneLast30Days` (count of completions in the last 30 days). Streaks are computed client-side from this count via `countDoneInWindow()`.
 

@@ -192,8 +192,35 @@ export interface ActivityType {
   metricsConfig: MetricField[];
   variants: ActivityVariant[] | null;
   gradeSystem: string | null;
+  calendarVisible: boolean;
+  calendarColor: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CalendarActivity {
+  id: number;
+  name: string;
+  icon: string;
+  color: string;
+  visible: boolean;
+}
+
+export interface CalendarDayCompletion {
+  activityTypeId: number;
+  locked: boolean;
+}
+
+export interface CalendarDay {
+  date: string;
+  completions: CalendarDayCompletion[];
+}
+
+export interface CalendarResponse {
+  from: string;
+  to: string;
+  activities: CalendarActivity[];
+  days: CalendarDay[];
 }
 
 export interface ActivityLog {
@@ -208,6 +235,7 @@ export interface ActivityLog {
   variant: string | null;
   metrics: Record<string, string | number>;
   notes: string | null;
+  source?: "calendar" | "manual" | "garmin";
   createdAt: string;
   activityTypeName?: string;
   activityTypeIcon?: string;
