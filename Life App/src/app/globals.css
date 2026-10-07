@@ -93,6 +93,12 @@
   --palette-gray: #6B7280;
   --palette-indigo: #6366F1;
   --palette-sky: #0EA5E9;
+  --palette-orange: #F97316;
+  --palette-rose: #E11D48;
+  --palette-teal: #0D9488;
+  --palette-fuchsia: #C026D3;
+  --palette-yellow: #CA8A04;
+  --palette-bronze: #B45309;
 }
 
 .dark {
@@ -139,6 +145,12 @@
   --palette-gray: #9CA3AF;
   --palette-indigo: #818CF8;
   --palette-sky: #38BDF8;
+  --palette-orange: #FB923C;
+  --palette-rose: #FB7185;
+  --palette-teal: #2DD4BF;
+  --palette-fuchsia: #E879F9;
+  --palette-yellow: #FACC15;
+  --palette-bronze: #D97706;
 }
 
 :root {

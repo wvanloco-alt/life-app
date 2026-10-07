@@ -24,9 +24,19 @@ describe("defaultCalendarColor", () => {
     expect(defaultCalendarColor("Climbing (Gym)", 2)).toBe("red");
   });
 
-  it("cycles unknown names by id", () => {
-    expect(defaultCalendarColor("Custom Sport", 0)).toBe("blue");
-    expect(defaultCalendarColor("Custom Sport", 1)).toBe("green");
+  it("assigns stable palette colors from the activity name", () => {
+    const color = defaultCalendarColor("Climbing (Gym) - Boulder", 7);
+    expect(defaultCalendarColor("Climbing (Gym) - Boulder", 7)).toBe(color);
+    expect(isPaletteColorName(color)).toBe(true);
+  });
+
+  it("spreads different custom names across hues", () => {
+    const colors = new Set([
+      defaultCalendarColor("French", 1),
+      defaultCalendarColor("Healthy food", 2),
+      defaultCalendarColor("Climbing (Gym) - Lengte", 3),
+    ]);
+    expect(colors.size).toBeGreaterThan(1);
   });
 });
 
