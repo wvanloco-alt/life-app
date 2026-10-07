@@ -17,6 +17,12 @@ export const PALETTE_VARS = {
   gray: "--palette-gray",
   indigo: "--palette-indigo",
   sky: "--palette-sky",
+  orange: "--palette-orange",
+  rose: "--palette-rose",
+  teal: "--palette-teal",
+  fuchsia: "--palette-fuchsia",
+  yellow: "--palette-yellow",
+  bronze: "--palette-bronze",
 } as const;
 
 export type PaletteColor = keyof typeof PALETTE_VARS;
@@ -42,6 +48,12 @@ function getFallback(name: PaletteColor): string {
     gray: "#6B7280",
     indigo: "#6366F1",
     sky: "#0EA5E9",
+    orange: "#F97316",
+    rose: "#E11D48",
+    teal: "#0D9488",
+    fuchsia: "#C026D3",
+    yellow: "#CA8A04",
+    bronze: "#B45309",
   };
   return fallbacks[name];
 }
