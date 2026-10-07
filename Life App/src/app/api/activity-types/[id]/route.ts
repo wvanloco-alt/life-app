@@ -4,6 +4,8 @@ import { activityTypes } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { isPaletteColorName } from "@/lib/calendar-colors";
+import { isCelebrationEmoji } from "@/lib/celebration-emojis";
+import { isActivityIconName } from "@/lib/icons";
 
 export async function PATCH(
   request: NextRequest,
@@ -19,7 +21,12 @@ export async function PATCH(
   const updates: Record<string, unknown> = {};
   if (body.name !== undefined) updates.name = body.name.trim();
   if (body.type !== undefined) updates.type = body.type;
-  if (body.icon !== undefined) updates.icon = body.icon;
+  if (body.icon !== undefined) {
+    if (!isActivityIconName(body.icon)) {
+      return NextResponse.json({ error: "icon must be an activity icon" }, { status: 400 });
+    }
+    updates.icon = body.icon;
+  }
   if (body.isTracked !== undefined) updates.isTracked = body.isTracked;
   if (body.defaultCalories !== undefined) updates.defaultCalories = body.defaultCalories;
   if (body.defaultSteps !== undefined) updates.defaultSteps = body.defaultSteps;
@@ -38,6 +45,18 @@ export async function PATCH(
       return NextResponse.json({ error: "calendarColor must be a palette name" }, { status: 400 });
     }
     updates.calendarColor = body.calendarColor;
+  }
+  if (body.calendarCelebration !== undefined) {
+    if (body.calendarCelebration === null) {
+      updates.calendarCelebration = null;
+    } else if (isCelebrationEmoji(body.calendarCelebration)) {
+      updates.calendarCelebration = body.calendarCelebration;
+    } else {
+      return NextResponse.json(
+        { error: "calendarCelebration must be a celebration emoji or null" },
+        { status: 400 }
+      );
+    }
   }
 
   const [updated] = await db.update(activityTypes).set(updates).where(and(eq(activityTypes.id, parseInt(id)), eq(activityTypes.userId, userId))).returning();

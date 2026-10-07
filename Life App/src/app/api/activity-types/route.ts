@@ -68,6 +68,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Name is required" }, { status: 400 });
   }
 
+  const trimmedName = name.trim();
+  const existingTypes = await db
+    .select({ name: activityTypes.name })
+    .from(activityTypes)
+    .where(eq(activityTypes.userId, userId));
+  const duplicate = existingTypes.some(
+    (row) => row.name.trim().toLowerCase() === trimmedName.toLowerCase()
+  );
+  if (duplicate) {
+    return NextResponse.json({ error: "That name is already used." }, { status: 409 });
+  }
+
   // defaultDurationMinutes is optional on POST and falls back to the schema's
   // 60-minute default. When provided, it must be a positive integer.
   let resolvedDuration: number | undefined = undefined;
@@ -79,7 +91,7 @@ export async function POST(request: NextRequest) {
   }
 
   const [created] = await db.insert(activityTypes).values({
-    name: name.trim(),
+    name: trimmedName,
     type: type ?? "cardio",
     icon: icon ?? "activity",
     isTracked: isTracked ?? false,
@@ -90,14 +102,15 @@ export async function POST(request: NextRequest) {
     variants: variants ? JSON.stringify(variants) : null,
     gradeSystem: gradeSystem ?? null,
     calendarVisible: true,
-    calendarColor: defaultCalendarColor(name.trim(), 0),
+    calendarColor: defaultCalendarColor(trimmedName, 0),
+    calendarCelebration: null,
     userId,
   }).returning();
 
   if (created) {
     await db
       .update(activityTypes)
-      .set({ calendarColor: defaultCalendarColor(name.trim(), created.id) })
+      .set({ calendarColor: defaultCalendarColor(trimmedName, created.id) })
       .where(eq(activityTypes.id, created.id));
   }
 

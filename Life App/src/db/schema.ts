@@ -207,6 +207,7 @@ export const activityTypes = sqliteTable("activity_types", {
   gradeSystem: text("grade_system"),
   calendarVisible: integer("calendar_visible", { mode: "boolean" }).notNull().default(true),
   calendarColor: text("calendar_color").notNull().default("blue"),
+  calendarCelebration: text("calendar_celebration"),
   userId: text("user_id").notNull().default(""),
   createdAt: timestamp(),
   updatedAt: updatedAt(),

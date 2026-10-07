@@ -194,9 +194,24 @@ export interface ActivityType {
   gradeSystem: string | null;
   calendarVisible: boolean;
   calendarColor: string;
+  calendarCelebration: string | null;
   createdAt: string;
   updatedAt: string;
 }
+
+export type CelebrationEmojiToken =
+  | "smile"
+  | "meditate"
+  | "flex"
+  | "runner"
+  | "bicycle"
+  | "tennis"
+  | "mountain"
+  | "book"
+  | "write"
+  | "people"
+  | "seedling"
+  | "sun";
 
 export interface CalendarActivity {
   id: number;
@@ -204,6 +219,7 @@ export interface CalendarActivity {
   icon: string;
   color: string;
   visible: boolean;
+  celebration: CelebrationEmojiToken | null;
 }
 
 export interface CalendarDayCompletion {
